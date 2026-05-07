@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
@@ -112,11 +113,7 @@ export function TradeTypeSelector({
         </View>
       )}
 
-      <TouchableOpacity
-        style={styles.selectorButton}
-        onPress={() => setShowPicker(true)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.selectorButton} onPress={() => setShowPicker(true)} >
         <View style={styles.selectorContent}>
           <View style={[styles.iconContainer, { backgroundColor: colors.primaryLight }]}>
             <Feather name={selectedIcon} size={18} color={colors.primary} />
@@ -126,7 +123,7 @@ export function TradeTypeSelector({
           </Text>
         </View>
         <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
       <Modal
         visible={showPicker}
@@ -138,12 +135,9 @@ export function TradeTypeSelector({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Trade Type</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowPicker(false)}
-              >
+              <PressableRow style={styles.closeButton} onPress={() => setShowPicker(false)} >
                 <Feather name="x" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -153,12 +147,7 @@ export function TradeTypeSelector({
                   {trades.map((tradeId) => {
                     const isSelected = value === tradeId;
                     return (
-                      <TouchableOpacity
-                        key={tradeId}
-                        style={[styles.tradeItem, isSelected && styles.tradeItemSelected]}
-                        onPress={() => handleSelectTrade(tradeId)}
-                        activeOpacity={0.7}
-                      >
+                      <PressableRow key={tradeId} style={[styles.tradeItem, isSelected && styles.tradeItemSelected]} onPress={() => handleSelectTrade(tradeId)} >
                         <View style={[
                           styles.tradeIcon,
                           isSelected && { backgroundColor: colors.primaryLight }
@@ -178,21 +167,17 @@ export function TradeTypeSelector({
                         {isSelected && (
                           <Feather name="check" size={18} color={colors.primary} />
                         )}
-                      </TouchableOpacity>
+                      </PressableRow>
                     );
                   })}
                 </View>
               ))}
 
               <View style={styles.requestSection}>
-                <TouchableOpacity
-                  style={styles.requestButton}
-                  onPress={() => setShowRequestModal(true)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.requestButton} onPress={() => setShowRequestModal(true)} >
                   <Feather name="plus-circle" size={18} color={colors.primary} />
                   <Text style={styles.requestButtonText}>Request New Trade Type</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             </ScrollView>
           </View>
@@ -209,12 +194,9 @@ export function TradeTypeSelector({
           <View style={[styles.modalContent, styles.requestModalContent]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Request New Trade</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowRequestModal(false)}
-              >
+              <PressableRow style={styles.closeButton} onPress={() => setShowRequestModal(false)} >
                 <Feather name="x" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <Text style={styles.requestDescription}>
@@ -232,22 +214,13 @@ export function TradeTypeSelector({
             />
 
             <View style={styles.requestActions}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => {
-                  setRequestTradeName('');
-                  setShowRequestModal(false);
-                }}
-              >
+              <PressableRow style={styles.cancelButton} onPress={() => { setRequestTradeName(''); setShowRequestModal(false); }} >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleRequestSubmit}
-              >
+              </PressableRow>
+              <PressableRow style={styles.submitButton} onPress={handleRequestSubmit} >
                 <Feather name="send" size={16} color={colors.white} />
                 <Text style={styles.submitButtonText}>Submit Request</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
         </View>

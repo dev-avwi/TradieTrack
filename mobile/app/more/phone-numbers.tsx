@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -463,24 +464,7 @@ export default function PhoneNumbersPage() {
           ].map((opt) => {
             const selected = attributionMode === opt.key;
             return (
-              <TouchableOpacity
-                key={opt.key}
-                onPress={() => updateAttribution(opt.key)}
-                disabled={savingAttribution}
-                activeOpacity={0.7}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                  gap: spacing.sm,
-                  padding: spacing.sm,
-                  borderRadius: radius.md,
-                  borderWidth: 1,
-                  borderColor: selected ? colors.primary : colors.border,
-                  backgroundColor: selected ? `${colors.primary}10` : 'transparent',
-                  marginBottom: spacing.xs,
-                  opacity: savingAttribution ? 0.6 : 1,
-                }}
-              >
+              <PressableRow key={opt.key} onPress={() => updateAttribution(opt.key)} disabled={savingAttribution} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? `${colors.primary}10` : 'transparent', marginBottom: spacing.xs, opacity: savingAttribution ? 0.6 : 1, }} >
                 <View
                   style={{
                     width: 18,
@@ -505,7 +489,7 @@ export default function PhoneNumbersPage() {
                     {opt.desc}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </PressableRow>
             );
           })}
 
@@ -568,24 +552,20 @@ export default function PhoneNumbersPage() {
                         maxLength={100}
                         autoFocus
                       />
-                      <TouchableOpacity onPress={() => saveLabel(cfg.id)} activeOpacity={0.7}>
+                      <PressableRow onPress={() => saveLabel(cfg.id)} >
                         <Feather name="check" size={16} color={colors.success} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => setEditingLabel(null)} activeOpacity={0.7}>
+                      </PressableRow>
+                      <PressableRow onPress={() => setEditingLabel(null)} >
                         <Feather name="x" size={16} color={colors.mutedForeground} />
-                      </TouchableOpacity>
+                      </PressableRow>
                     </View>
                   ) : (
-                    <TouchableOpacity
-                      onPress={() => { setEditingLabel(cfg.id); setLabelText(cfg.label || ''); }}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow onPress={() => { setEditingLabel(cfg.id); setLabelText(cfg.label || ''); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} >
                       <Text style={{ fontSize: 12, color: colors.primary }}>
                         {cfg.label || 'Add Label'}
                       </Text>
                       <Feather name="edit-2" size={11} color={colors.primary} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   )}
                 </View>
                 <View style={styles.currentNumberRow}>
@@ -604,22 +584,14 @@ export default function PhoneNumbersPage() {
                 </View>
 
                 <View style={styles.currentNumberActions}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => router.push(`/more/ai-receptionist?configId=${cfg.id}`)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={styles.actionButton} onPress={() => router.push(`/more/ai-receptionist?configId=${cfg.id}`)} >
                     <Feather name="settings" size={14} color={colors.primary} />
                     <Text style={[styles.actionButtonText, { color: colors.primary }]}>Configure AI</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => router.push('/more/chat-hub')}
-                    activeOpacity={0.7}
-                  >
+                  </PressableRow>
+                  <PressableRow style={styles.actionButton} onPress={() => router.push('/more/chat-hub')} >
                     <Feather name="message-square" size={14} color={colors.primary} />
                     <Text style={[styles.actionButtonText, { color: colors.primary }]}>Chat Hub</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
             ))}
@@ -653,33 +625,21 @@ export default function PhoneNumbersPage() {
               </View>
 
               <View style={styles.currentNumberActions}>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => router.push('/more/ai-receptionist')}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.actionButton} onPress={() => router.push('/more/ai-receptionist')} >
                   <Feather name="cpu" size={14} color={colors.primary} />
                   <Text style={[styles.actionButtonText, { color: colors.primary }]}>AI Receptionist</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => router.push('/more/chat-hub')}
-                  activeOpacity={0.7}
-                >
+                </PressableRow>
+                <PressableRow style={styles.actionButton} onPress={() => router.push('/more/chat-hub')} >
                   <Feather name="message-square" size={14} color={colors.primary} />
                   <Text style={[styles.actionButtonText, { color: colors.primary }]}>Chat Hub</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             </View>
 
-            <TouchableOpacity
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: `${colors.destructive}06`, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: `${colors.destructive}15`, marginTop: spacing.md, marginBottom: spacing.lg }}
-              onPress={handleRelease}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: `${colors.destructive}06`, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: `${colors.destructive}15`, marginTop: spacing.md, marginBottom: spacing.lg }} onPress={handleRelease} >
               <Feather name="rotate-ccw" size={14} color={colors.destructive} />
               <Text style={{ fontSize: 13, fontWeight: '600', color: colors.destructive }}>Revert to Shared Number</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </>
         ) : (
           <>
@@ -710,12 +670,7 @@ export default function PhoneNumbersPage() {
             <Text style={{ fontSize: 12, color: colors.mutedForeground, lineHeight: 18, marginBottom: spacing.md }}>
               Want this number back? Tap below to re-acquire it if it's still available.
             </Text>
-            <TouchableOpacity
-              style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.xs }}
-              onPress={handleReacquireLastNumber}
-              disabled={reacquiring}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.xs }} onPress={handleReacquireLastNumber} disabled={reacquiring} >
               {reacquiring ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
@@ -724,7 +679,7 @@ export default function PhoneNumbersPage() {
               <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
                 {reacquiring ? 'Re-acquiring...' : 'Get This Number Back'}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         )}
 
@@ -813,28 +768,20 @@ export default function PhoneNumbersPage() {
             )}
 
             <View onLayout={(e) => { searchSectionY.current = e.nativeEvent.layout.y; }} style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }}
-                onPress={() => setShowPortForm(true)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={{ flex: 1, backgroundColor: showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }} onPress={() => setShowPortForm(true)} >
                 <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
                   <Feather name="phone-forwarded" size={16} color={colors.primary} />
                 </View>
                 <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Port My Number</Text>
                 <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Keep your existing number</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1, backgroundColor: !showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: !showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }}
-                onPress={() => setShowPortForm(false)}
-                activeOpacity={0.7}
-              >
+              </PressableRow>
+              <PressableRow style={{ flex: 1, backgroundColor: !showPortForm ? `${colors.primary}15` : colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: !showPortForm ? colors.primary : colors.border, alignItems: 'center', gap: spacing.xs }} onPress={() => setShowPortForm(false)} >
                 <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' }}>
                   <Feather name="plus" size={16} color={colors.primary} />
                 </View>
                 <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Get New Number</Text>
                 <Text style={{ fontSize: 11, color: colors.mutedForeground, textAlign: 'center' }}>Search Australian numbers</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {showPortForm ? (
@@ -872,11 +819,7 @@ export default function PhoneNumbersPage() {
                   onChangeText={setPortAccount}
                 />
 
-                <TouchableOpacity
-                  style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md }}
-                  onPress={() => setPortLoaAgreed(!portLoaAgreed)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md }} onPress={() => setPortLoaAgreed(!portLoaAgreed)} >
                   <View style={{
                     width: 22, height: 22, borderRadius: 4, borderWidth: 2,
                     borderColor: portLoaAgreed ? colors.primary : colors.border,
@@ -888,7 +831,7 @@ export default function PhoneNumbersPage() {
                   <Text style={{ fontSize: 12, color: colors.foreground, flex: 1, lineHeight: 18 }}>
                     I authorise JobRunner to submit a porting request on my behalf (Letter of Authorisation). I confirm I am the authorised account holder for this number.
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
 
                 <View style={{ backgroundColor: `${colors.info}10`, borderRadius: radius.sm, padding: spacing.sm, marginBottom: spacing.md, flexDirection: 'row', gap: spacing.xs }}>
                   <Feather name="clock" size={12} color={colors.info} style={{ marginTop: 2 }} />
@@ -897,17 +840,7 @@ export default function PhoneNumbersPage() {
                   </Text>
                 </View>
 
-                <TouchableOpacity
-                  style={{
-                    backgroundColor: (portPhone && portCarrier && portAccount && portLoaAgreed) ? colors.primary : colors.muted,
-                    borderRadius: radius.md, paddingVertical: 12, alignItems: 'center',
-                    flexDirection: 'row', justifyContent: 'center', gap: spacing.xs,
-                    opacity: (portPhone && portCarrier && portAccount && portLoaAgreed) ? 1 : 0.5,
-                  }}
-                  onPress={submitPortRequest}
-                  disabled={submittingPort || !portPhone || !portCarrier || !portAccount || !portLoaAgreed}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={{ backgroundColor: (portPhone && portCarrier && portAccount && portLoaAgreed) ? colors.primary : colors.muted, borderRadius: radius.md, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.xs, opacity: (portPhone && portCarrier && portAccount && portLoaAgreed) ? 1 : 0.5, }} onPress={submitPortRequest} disabled={submittingPort || !portPhone || !portCarrier || !portAccount || !portLoaAgreed} >
                   {submittingPort ? (
                     <ActivityIndicator size="small" color={colors.primaryForeground} />
                   ) : (
@@ -916,7 +849,7 @@ export default function PhoneNumbersPage() {
                   <Text style={{ fontSize: 14, fontWeight: '600', color: (portPhone && portCarrier && portAccount && portLoaAgreed) ? colors.primaryForeground : colors.mutedForeground }}>
                     {submittingPort ? 'Submitting...' : 'Submit Port Request'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             ) : (
             <>
@@ -940,19 +873,14 @@ export default function PhoneNumbersPage() {
                   onChangeText={setLocality}
                 />
               </View>
-              <TouchableOpacity
-                style={[styles.searchButton, loading && { opacity: 0.6 }]}
-                onPress={searchNumbers}
-                disabled={loading}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={[styles.searchButton, loading && { opacity: 0.6 }]} onPress={searchNumbers} disabled={loading} >
                 {loading ? (
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
                   <Feather name="search" size={16} color={colors.primaryForeground} />
                 )}
                 <Text style={styles.searchButtonText}>{loading ? 'Searching...' : 'Search Numbers'}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {loading && !searched ? (
@@ -965,13 +893,7 @@ export default function PhoneNumbersPage() {
                 <Text style={styles.resultsTitle}>Available Numbers</Text>
                 <Text style={styles.resultsSubtitle}>{numbers.length} numbers found. Tap to select.</Text>
                 {numbers.map((num) => (
-                  <TouchableOpacity
-                    key={num.phoneNumber}
-                    style={styles.numberCard}
-                    onPress={() => handlePurchase(num)}
-                    disabled={purchasing === num.phoneNumber}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={num.phoneNumber} style={styles.numberCard} onPress={() => handlePurchase(num)} disabled={purchasing === num.phoneNumber} >
                     <View style={styles.numberIcon}>
                       {purchasing === num.phoneNumber ? (
                         <ActivityIndicator size="small" color={colors.primary} />
@@ -1010,7 +932,7 @@ export default function PhoneNumbersPage() {
                     <View style={styles.selectButton}>
                       <Text style={styles.selectButtonText}>Select</Text>
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
             ) : searched && !loading ? (
@@ -1020,14 +942,10 @@ export default function PhoneNumbersPage() {
                 <Text style={styles.emptyDesc}>
                   Try searching without filters, or with a different area code or city. Australian mobile numbers typically support SMS.
                 </Text>
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={() => { setAreaCode(''); setLocality(''); setTimeout(searchNumbers, 100); }}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.retryButton} onPress={() => { setAreaCode(''); setLocality(''); setTimeout(searchNumbers, 100); }} >
                   <Feather name="refresh-cw" size={14} color={colors.primary} />
                   <Text style={[styles.actionButtonText, { color: colors.primary }]}>Search All Numbers</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             ) : null}
           </>
@@ -1051,9 +969,9 @@ export default function PhoneNumbersPage() {
         <View style={{ flex: 1, backgroundColor: colors.background, padding: spacing.lg, paddingTop: spacing.xl }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xl }}>
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.foreground }}>Revert to Shared</Text>
-            <TouchableOpacity onPress={() => setShowReleaseModal(false)} activeOpacity={0.7}>
+            <PressableRow onPress={() => setShowReleaseModal(false)} >
               <Feather name="x" size={24} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <View style={{ backgroundColor: `${colors.primary}10`, borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.lg }}>
@@ -1095,18 +1013,7 @@ export default function PhoneNumbersPage() {
             autoCorrect={false}
           />
 
-          <TouchableOpacity
-            style={{
-              backgroundColor: releaseConfirmText === 'REVERT' ? colors.primary : colors.muted,
-              borderRadius: radius.md,
-              paddingVertical: 14,
-              alignItems: 'center',
-              opacity: releaseConfirmText === 'REVERT' ? 1 : 0.5,
-            }}
-            onPress={executeRelease}
-            disabled={releaseConfirmText !== 'REVERT' || releasing}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={{ backgroundColor: releaseConfirmText === 'REVERT' ? colors.primary : colors.muted, borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', opacity: releaseConfirmText === 'REVERT' ? 1 : 0.5, }} onPress={executeRelease} disabled={releaseConfirmText !== 'REVERT' || releasing} >
             {releasing ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
@@ -1114,7 +1021,7 @@ export default function PhoneNumbersPage() {
                 Revert to Shared
               </Text>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
         </KeyboardAvoidingView>
       </Modal>

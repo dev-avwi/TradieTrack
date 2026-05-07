@@ -10,6 +10,7 @@ import {
   Alert,
   Image
 } from 'react-native';
+import { PressableRow } from '../../../src/components/ui/PressableRow';
 import { Stack, router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -372,18 +373,18 @@ export default function ClientDetailScreen() {
               {client.phone || client.email || client.address ? (
                 <>
                   {client.phone && (
-                    <TouchableOpacity style={styles.infoRow} onPress={handleCall}>
+                    <PressableRow style={styles.infoRow} onPress={handleCall}>
                       <Feather name="phone" size={18} color={colors.mutedForeground} />
                       <Text style={styles.infoText}>{client.phone}</Text>
                       <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   )}
                   {client.email && (
-                    <TouchableOpacity style={styles.infoRow} onPress={handleEmail}>
+                    <PressableRow style={styles.infoRow} onPress={handleEmail}>
                       <Feather name="mail" size={18} color={colors.mutedForeground} />
                       <Text style={styles.infoText}>{client.email}</Text>
                       <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   )}
                   {client.address && (
                     <View style={styles.infoRow}>
@@ -414,15 +415,7 @@ export default function ClientDetailScreen() {
                       }
                     };
                     return (
-                      <TouchableOpacity 
-                        key={activity.id} 
-                        style={[
-                          styles.timelineItem,
-                          index === activityTimeline.length - 1 && { borderBottomWidth: 0 }
-                        ]}
-                        onPress={handleActivityPress}
-                        activeOpacity={0.7}
-                      >
+                      <PressableRow key={activity.id} style={[ styles.timelineItem, index === activityTimeline.length - 1 && { borderBottomWidth: 0 } ]} onPress={handleActivityPress} >
                         <View style={[styles.timelineIcon, { backgroundColor: icon.color + '20' }]}>
                           <Feather name={icon.name} size={16} color={icon.color} />
                         </View>
@@ -447,7 +440,7 @@ export default function ClientDetailScreen() {
                           <Text style={styles.timelineAmount}>{formatCurrency(activity.amount)}</Text>
                         )}
                         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-                      </TouchableOpacity>
+                      </PressableRow>
                     );
                   })}
                 </View>
@@ -474,13 +467,10 @@ export default function ClientDetailScreen() {
                         year: 'numeric'
                       })}
                     </Text>
-                    <TouchableOpacity 
-                      style={styles.clearSignatureButton}
-                      onPress={handleClearSignature}
-                    >
+                    <PressableRow style={styles.clearSignatureButton} onPress={handleClearSignature} >
                       <Feather name="x-circle" size={16} color={colors.destructive} />
                       <Text style={styles.clearSignatureText}>Clear</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   </View>
                 </View>
               ) : (
@@ -510,19 +500,14 @@ export default function ClientDetailScreen() {
                 </View>
                 <Text style={styles.emptyStateTitle}>No jobs yet</Text>
                 <Text style={styles.emptyStateSubtitle}>Create your first job for this client</Text>
-                <TouchableOpacity style={styles.emptyStateButton} onPress={handleCreateJob}>
+                <PressableRow style={styles.emptyStateButton} onPress={handleCreateJob}>
                   <Feather name="plus" size={16} color={colors.white} />
                   <Text style={styles.emptyStateButtonText}>Create Job</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             ) : (
               clientJobs.map((job) => (
-                <TouchableOpacity
-                  key={job.id}
-                  style={styles.jobCard}
-                  onPress={() => router.push(`/job/${job.id}`)}
-                  data-testid={`card-job-${job.id}`}
-                >
+                <PressableRow key={job.id} style={styles.jobCard} onPress={() => router.push(`/job/${job.id}`)} data-testid={`card-job-${job.id}`} >
                   <View style={styles.jobCardContent}>
                     <View style={styles.jobCardHeader}>
                       <View style={styles.jobIconContainer}>
@@ -548,7 +533,7 @@ export default function ClientDetailScreen() {
                     </View>
                   </View>
                   <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               ))
             )}
           </>
@@ -564,22 +549,14 @@ export default function ClientDetailScreen() {
                 </View>
                 <Text style={styles.emptyStateTitle}>No quotes yet</Text>
                 <Text style={styles.emptyStateSubtitle}>Create a quote for this client</Text>
-                <TouchableOpacity 
-                  style={styles.emptyStateButton} 
-                  onPress={() => router.push(`/more/quote/new?clientId=${id}`)}
-                >
+                <PressableRow style={styles.emptyStateButton} onPress={() => router.push(`/more/quote/new?clientId=${id}`)} >
                   <Feather name="plus" size={16} color={colors.white} />
                   <Text style={styles.emptyStateButtonText}>Create Quote</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             ) : (
               clientQuotes.map((quote: any) => (
-                <TouchableOpacity
-                  key={quote.id}
-                  style={styles.jobCard}
-                  onPress={() => router.push(`/more/quote/${quote.id}`)}
-                  data-testid={`card-quote-${quote.id}`}
-                >
+                <PressableRow key={quote.id} style={styles.jobCard} onPress={() => router.push(`/more/quote/${quote.id}`)} data-testid={`card-quote-${quote.id}`} >
                   <View style={styles.jobCardContent}>
                     <View style={styles.jobCardHeader}>
                       <View style={[styles.jobIconContainer, { backgroundColor: colors.infoLight }]}>
@@ -602,7 +579,7 @@ export default function ClientDetailScreen() {
                     </View>
                   </View>
                   <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               ))
             )}
           </>
@@ -629,12 +606,7 @@ export default function ClientDetailScreen() {
               </View>
             ) : (
               clientInvoices.map((invoice: any) => (
-                <TouchableOpacity
-                  key={invoice.id}
-                  style={styles.jobCard}
-                  onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-                  data-testid={`card-invoice-${invoice.id}`}
-                >
+                <PressableRow key={invoice.id} style={styles.jobCard} onPress={() => router.push(`/more/invoice/${invoice.id}`)} data-testid={`card-invoice-${invoice.id}`} >
                   <View style={styles.jobCardContent}>
                     <View style={styles.jobCardHeader}>
                       <View style={[styles.jobIconContainer, { backgroundColor: invoice.status === 'paid' ? colors.successLight : colors.warningLight }]}>
@@ -659,7 +631,7 @@ export default function ClientDetailScreen() {
                     </View>
                   </View>
                   <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               ))
             )}
           </>
@@ -678,12 +650,12 @@ export default function ClientDetailScreen() {
           title: 'Client Details',
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity onPress={handleEdit} style={styles.headerButton}>
+              <PressableRow onPress={handleEdit} style={styles.headerButton}>
                 <Feather name="edit-2" size={20} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleDelete} style={styles.headerButton} data-testid="button-delete-client">
+              </PressableRow>
+              <PressableRow onPress={handleDelete} style={styles.headerButton} data-testid="button-delete-client">
                 <Feather name="trash-2" size={20} color={colors.destructive} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           ),
         }} 
@@ -706,54 +678,36 @@ export default function ClientDetailScreen() {
             
             {/* Quick Actions inside profile card */}
             <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={[styles.actionButton, !client.phone && styles.actionButtonDisabled]}
-                onPress={handleCall}
-                disabled={!client.phone}
-              >
+              <PressableRow style={[styles.actionButton, !client.phone && styles.actionButtonDisabled]} onPress={handleCall} disabled={!client.phone} >
                 <Feather name="phone" size={16} color={client.phone ? colors.primaryForeground : colors.mutedForeground} />
                 <Text style={[styles.actionButtonText, !client.phone && styles.actionButtonTextDisabled]}>
                   Call
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, !client.email && styles.actionButtonDisabled]}
-                onPress={handleEmail}
-                disabled={!client.email}
-              >
+              </PressableRow>
+              <PressableRow style={[styles.actionButton, !client.email && styles.actionButtonDisabled]} onPress={handleEmail} disabled={!client.email} >
                 <Feather name="mail" size={16} color={client.email ? colors.primaryForeground : colors.mutedForeground} />
                 <Text style={[styles.actionButtonText, !client.email && styles.actionButtonTextDisabled]}>
                   Email
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, !client.phone && styles.actionButtonDisabled]}
-                onPress={handleSms}
-                disabled={!client.phone}
-              >
+              </PressableRow>
+              <PressableRow style={[styles.actionButton, !client.phone && styles.actionButtonDisabled]} onPress={handleSms} disabled={!client.phone} >
                 <Feather name="message-circle" size={16} color={client.phone ? colors.primaryForeground : colors.mutedForeground} />
                 <Text style={[styles.actionButtonText, !client.phone && styles.actionButtonTextDisabled]}>
                   SMS
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {/* Secondary Actions */}
             <View style={styles.actionsRowSecondary}>
-              <TouchableOpacity
-                style={styles.actionButtonSecondary}
-                onPress={handleCreateJob}
-              >
+              <PressableRow style={styles.actionButtonSecondary} onPress={handleCreateJob} >
                 <Feather name="briefcase" size={16} color={colors.primary} />
                 <Text style={styles.actionButtonSecondaryText}>New Job</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButtonSecondary}
-                onPress={() => router.push(`/more/quote/new?clientId=${id}`)}
-              >
+              </PressableRow>
+              <PressableRow style={styles.actionButtonSecondary} onPress={() => router.push(`/more/quote/new?clientId=${id}`)} >
                 <Feather name="file-text" size={16} color={colors.primary} />
                 <Text style={styles.actionButtonSecondaryText}>Quote</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
 
@@ -785,11 +739,7 @@ export default function ClientDetailScreen() {
             contentContainerStyle={styles.tabsContainer}
           >
             {(['overview', 'jobs', 'quotes', 'invoices'] as TabKey[]).map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.tab, activeTab === tab && styles.tabActive]}
-                onPress={() => setActiveTab(tab)}
-              >
+              <PressableRow key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} onPress={() => setActiveTab(tab)} >
                 <Feather 
                   name={tab === 'overview' ? 'activity' : tab === 'jobs' ? 'briefcase' : tab === 'quotes' ? 'file-text' : 'file'} 
                   size={16} 
@@ -813,7 +763,7 @@ export default function ClientDetailScreen() {
                     <Text style={styles.tabBadgeText}>{clientInvoices.length}</Text>
                   </View>
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </ScrollView>
 

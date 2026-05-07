@@ -12,6 +12,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -407,21 +408,15 @@ function ClientSelector({
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Client (Optional)</Text>
-            <TouchableOpacity onPress={onClose}>
+            <PressableRow onPress={onClose}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
-          <TouchableOpacity
-            style={[styles.clientItem, !selectedId && styles.clientItemSelected]}
-            onPress={() => {
-              onSelect(null);
-              onClose();
-            }}
-          >
+          <PressableRow style={[styles.clientItem, !selectedId && styles.clientItemSelected]} onPress={() => { onSelect(null); onClose(); }} >
             <Text style={styles.clientItemName}>No Client</Text>
             {!selectedId && <Feather name="check" size={20} color={colors.primary} />}
-          </TouchableOpacity>
+          </PressableRow>
 
           <TextInput
             style={styles.modalSearch}
@@ -432,30 +427,17 @@ function ClientSelector({
           />
 
           {onQuickAdd && (
-            <TouchableOpacity
-              style={[styles.clientItem, { backgroundColor: colors.primaryLight, borderColor: colors.primary, marginBottom: 8 }]}
-              onPress={onQuickAdd}
-            >
+            <PressableRow style={[styles.clientItem, { backgroundColor: colors.primaryLight, borderColor: colors.primary, marginBottom: 8 }]} onPress={onQuickAdd} >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Feather name="plus-circle" size={20} color={colors.primary} />
                 <Text style={[styles.clientItemName, { color: colors.primary }]}>Quick Add New Client</Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           )}
 
           <ScrollView style={styles.modalList}>
             {filteredClients.map((client) => (
-              <TouchableOpacity
-                key={client.id}
-                style={[
-                  styles.clientItem,
-                  selectedId === client.id && styles.clientItemSelected,
-                ]}
-                onPress={() => {
-                  onSelect(client.id);
-                  onClose();
-                }}
-              >
+              <PressableRow key={client.id} style={[ styles.clientItem, selectedId === client.id && styles.clientItemSelected, ]} onPress={() => { onSelect(client.id); onClose(); }} >
                 <View style={styles.clientItemContent}>
                   <Text style={styles.clientItemName}>{client.name}</Text>
                   <Text style={styles.clientItemEmail}>{client.email}</Text>
@@ -463,7 +445,7 @@ function ClientSelector({
                 {selectedId === client.id && (
                   <Feather name="check" size={20} color={colors.primary} />
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             ))}
             {filteredClients.length === 0 && (
               <View style={styles.emptyList}>
@@ -512,30 +494,20 @@ function StatusSelector({
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Status</Text>
-            <TouchableOpacity onPress={onClose}>
+            <PressableRow onPress={onClose}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <ScrollView style={styles.modalList}>
             {STATUS_OPTIONS.map((status) => (
-              <TouchableOpacity
-                key={status.value}
-                style={[
-                  styles.statusItem,
-                  selectedStatus === status.value && styles.statusItemSelected,
-                ]}
-                onPress={() => {
-                  onSelect(status.value);
-                  onClose();
-                }}
-              >
+              <PressableRow key={status.value} style={[ styles.statusItem, selectedStatus === status.value && styles.statusItemSelected, ]} onPress={() => { onSelect(status.value); onClose(); }} >
                 <View style={[styles.statusDot, { backgroundColor: status.color }]} />
                 <Text style={styles.statusItemText}>{status.label}</Text>
                 {selectedStatus === status.value && (
                   <Feather name="check" size={20} color={colors.primary} />
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </ScrollView>
         </View>
@@ -973,9 +945,9 @@ export default function CreateJobScreen() {
       <View style={styles.container}>
         {/* Custom Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <PressableRow style={styles.backButton} onPress={() => router.back()}>
             <Feather name="chevron-left" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
           <Text style={styles.headerTitle}>Create Job</Text>
           <View style={styles.headerRight} />
         </View>
@@ -1019,10 +991,7 @@ export default function CreateJobScreen() {
             {/* Client Selection */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Client (Optional)</Text>
-              <TouchableOpacity
-                style={styles.selector}
-                onPress={() => setShowClientPicker(true)}
-              >
+              <PressableRow style={styles.selector} onPress={() => setShowClientPicker(true)} >
                 {selectedClient ? (
                   <View style={styles.selectedItem}>
                     <View style={styles.clientAvatar}>
@@ -1037,7 +1006,7 @@ export default function CreateJobScreen() {
                   <Text style={styles.selectorPlaceholder}>Select a client</Text>
                 )}
                 <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {/* Address */}
@@ -1059,35 +1028,20 @@ export default function CreateJobScreen() {
                   <ActivityIndicator size="small" color={colors.mutedForeground} style={{ marginRight: 10 }} />
                 )}
                 {address.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setAddress('');
-                      setAddressLatLng(null);
-                      setAddressSuggestions([]);
-                      setShowAddressSuggestions(false);
-                    }}
-                    style={{ marginRight: 10 }}
-                  >
+                  <PressableRow onPress={() => { setAddress(''); setAddressLatLng(null); setAddressSuggestions([]); setShowAddressSuggestions(false); }} style={{ marginRight: 10 }} >
                     <Feather name="x-circle" size={18} color={colors.mutedForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </View>
               {showAddressSuggestions && addressSuggestions.length > 0 && (
                 <View style={styles.addressSuggestionsContainer}>
                   {addressSuggestions.map((suggestion, index) => (
-                    <TouchableOpacity
-                      key={`${suggestion.description}-${index}`}
-                      style={[
-                        styles.addressSuggestionItem,
-                        index === addressSuggestions.length - 1 && { borderBottomWidth: 0 },
-                      ]}
-                      onPress={() => handleAddressSelect(suggestion)}
-                    >
+                    <PressableRow key={`${suggestion.description}-${index}`} style={[ styles.addressSuggestionItem, index === addressSuggestions.length - 1 && { borderBottomWidth: 0 }, ]} onPress={() => handleAddressSelect(suggestion)} >
                       <Feather name="map-pin" size={16} color={colors.primary} />
                       <Text style={styles.addressSuggestionText} numberOfLines={2}>
                         {suggestion.description}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               )}
@@ -1111,19 +1065,9 @@ export default function CreateJobScreen() {
                 <Text style={styles.suggestionsLabel}>Tap to use as job title:</Text>
                 <View style={styles.suggestionsChipsContainer}>
                   {prefillSuggestions.recentJobDescriptions.slice(0, 6).map((jobDesc: string, idx: number) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.suggestionChip}
-                      onPress={() => {
-                        setTitle(jobDesc);
-                        if (!description) {
-                          setDescription(`Repeat work: ${jobDesc}`);
-                        }
-                      }}
-                      testID={`suggestion-chip-${idx}`}
-                    >
+                    <PressableRow key={idx} style={styles.suggestionChip} onPress={() => { setTitle(jobDesc); if (!description) { setDescription(`Repeat work: ${jobDesc}`); } }} testID={`suggestion-chip-${idx}`} >
                       <Text style={styles.suggestionChipText}>{jobDesc}</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               </View>
@@ -1132,40 +1076,31 @@ export default function CreateJobScreen() {
             {/* Status */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Status</Text>
-              <TouchableOpacity
-                style={styles.selector}
-                onPress={() => setShowStatusPicker(true)}
-              >
+              <PressableRow style={styles.selector} onPress={() => setShowStatusPicker(true)} >
                 <View style={styles.statusDisplay}>
                   <View style={[styles.statusDot, { backgroundColor: selectedStatusOption?.color }]} />
                   <Text style={styles.statusText}>{selectedStatusOption?.label}</Text>
                 </View>
                 <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {/* Priority */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Priority</Text>
-              <TouchableOpacity
-                style={styles.selector}
-                onPress={() => setShowPriorityPicker(true)}
-              >
+              <PressableRow style={styles.selector} onPress={() => setShowPriorityPicker(true)} >
                 <View style={styles.statusDisplay}>
                   <View style={[styles.statusDot, { backgroundColor: selectedPriorityOption?.color }]} />
                   <Text style={styles.statusText}>{selectedPriorityOption?.label}</Text>
                 </View>
                 <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {/* Team Member Assignment */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Assign To (Optional)</Text>
-              <TouchableOpacity
-                style={styles.selector}
-                onPress={() => setShowTeamPicker(true)}
-              >
+              <PressableRow style={styles.selector} onPress={() => setShowTeamPicker(true)} >
                 {selectedTeamMember ? (
                   <View style={styles.selectedItem}>
                     <View style={[styles.clientAvatar, { backgroundColor: (selectedTeamMember.themeColor || colors.primary) + '20' }]}>
@@ -1184,7 +1119,7 @@ export default function CreateJobScreen() {
                   </Text>
                 )}
                 <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {/* Schedule Date/Time */}
@@ -1206,13 +1141,10 @@ export default function CreateJobScreen() {
               </View>
 
               {scheduledAt && (
-                <TouchableOpacity
-                  style={styles.clearSchedule}
-                  onPress={() => setScheduledAt(null)}
-                >
+                <PressableRow style={styles.clearSchedule} onPress={() => setScheduledAt(null)} >
                   <Feather name="x" size={14} color={colors.destructive} />
                   <Text style={styles.clearScheduleText}>Clear schedule</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
 
@@ -1245,11 +1177,7 @@ export default function CreateJobScreen() {
 
             {/* Recurring Job Section */}
             <View style={[styles.section, { backgroundColor: colors.card, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.border }]}>
-              <TouchableOpacity 
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-                onPress={() => setIsRecurring(!isRecurring)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }} onPress={() => setIsRecurring(!isRecurring)} >
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 16 }}>
                   <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                     <Feather name="repeat" size={18} color={colors.primary} />
@@ -1270,16 +1198,13 @@ export default function CreateJobScreen() {
                     { alignSelf: isRecurring ? 'flex-end' : 'flex-start' }
                   ]} />
                 </View>
-              </TouchableOpacity>
+              </PressableRow>
 
               {isRecurring && (
                 <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
                   <View style={{ marginBottom: 16 }}>
                     <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 6 }}>Frequency</Text>
-                    <TouchableOpacity
-                      style={styles.selector}
-                      onPress={() => setShowRecurrenceOptions(true)}
-                    >
+                    <PressableRow style={styles.selector} onPress={() => setShowRecurrenceOptions(true)} >
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <Feather name="repeat" size={16} color={colors.primary} />
                         <Text style={{ fontSize: 15, fontWeight: '500', color: colors.foreground }}>
@@ -1287,7 +1212,7 @@ export default function CreateJobScreen() {
                         </Text>
                       </View>
                       <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   </View>
 
                   <View style={{ marginBottom: 16 }}>
@@ -1325,11 +1250,7 @@ export default function CreateJobScreen() {
 
           {/* Save Button */}
           <View style={[styles.actionsContainer, { paddingBottom: bottomNavHeight }]}>
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={saveJob}
-              disabled={isSaving}
-            >
+            <PressableRow style={styles.saveButton} onPress={saveJob} disabled={isSaving} >
               {isSaving ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
@@ -1338,7 +1259,7 @@ export default function CreateJobScreen() {
                   <Text style={styles.saveButtonText}>Create Job</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -1376,24 +1297,14 @@ export default function CreateJobScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Priority</Text>
-              <TouchableOpacity onPress={() => setShowPriorityPicker(false)}>
+              <PressableRow onPress={() => setShowPriorityPicker(false)}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <ScrollView style={styles.modalList}>
               {PRIORITY_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.statusItem,
-                    priority === option.value && styles.statusItemSelected,
-                  ]}
-                  onPress={() => {
-                    setPriority(option.value);
-                    setShowPriorityPicker(false);
-                  }}
-                >
+                <PressableRow key={option.value} style={[ styles.statusItem, priority === option.value && styles.statusItemSelected, ]} onPress={() => { setPriority(option.value); setShowPriorityPicker(false); }} >
                   <Feather name={option.icon as any} size={18} color={option.color} />
                   <Text style={[styles.statusItemText, { color: option.color, fontWeight: priority === option.value ? '600' : '400' }]}>
                     {option.label}
@@ -1401,7 +1312,7 @@ export default function CreateJobScreen() {
                   {priority === option.value && (
                     <Feather name="check" size={20} color={colors.primary} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </ScrollView>
           </View>
@@ -1420,29 +1331,13 @@ export default function CreateJobScreen() {
           <View>
             <View style={{ height: 0 }} />
             <ScrollView style={styles.modalList}>
-              <TouchableOpacity
-                style={[styles.clientItem, !assignedToId && styles.clientItemSelected]}
-                onPress={() => {
-                  setAssignedToId(null);
-                  setShowTeamPicker(false);
-                }}
-              >
+              <PressableRow style={[styles.clientItem, !assignedToId && styles.clientItemSelected]} onPress={() => { setAssignedToId(null); setShowTeamPicker(false); }} >
                 <Text style={styles.clientItemName}>Unassigned</Text>
                 {!assignedToId && <Feather name="check" size={20} color={colors.primary} />}
-              </TouchableOpacity>
+              </PressableRow>
 
               {teamMembers.map((member) => (
-                <TouchableOpacity
-                  key={member.memberId || member.id}
-                  style={[
-                    styles.clientItem,
-                    assignedToId === String(member.memberId || member.id) && styles.clientItemSelected,
-                  ]}
-                  onPress={() => {
-                    setAssignedToId(String(member.memberId || member.id));
-                    setShowTeamPicker(false);
-                  }}
-                >
+                <PressableRow key={member.memberId || member.id} style={[ styles.clientItem, assignedToId === String(member.memberId || member.id) && styles.clientItemSelected, ]} onPress={() => { setAssignedToId(String(member.memberId || member.id)); setShowTeamPicker(false); }} >
                   <View style={styles.clientItemContent}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View style={[styles.clientAvatar, { backgroundColor: (member.themeColor || colors.primary) + '20' }]}>
@@ -1459,7 +1354,7 @@ export default function CreateJobScreen() {
                   {assignedToId === String(member.memberId || member.id) && (
                     <Feather name="check" size={20} color={colors.primary} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               ))}
 
               {teamMembers.length === 0 && !loadingTeam && (
@@ -1492,12 +1387,9 @@ export default function CreateJobScreen() {
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Quick Add Client</Text>
-                <TouchableOpacity 
-                  onPress={() => setShowQuickAddClient(false)}
-                  testID="button-close-quick-add"
-                >
+                <PressableRow onPress={() => setShowQuickAddClient(false)} testID="button-close-quick-add" >
                   <Feather name="x" size={24} color={colors.foreground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
               
               <ScrollView 
@@ -1543,12 +1435,7 @@ export default function CreateJobScreen() {
                   />
                 </View>
                 
-                <TouchableOpacity
-                  style={[styles.saveButton, { marginTop: 8, opacity: isAddingClient ? 0.6 : 1 }]}
-                  onPress={handleQuickAddClient}
-                  disabled={isAddingClient}
-                  testID="button-add-quick-client"
-                >
+                <PressableRow style={[styles.saveButton, { marginTop: 8, opacity: isAddingClient ? 0.6 : 1 }]} onPress={handleQuickAddClient} disabled={isAddingClient} testID="button-add-quick-client" >
                   {isAddingClient ? (
                     <ActivityIndicator size="small" color={colors.white} />
                   ) : (
@@ -1557,7 +1444,7 @@ export default function CreateJobScreen() {
                       <Text style={styles.saveButtonText}>Add Client</Text>
                     </>
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               </ScrollView>
             </View>
           </View>
@@ -1576,24 +1463,14 @@ export default function CreateJobScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Frequency</Text>
-              <TouchableOpacity onPress={() => setShowRecurrenceOptions(false)}>
+              <PressableRow onPress={() => setShowRecurrenceOptions(false)}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <ScrollView style={styles.modalList}>
               {RECURRENCE_OPTIONS.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.statusItem,
-                    recurrencePattern === option.value && styles.statusItemSelected,
-                  ]}
-                  onPress={() => {
-                    setRecurrencePattern(option.value);
-                    setShowRecurrenceOptions(false);
-                  }}
-                >
+                <PressableRow key={option.value} style={[ styles.statusItem, recurrencePattern === option.value && styles.statusItemSelected, ]} onPress={() => { setRecurrencePattern(option.value); setShowRecurrenceOptions(false); }} >
                   <Feather 
                     name="repeat" 
                     size={18} 
@@ -1608,7 +1485,7 @@ export default function CreateJobScreen() {
                   {recurrencePattern === option.value && (
                     <Feather name="check" size={20} color={colors.primary} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </ScrollView>
           </View>

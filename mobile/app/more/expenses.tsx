@@ -14,6 +14,7 @@ import {
   Image,
   KeyboardAvoidingView,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -79,7 +80,7 @@ function ExpenseCard({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.expenseCard}>
+    <PressableRow onPress={onPress} style={styles.expenseCard}>
       <View style={styles.expenseCardContent}>
         <View style={styles.expenseCardHeader}>
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -121,17 +122,10 @@ function ExpenseCard({
           </View>
         </View>
       </View>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
+      <PressableRow style={styles.deleteButton} onPress={(e) => { e.stopPropagation(); onDelete(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} >
         <Feather name="trash-2" size={14} color={colors.destructive} />
-      </TouchableOpacity>
-    </TouchableOpacity>
+      </PressableRow>
+    </PressableRow>
   );
 }
 
@@ -464,31 +458,13 @@ export default function ExpensesScreen() {
           </View>
 
           {filterByJobId && (
-            <TouchableOpacity
-              onPress={() => setFilterByJobId(null)}
-              activeOpacity={0.7}
-              style={styles.jobFilterBanner}
-            >
+            <PressableRow onPress={() => setFilterByJobId(null)} style={styles.jobFilterBanner} >
               <Feather name="x-circle" size={14} color={colors.primary} />
               <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>Show all expenses</Text>
-            </TouchableOpacity>
+            </PressableRow>
           )}
 
-          <TouchableOpacity
-            style={styles.scanBanner}
-            onPress={() => {
-              Alert.alert(
-                'AI Receipt Scanner',
-                'Take a photo of a receipt or invoice and AI will automatically extract the vendor, amount, GST, date and line items.',
-                [
-                  { text: 'Take Photo', onPress: () => handleScanReceipt('camera') },
-                  { text: 'Choose from Library', onPress: () => handleScanReceipt('library') },
-                  { text: 'Cancel', style: 'cancel' },
-                ]
-              );
-            }}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.scanBanner} onPress={() => { Alert.alert( 'AI Receipt Scanner', 'Take a photo of a receipt or invoice and AI will automatically extract the vendor, amount, GST, date and line items.', [ { text: 'Take Photo', onPress: () => handleScanReceipt('camera') }, { text: 'Choose from Library', onPress: () => handleScanReceipt('library') }, { text: 'Cancel', style: 'cancel' }, ] ); }} >
             <View style={styles.scanBannerIcon}>
               <Feather name="camera" size={20} color={colors.primary} />
             </View>
@@ -499,7 +475,7 @@ export default function ExpensesScreen() {
               </Text>
             </View>
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
 
           <View style={styles.searchSection}>
             <View style={styles.searchBar}>
@@ -512,20 +488,14 @@ export default function ExpensesScreen() {
                 onChangeText={setSearchQuery}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <PressableRow onPress={() => setSearchQuery('')}>
                   <Feather name="x" size={16} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => {
-                resetForm();
-                setShowExpenseModal(true);
-              }}
-            >
+            <PressableRow style={styles.addButton} onPress={() => { resetForm(); setShowExpenseModal(true); }} >
               <Feather name="plus" size={18} color={colors.primaryForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <ScrollView
@@ -537,26 +507,17 @@ export default function ExpensesScreen() {
             {categoryFilters.map((filter) => {
               const isActive = activeFilter === filter.key;
               return (
-                <TouchableOpacity
-                  key={filter.key}
-                  onPress={() => setActiveFilter(filter.key)}
-                  activeOpacity={0.7}
-                  style={[styles.filterChip, isActive && styles.filterChipActive]}
-                >
+                <PressableRow key={filter.key} onPress={() => setActiveFilter(filter.key)} style={[styles.filterChip, isActive && styles.filterChipActive]} >
                   <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
                     {filter.label} ({filter.count})
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
-            <TouchableOpacity
-              onPress={() => setShowCategoryModal(true)}
-              activeOpacity={0.7}
-              style={[styles.filterChip, { borderStyle: 'dashed' as any }]}
-            >
+            <PressableRow onPress={() => setShowCategoryModal(true)} style={[styles.filterChip, { borderStyle: 'dashed' as any }]} >
               <Feather name="plus" size={12} color={colors.mutedForeground} />
               <Text style={styles.filterChipText}>Add</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </ScrollView>
 
           <View style={styles.listSection}>
@@ -576,16 +537,10 @@ export default function ExpensesScreen() {
                     : 'Record your first expense or scan a receipt to get started'}
                 </Text>
                 {!searchQuery && activeFilter === 'all' && (
-                  <TouchableOpacity
-                    style={styles.emptyButton}
-                    onPress={() => {
-                      resetForm();
-                      setShowExpenseModal(true);
-                    }}
-                  >
+                  <PressableRow style={styles.emptyButton} onPress={() => { resetForm(); setShowExpenseModal(true); }} >
                     <Feather name="plus" size={14} color={colors.white} />
                     <Text style={styles.emptyButtonText}>Record Expense</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </View>
             ) : (
@@ -623,20 +578,15 @@ export default function ExpensesScreen() {
             style={[styles.modalContainer, { backgroundColor: colors.background }]}
           >
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowExpenseModal(false);
-                  resetForm();
-                }}
-              >
+              <PressableRow onPress={() => { setShowExpenseModal(false); resetForm(); }} >
                 <Text style={[styles.modalCancel, { color: colors.primary }]}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Record Expense</Text>
-              <TouchableOpacity onPress={handleSubmitExpense} disabled={isSubmitting}>
+              <PressableRow onPress={handleSubmitExpense} disabled={isSubmitting}>
                 <Text style={[styles.modalSave, { color: isSubmitting ? colors.mutedForeground : colors.primary }]}>
                   {isSubmitting ? 'Saving...' : 'Save'}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent}>
@@ -699,28 +649,22 @@ export default function ExpensesScreen() {
 
               <View style={styles.formSection}>
                 <Text style={[styles.formLabel, { color: colors.foreground }]}>Category *</Text>
-                <TouchableOpacity
-                  style={[styles.formInput, styles.pickerButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                  onPress={() => setShowCategoryPicker(true)}
-                >
+                <PressableRow style={[styles.formInput, styles.pickerButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={() => setShowCategoryPicker(true)} >
                   <Text style={{ color: formCategoryId ? colors.foreground : colors.mutedForeground }}>
                     {selectedCategoryName}
                   </Text>
                   <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               <View style={styles.formSection}>
                 <Text style={[styles.formLabel, { color: colors.foreground }]}>Job (Optional)</Text>
-                <TouchableOpacity
-                  style={[styles.formInput, styles.pickerButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                  onPress={() => setShowJobPicker(true)}
-                >
+                <PressableRow style={[styles.formInput, styles.pickerButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={() => setShowJobPicker(true)} >
                   <Text style={{ color: formJobId ? colors.foreground : colors.mutedForeground }}>
                     {selectedJobName}
                   </Text>
                   <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               <View style={styles.formSection}>
@@ -737,13 +681,10 @@ export default function ExpensesScreen() {
               <View style={styles.formRow}>
                 <View style={styles.formHalf}>
                   <Text style={[styles.formLabel, { color: colors.foreground }]}>Date</Text>
-                  <TouchableOpacity
-                    style={[styles.formInput, styles.pickerButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                    onPress={() => setShowDatePicker(true)}
-                  >
+                  <PressableRow style={[styles.formInput, styles.pickerButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]} onPress={() => setShowDatePicker(true)} >
                     <Feather name="calendar" size={14} color={colors.mutedForeground} />
                     <Text style={{ color: colors.foreground }}>{format(formDate, 'dd MMM yyyy')}</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
                 <View style={styles.formHalf}>
                   <Text style={[styles.formLabel, { color: colors.foreground }]}>Receipt #</Text>
@@ -771,22 +712,12 @@ export default function ExpensesScreen() {
               )}
 
               {!scannedImageUri && (
-                <TouchableOpacity
-                  style={[styles.scanButton, { borderColor: colors.cardBorder }]}
-                  onPress={() => {
-                    Alert.alert('Scan Receipt', 'Choose source', [
-                      { text: 'Camera', onPress: () => handleScanReceipt('camera') },
-                      { text: 'Photo Library', onPress: () => handleScanReceipt('library') },
-                      { text: 'Cancel', style: 'cancel' },
-                    ]);
-                  }}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={[styles.scanButton, { borderColor: colors.cardBorder }]} onPress={() => { Alert.alert('Scan Receipt', 'Choose source', [ { text: 'Camera', onPress: () => handleScanReceipt('camera') }, { text: 'Photo Library', onPress: () => handleScanReceipt('library') }, { text: 'Cancel', style: 'cancel' }, ]); }} >
                   <Feather name="camera" size={18} color={colors.mutedForeground} />
                   <Text style={[styles.scanButtonText, { color: colors.mutedForeground }]}>
                     Scan Receipt to Auto-Fill
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </ScrollView>
           </KeyboardAvoidingView>
@@ -801,15 +732,15 @@ export default function ExpensesScreen() {
       >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
-              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+              <PressableRow onPress={() => setShowCategoryModal(false)}>
                 <Text style={[styles.modalCancel, { color: colors.primary }]}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Category</Text>
-              <TouchableOpacity onPress={handleCreateCategory} disabled={isSubmitting}>
+              <PressableRow onPress={handleCreateCategory} disabled={isSubmitting}>
                 <Text style={[styles.modalSave, { color: isSubmitting ? colors.mutedForeground : colors.primary }]}>
                   {isSubmitting ? 'Saving...' : 'Save'}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <View style={styles.modalScrollContent}>
               <View style={styles.formSection}>
@@ -847,16 +778,13 @@ export default function ExpensesScreen() {
       >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
-              <TouchableOpacity onPress={() => setShowCategoryPicker(false)}>
+              <PressableRow onPress={() => setShowCategoryPicker(false)}>
                 <Text style={[styles.modalCancel, { color: colors.primary }]}>Done</Text>
-              </TouchableOpacity>
+              </PressableRow>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Select Category</Text>
-              <TouchableOpacity onPress={() => {
-                setShowCategoryPicker(false);
-                setShowCategoryModal(true);
-              }}>
+              <PressableRow onPress={() => { setShowCategoryPicker(false); setShowCategoryModal(true); }}>
                 <Feather name="plus" size={20} color={colors.primary} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <ScrollView>
               {categories.length === 0 ? (
@@ -864,30 +792,13 @@ export default function ExpensesScreen() {
                   <Text style={[styles.emptyPickerText, { color: colors.mutedForeground }]}>
                     No categories yet. Create one first.
                   </Text>
-                  <TouchableOpacity
-                    style={[styles.emptyPickerButton, { backgroundColor: colors.primary }]}
-                    onPress={() => {
-                      setShowCategoryPicker(false);
-                      setShowCategoryModal(true);
-                    }}
-                  >
+                  <PressableRow style={[styles.emptyPickerButton, { backgroundColor: colors.primary }]} onPress={() => { setShowCategoryPicker(false); setShowCategoryModal(true); }} >
                     <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Add Category</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               ) : (
                 categories.map((cat) => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[
-                      styles.pickerItem,
-                      { borderBottomColor: colors.border },
-                      formCategoryId === cat.id && { backgroundColor: colors.primaryLight },
-                    ]}
-                    onPress={() => {
-                      setFormCategoryId(cat.id);
-                      setShowCategoryPicker(false);
-                    }}
-                  >
+                  <PressableRow key={cat.id} style={[ styles.pickerItem, { borderBottomColor: colors.border }, formCategoryId === cat.id && { backgroundColor: colors.primaryLight }, ]} onPress={() => { setFormCategoryId(cat.id); setShowCategoryPicker(false); }} >
                     <View style={styles.pickerItemContent}>
                       <Feather name="tag" size={16} color={formCategoryId === cat.id ? colors.primary : colors.mutedForeground} />
                       <Text style={[styles.pickerItemText, { color: colors.foreground }]}>{cat.name}</Text>
@@ -895,7 +806,7 @@ export default function ExpensesScreen() {
                     {formCategoryId === cat.id && (
                       <Feather name="check" size={18} color={colors.primary} />
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))
               )}
             </ScrollView>
@@ -911,43 +822,22 @@ export default function ExpensesScreen() {
       >
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
-              <TouchableOpacity onPress={() => setShowJobPicker(false)}>
+              <PressableRow onPress={() => setShowJobPicker(false)}>
                 <Text style={[styles.modalCancel, { color: colors.primary }]}>Done</Text>
-              </TouchableOpacity>
+              </PressableRow>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Select Job</Text>
               <View style={{ width: 20 }} />
             </View>
             <ScrollView>
-              <TouchableOpacity
-                style={[
-                  styles.pickerItem,
-                  { borderBottomColor: colors.border },
-                  !formJobId && { backgroundColor: colors.primaryLight },
-                ]}
-                onPress={() => {
-                  setFormJobId('');
-                  setShowJobPicker(false);
-                }}
-              >
+              <PressableRow style={[ styles.pickerItem, { borderBottomColor: colors.border }, !formJobId && { backgroundColor: colors.primaryLight }, ]} onPress={() => { setFormJobId(''); setShowJobPicker(false); }} >
                 <View style={styles.pickerItemContent}>
                   <Feather name="minus-circle" size={16} color={!formJobId ? colors.primary : colors.mutedForeground} />
                   <Text style={[styles.pickerItemText, { color: colors.foreground }]}>No Job</Text>
                 </View>
                 {!formJobId && <Feather name="check" size={18} color={colors.primary} />}
-              </TouchableOpacity>
+              </PressableRow>
               {jobs.map((job) => (
-                <TouchableOpacity
-                  key={job.id}
-                  style={[
-                    styles.pickerItem,
-                    { borderBottomColor: colors.border },
-                    formJobId === job.id && { backgroundColor: colors.primaryLight },
-                  ]}
-                  onPress={() => {
-                    setFormJobId(job.id);
-                    setShowJobPicker(false);
-                  }}
-                >
+                <PressableRow key={job.id} style={[ styles.pickerItem, { borderBottomColor: colors.border }, formJobId === job.id && { backgroundColor: colors.primaryLight }, ]} onPress={() => { setFormJobId(job.id); setShowJobPicker(false); }} >
                   <View style={styles.pickerItemContent}>
                     <Feather name="briefcase" size={16} color={formJobId === job.id ? colors.primary : colors.mutedForeground} />
                     <View>
@@ -958,7 +848,7 @@ export default function ExpensesScreen() {
                     </View>
                   </View>
                   {formJobId === job.id && <Feather name="check" size={18} color={colors.primary} />}
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </ScrollView>
           </View>

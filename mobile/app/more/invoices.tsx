@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useInvoicesStore, useClientsStore, useAuthStore } from '../../src/lib/store';
@@ -84,11 +85,7 @@ function InvoiceCard({
   const quickAction = getQuickAction();
 
   return (
-    <TouchableOpacity 
-      style={[styles.invoiceCard, invoice.isXeroImport && { overflow: 'visible' }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <PressableRow style={[styles.invoiceCard, invoice.isXeroImport && { overflow: 'visible' }]} onPress={onPress} >
       {invoice.isXeroImport && <XeroBadge size="sm" />}
       <View style={styles.invoiceCardContent}>
         {/* Main row: Left info + Right amount/actions */}
@@ -122,20 +119,7 @@ function InvoiceCard({
             
             <View style={styles.cardActionsRow}>
               {quickAction && (
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    quickAction.variant === 'primary' 
-                      ? styles.actionButtonPrimary 
-                      : styles.actionButtonOutline
-                  ]}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    quickAction.action?.();
-                  }}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
+                <PressableRow style={[ styles.actionButton, quickAction.variant === 'primary' ? styles.actionButtonPrimary : styles.actionButtonOutline ]} onPress={(e) => { e.stopPropagation(); quickAction.action?.(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} >
                   <Feather 
                     name={quickAction.icon} 
                     size={14} 
@@ -145,20 +129,12 @@ function InvoiceCard({
                     styles.actionButtonText,
                     quickAction.variant === 'outline' && { color: colors.foreground }
                   ]}>{quickAction.label}</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
               {onDelete && (
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={{ padding: 4 }}
-                >
+                <PressableRow onPress={(e) => { e.stopPropagation(); onDelete(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ padding: 4 }} >
                   <Feather name="trash-2" size={16} color={colors.destructive} />
-                </TouchableOpacity>
+                </PressableRow>
               )}
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
             </View>
@@ -202,7 +178,7 @@ function InvoiceCard({
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -436,64 +412,44 @@ export default function InvoicesScreen() {
                   <Text style={styles.pageTitle}>Invoices</Text>
                   <Text style={styles.pageSubtitle}>{invoices.length} total</Text>
                 </View>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.newButton}
-                  onPress={navigateToCreateInvoice}
-                >
+                <PressableRow style={styles.newButton} onPress={navigateToCreateInvoice} >
                   <Feather name="plus" size={iconSizes.lg} color={colors.white} />
                   <Text style={styles.newButtonText}>New Invoice</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               <View style={styles.kpiGrid}>
-                <TouchableOpacity 
-                  style={styles.kpiCard}
-                  onPress={() => setActiveFilter('all')}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('all')} >
                   <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
                     <Feather name="dollar-sign" size={16} color={colors.primary} />
                   </View>
                   <Text style={styles.kpiLabel}>Total Value</Text>
                   <Text style={styles.kpiValue}>{formatCurrency(totalAll, false)}</Text>
-                </TouchableOpacity>
+                </PressableRow>
                 
-                <TouchableOpacity 
-                  style={styles.kpiCard}
-                  onPress={() => setActiveFilter('sent')}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('sent')} >
                   <View style={[styles.kpiIconContainer, { backgroundColor: colors.warningLight }]}>
                     <Feather name="alert-circle" size={16} color={colors.warning} />
                   </View>
                   <Text style={styles.kpiLabel}>Unpaid</Text>
                   <Text style={styles.kpiValue}>{formatCurrency(totalOutstanding, false)}</Text>
-                </TouchableOpacity>
+                </PressableRow>
                 
-                <TouchableOpacity 
-                  style={styles.kpiCard}
-                  onPress={() => setActiveFilter('paid')}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('paid')} >
                   <View style={[styles.kpiIconContainer, { backgroundColor: colors.successLight }]}>
                     <Feather name="check-circle" size={16} color={colors.success} />
                   </View>
                   <Text style={styles.kpiLabel}>Paid</Text>
                   <Text style={[styles.kpiValue, { color: colors.success }]}>{formatCurrency(totalPaid, false)}</Text>
-                </TouchableOpacity>
+                </PressableRow>
                 
-                <TouchableOpacity 
-                  style={styles.kpiCard}
-                  onPress={() => setActiveFilter('overdue')}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('overdue')} >
                   <View style={[styles.kpiIconContainer, { backgroundColor: colors.destructiveLight }]}>
                     <Feather name="clock" size={16} color={colors.destructive} />
                   </View>
                   <Text style={styles.kpiLabel}>Overdue</Text>
                   <Text style={[styles.kpiValue, { color: colors.destructive }]}>{formatCurrency(totalOverdue, false)}</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               <View style={styles.searchBar}>
@@ -518,15 +474,7 @@ export default function InvoicesScreen() {
                   const isActive = activeFilter === filter.key;
                   
                   return (
-                    <TouchableOpacity
-                      key={filter.key}
-                      onPress={() => setActiveFilter(filter.key)}
-                      activeOpacity={0.7}
-                      style={[
-                        styles.filterPill,
-                        isActive && styles.filterPillActive
-                      ]}
-                    >
+                    <PressableRow key={filter.key} onPress={() => setActiveFilter(filter.key)} style={[ styles.filterPill, isActive && styles.filterPillActive ]} >
                       <Text style={[
                         styles.filterPillText,
                         isActive && styles.filterPillTextActive
@@ -544,7 +492,7 @@ export default function InvoicesScreen() {
                           {count}
                         </Text>
                       </View>
-                    </TouchableOpacity>
+                    </PressableRow>
                   );
                 })}
               </ScrollView>

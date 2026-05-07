@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
@@ -232,14 +233,11 @@ export default function AdminDashboard() {
             <Text style={[styles.accessDeniedText, { color: colors.mutedForeground }]}>
               You don't have permission to access the admin dashboard.
             </Text>
-            <TouchableOpacity 
-              style={[styles.accessDeniedButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.back()}
-            >
+            <PressableRow style={[styles.accessDeniedButton, { backgroundColor: colors.primary }]} onPress={() => router.back()} >
               <Text style={[styles.accessDeniedButtonText, { color: colors.primaryForeground }]}>
                 Go Back
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </>
@@ -445,29 +443,12 @@ export default function AdminDashboard() {
       <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginTop: 16 }]}>Demo Tools</Text>
       <Card>
         <CardContent style={{ paddingVertical: 12 }}>
-          <TouchableOpacity
-            style={[styles.demoToolButton, { backgroundColor: colors.primary }]}
-            onPress={async () => {
-              try {
-                const response = await api.post('/api/admin/refresh-demo-screenshots');
-                if (response.data?.success) {
-                  Alert.alert(
-                    'Demo Data Refreshed',
-                    `${response.data.updated?.todaysJobs || 0} jobs today\n${response.data.updated?.thisWeekJobs || 0} jobs this week\n${response.data.updated?.upcomingJobs || 0} upcoming jobs\n\nPull down to refresh to see updated data.`
-                  );
-                } else {
-                  Alert.alert('Error', 'Failed to refresh demo data');
-                }
-              } catch (error: any) {
-                Alert.alert('Error', error.response?.data?.error || 'Failed to refresh demo data');
-              }
-            }}
-          >
+          <PressableRow style={[styles.demoToolButton, { backgroundColor: colors.primary }]} onPress={async () => { try { const response = await api.post('/api/admin/refresh-demo-screenshots'); if (response.data?.success) { Alert.alert( 'Demo Data Refreshed', `${response.data.updated?.todaysJobs || 0} jobs today\n${response.data.updated?.thisWeekJobs || 0} jobs this week\n${response.data.updated?.upcomingJobs || 0} upcoming jobs\n\nPull down to refresh to see updated data.` ); } else { Alert.alert('Error', 'Failed to refresh demo data'); } } catch (error: any) { Alert.alert('Error', error.response?.data?.error || 'Failed to refresh demo data'); } }} >
             <Feather name="camera" size={18} color={colors.primaryForeground} />
             <Text style={[styles.demoToolButtonText, { color: colors.primaryForeground }]}>
               Refresh for Screenshots
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
           <Text style={[styles.demoToolHint, { color: colors.mutedForeground }]}>
             Updates jobs to today/this week and refreshes activity logs for App Store screenshots.
           </Text>
@@ -617,23 +598,10 @@ export default function AdminDashboard() {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity
-              onPress={fetchHealthData}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 8,
-                backgroundColor: colors.muted,
-                alignSelf: 'flex-start',
-              }}
-              activeOpacity={0.7}
-            >
+            <PressableRow onPress={fetchHealthData} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.muted, alignSelf: 'flex-start', }} >
               <Feather name="refresh-cw" size={14} color={colors.foreground} />
               <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 13 }}>Retry</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </CardContent>
         </Card>
       ) : (
@@ -850,15 +818,7 @@ export default function AdminDashboard() {
           >
             <View style={[styles.tabBar, { backgroundColor: colors.muted }]}>
               {tabs.map((tab) => (
-                <TouchableOpacity
-                  key={tab.id}
-                  style={[
-                    styles.tab,
-                    activeTab === tab.id && { backgroundColor: colors.card },
-                  ]}
-                  onPress={() => setActiveTab(tab.id)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={tab.id} style={[ styles.tab, activeTab === tab.id && { backgroundColor: colors.card }, ]} onPress={() => setActiveTab(tab.id)} >
                   <Feather 
                     name={tab.icon} 
                     size={16} 
@@ -872,7 +832,7 @@ export default function AdminDashboard() {
                   >
                     {tab.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </ScrollView>

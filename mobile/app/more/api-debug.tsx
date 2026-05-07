@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import Constants from 'expo-constants';
 import { Feather } from '@expo/vector-icons';
@@ -200,14 +201,10 @@ export default function ApiDebugScreen() {
             <Text style={styles.label}>From env</Text>
             <Text style={styles.value} numberOfLines={2}>{apiFromEnv}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => copy('API host', API_URL)}
-            activeOpacity={0.8}
-          >
+          <PressableRow style={styles.actionButton} onPress={() => copy('API host', API_URL)} >
             <Feather name="copy" size={16} color={colors.white} />
             <Text style={styles.actionButtonText}>Copy API host</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         <View style={styles.card}>
@@ -279,32 +276,16 @@ export default function ApiDebugScreen() {
           </View>
           {__DEV__ && (
             <>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={async () => {
-                  await resetReviewPromptForTesting();
-                  setReviewShown(false);
-                  Alert.alert('Reset', 'Review prompt unlocked for this version.');
-                }}
-                activeOpacity={0.8}
-              >
+              <PressableRow style={styles.actionButton} onPress={async () => { await resetReviewPromptForTesting(); setReviewShown(false); Alert.alert('Reset', 'Review prompt unlocked for this version.'); }} >
                 <Feather name="rotate-ccw" size={16} color={colors.white} />
                 <Text style={styles.actionButtonText}>Reset review lock (dev)</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: colors.muted }]}
-                onPress={async () => {
-                  await maybeRequestReview('debug-trigger');
-                  const shown = await hasShownReviewThisVersion();
-                  setReviewShown(shown);
-                }}
-                activeOpacity={0.8}
-              >
+              </PressableRow>
+              <PressableRow style={[styles.actionButton, { backgroundColor: colors.muted }]} onPress={async () => { await maybeRequestReview('debug-trigger'); const shown = await hasShownReviewThisVersion(); setReviewShown(shown); }} >
                 <Feather name="star" size={16} color={colors.foreground} />
                 <Text style={[styles.actionButtonText, { color: colors.foreground }]}>
                   Trigger review prompt (dev)
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </>
           )}
         </View>
@@ -335,15 +316,11 @@ export default function ApiDebugScreen() {
           )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: colors.muted }]}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
+        <PressableRow style={[styles.actionButton, { backgroundColor: colors.muted }]} onPress={() => router.back()} >
           <Text style={[styles.actionButtonText, { color: colors.foreground }]}>
             Done
           </Text>
-        </TouchableOpacity>
+        </PressableRow>
       </ScrollView>
     </View>
   );

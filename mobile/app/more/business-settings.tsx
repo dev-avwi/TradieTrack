@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
@@ -252,17 +253,13 @@ export default function BusinessSettingsScreen() {
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.foreground,
           headerRight: () => (
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isLoading}
-              style={styles.headerButton}
-            >
+            <PressableRow onPress={handleSave} disabled={isLoading} style={styles.headerButton} >
               {isLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <Feather name="save" size={22} color={colors.primary} />
               )}
-            </TouchableOpacity>
+            </PressableRow>
           ),
         }} 
       />
@@ -375,15 +372,10 @@ export default function BusinessSettingsScreen() {
             {showAddressSuggestions && addressSuggestions.length > 0 && (
               <View style={{ backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginTop: 4, overflow: 'hidden' }}>
                 {addressSuggestions.slice(0, 5).map((suggestion, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: index < Math.min(addressSuggestions.length, 5) - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }}
-                    onPress={() => handleAddressSelect(suggestion)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={index} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderBottomWidth: index < Math.min(addressSuggestions.length, 5) - 1 ? StyleSheet.hairlineWidth : 0, borderBottomColor: colors.border }} onPress={() => handleAddressSelect(suggestion)} >
                     <Feather name="map-pin" size={14} color={colors.mutedForeground} style={{ marginRight: spacing.sm }} />
                     <Text style={{ flex: 1, fontSize: 14, color: colors.foreground }} numberOfLines={2}>{suggestion.description}</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
             )}
@@ -403,20 +395,14 @@ export default function BusinessSettingsScreen() {
                 />
               </View>
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                <TouchableOpacity
-                  style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm }]}
-                  onPress={() => setShowSignaturePad(true)}
-                >
+                <PressableRow style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm }]} onPress={() => setShowSignaturePad(true)} >
                   <Feather name="edit-2" size={16} color={colors.primary} />
                   <Text style={{ color: colors.primary, fontWeight: '500' }}>Change</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm }]}
-                  onPress={() => setForm({ ...form, defaultSignature: '' })}
-                >
+                </PressableRow>
+                <PressableRow style={[styles.input, { flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm }]} onPress={() => setForm({ ...form, defaultSignature: '' })} >
                   <Feather name="trash-2" size={16} color={colors.destructive} />
                   <Text style={{ color: colors.destructive, fontWeight: '500' }}>Clear</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             </View>
           ) : (
@@ -432,12 +418,9 @@ export default function BusinessSettingsScreen() {
                 existingSignature={showSignaturePad ? form.defaultSignature : undefined}
               />
               {showSignaturePad && (
-                <TouchableOpacity
-                  style={[styles.input, { marginTop: spacing.sm, alignItems: 'center' }]}
-                  onPress={() => setShowSignaturePad(false)}
-                >
+                <PressableRow style={[styles.input, { marginTop: spacing.sm, alignItems: 'center' }]} onPress={() => setShowSignaturePad(false)} >
                   <Text style={{ color: colors.mutedForeground }}>Cancel</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
           )}
@@ -486,11 +469,7 @@ export default function BusinessSettingsScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={isLoading}
-          >
+          <PressableRow style={[styles.saveButton, isLoading && styles.saveButtonDisabled]} onPress={handleSave} disabled={isLoading} >
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.primaryForeground} />
             ) : (
@@ -499,7 +478,7 @@ export default function BusinessSettingsScreen() {
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </ScrollView>
       </KeyboardAvoidingView>

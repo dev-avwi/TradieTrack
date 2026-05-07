@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -830,32 +831,17 @@ export default function BusinessTemplatesScreen() {
                 <Text style={[styles.integrationItemText, styles.integrationItemTextWarning]}>
                   <Feather name="mail" size={14} color="#b45309" /> Email: Not configured
                 </Text>
-                <TouchableOpacity 
-                  style={styles.setupButton}
-                  onPress={() => router.push('/more/integrations')}
-                >
+                <PressableRow style={styles.setupButton} onPress={() => router.push('/more/integrations')} >
                   <Feather name="settings" size={12} color="#b45309" />
                   <Text style={styles.setupButtonText}>Setup</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
               <View style={styles.emailClientButtons}>
                 {availableEmailClients.slice(0, 3).map((client) => (
-                  <TouchableOpacity
-                    key={client.id}
-                    style={styles.emailClientButton}
-                    onPress={() => {
-                      const emailTemplates = getTemplatesForFamily('email');
-                      const activeTemplate = emailTemplates.find(t => t.isActive) || emailTemplates[0];
-                      if (activeTemplate) {
-                        handleQuickEmailClient(client.id, activeTemplate);
-                      } else {
-                        Alert.alert('No Template', 'Create an email template first');
-                      }
-                    }}
-                  >
+                  <PressableRow key={client.id} style={styles.emailClientButton} onPress={() => { const emailTemplates = getTemplatesForFamily('email'); const activeTemplate = emailTemplates.find(t => t.isActive) || emailTemplates[0]; if (activeTemplate) { handleQuickEmailClient(client.id, activeTemplate); } else { Alert.alert('No Template', 'Create an email template first'); } }} >
                     <Feather name="external-link" size={12} color={colors.foreground} />
                     <Text style={styles.emailClientButtonText}>Open in {client.name}</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
             </View>
@@ -866,13 +852,10 @@ export default function BusinessTemplatesScreen() {
               <Text style={[styles.integrationItemText, styles.integrationItemTextWarning]}>
                 <Feather name="message-square" size={14} color="#b45309" /> SMS: Not configured
               </Text>
-              <TouchableOpacity 
-                style={styles.setupButton}
-                onPress={() => router.push('/more/integrations')}
-              >
+              <PressableRow style={styles.setupButton} onPress={() => router.push('/more/integrations')} >
                 <Feather name="settings" size={12} color="#b45309" />
                 <Text style={styles.setupButtonText}>Setup</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
           
@@ -893,11 +876,7 @@ export default function BusinessTemplatesScreen() {
 
     return (
       <View key={family} style={styles.familyCard}>
-        <TouchableOpacity
-          style={styles.familyHeader}
-          onPress={() => setExpandedFamily(isExpanded ? null : family)}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={styles.familyHeader} onPress={() => setExpandedFamily(isExpanded ? null : family)} >
           <View style={styles.familyIconContainer}>
             <Feather name={iconName} size={22} color={colors.primary} />
           </View>
@@ -923,7 +902,7 @@ export default function BusinessTemplatesScreen() {
               color={colors.mutedForeground} 
             />
           </View>
-        </TouchableOpacity>
+        </PressableRow>
 
         {isExpanded && (
           <View style={styles.familyContent}>
@@ -958,13 +937,10 @@ export default function BusinessTemplatesScreen() {
                           </View>
                         )}
                         {family === 'email' && (
-                          <TouchableOpacity
-                            style={styles.testEmailButton}
-                            onPress={() => handlePreviewInEmailApp(template)}
-                          >
+                          <PressableRow style={styles.testEmailButton} onPress={() => handlePreviewInEmailApp(template)} >
                             <Feather name="external-link" size={10} color={colors.primary} />
                             <Text style={styles.testEmailButtonText}>Preview in App</Text>
-                          </TouchableOpacity>
+                          </PressableRow>
                         )}
                       </View>
                       {template.description && (
@@ -975,26 +951,17 @@ export default function BusinessTemplatesScreen() {
                     </View>
                     <View style={styles.templateActions}>
                       {!template.isActive && (
-                        <TouchableOpacity
-                          style={styles.activateButton}
-                          onPress={() => handleActivate(template)}
-                        >
+                        <PressableRow style={styles.activateButton} onPress={() => handleActivate(template)} >
                           <Text style={styles.activateButtonText}>Activate</Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => openEditModal(template)}
-                      >
+                      <PressableRow style={styles.actionButton} onPress={() => openEditModal(template)} >
                         <Feather name="edit-2" size={18} color={colors.mutedForeground} />
-                      </TouchableOpacity>
+                      </PressableRow>
                       {!template.isDefault && (
-                        <TouchableOpacity
-                          style={styles.actionButton}
-                          onPress={() => handleDelete(template)}
-                        >
+                        <PressableRow style={styles.actionButton} onPress={() => handleDelete(template)} >
                           <Feather name="trash-2" size={18} color={colors.destructive} />
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
                     </View>
                   </View>
@@ -1002,13 +969,10 @@ export default function BusinessTemplatesScreen() {
               ))
             )}
             
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={() => openCreateModal(family)}
-            >
+            <PressableRow style={styles.createButton} onPress={() => openCreateModal(family)} >
               <Feather name="plus" size={18} color={colors.primary} />
               <Text style={styles.createButtonText}>Create New Template</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         )}
       </View>
@@ -1033,20 +997,17 @@ export default function BusinessTemplatesScreen() {
         >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowEditModal(false)}>
+            <PressableRow onPress={() => setShowEditModal(false)}>
               <Text style={{ color: colors.primary, fontSize: 16 }}>Cancel</Text>
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={styles.modalTitle}>
               {editingTemplate ? 'Edit Template' : 'New Template'}
             </Text>
-            <TouchableOpacity 
-              onPress={handleSave}
-              disabled={isSaving}
-            >
+            <PressableRow onPress={handleSave} disabled={isSaving} >
               <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '600' }}>
                 {isSaving ? 'Saving...' : 'Save'}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <ScrollView style={styles.modalContent}>
@@ -1077,21 +1038,14 @@ export default function BusinessTemplatesScreen() {
                 <Text style={styles.inputLabel}>Trigger / Purpose</Text>
                 <View style={styles.purposeSelector}>
                   {purposes.map((purposeOption) => (
-                    <TouchableOpacity
-                      key={purposeOption.id}
-                      style={[
-                        styles.purposeChip,
-                        formData.purpose === purposeOption.id && styles.purposeChipActive,
-                      ]}
-                      onPress={() => setFormData(prev => ({ ...prev, purpose: purposeOption.id }))}
-                    >
+                    <PressableRow key={purposeOption.id} style={[ styles.purposeChip, formData.purpose === purposeOption.id && styles.purposeChipActive, ]} onPress={() => setFormData(prev => ({ ...prev, purpose: purposeOption.id }))} >
                       <Text style={[
                         styles.purposeChipText,
                         formData.purpose === purposeOption.id && styles.purposeChipTextActive,
                       ]}>
                         {purposeOption.label}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               </View>
@@ -1130,11 +1084,7 @@ export default function BusinessTemplatesScreen() {
               </View>
             )}
 
-            <TouchableOpacity
-              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-              onPress={handleSave}
-              disabled={isSaving}
-            >
+            <PressableRow style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaving} >
               {isSaving ? (
                 <ActivityIndicator color={colors.primaryForeground} />
               ) : (
@@ -1145,7 +1095,7 @@ export default function BusinessTemplatesScreen() {
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </ScrollView>
         </View>
         </KeyboardAvoidingView>
@@ -1178,14 +1128,10 @@ export default function BusinessTemplatesScreen() {
           <Text style={styles.errorMessage}>
             {error || 'Something went wrong while loading your templates. Please check your connection and try again.'}
           </Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={refetch}
-            data-testid="button-retry-load"
-          >
+          <PressableRow style={styles.retryButton} onPress={refetch} data-testid="button-retry-load" >
             <Feather name="refresh-cw" size={18} color={colors.primaryForeground} />
             <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
     );
@@ -1213,18 +1159,11 @@ export default function BusinessTemplatesScreen() {
 
         <View style={styles.tabsContainer}>
           {(['communications', 'financial', 'jobs_safety'] as Category[]).map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.tab, activeCategory === cat && styles.tabActive]}
-              onPress={() => {
-                setActiveCategory(cat);
-                setExpandedFamily(null);
-              }}
-            >
+            <PressableRow key={cat} style={[styles.tab, activeCategory === cat && styles.tabActive]} onPress={() => { setActiveCategory(cat); setExpandedFamily(null); }} >
               <Text style={[styles.tabText, activeCategory === cat && styles.tabTextActive]}>
                 {CATEGORIES[cat].name}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
 
@@ -1268,29 +1207,19 @@ export default function BusinessTemplatesScreen() {
               const bgColor = clientColors[client.id] || colors.primary;
               
               return (
-                <TouchableOpacity
-                  key={client.id}
-                  style={styles.emailClientOption}
-                  onPress={() => handleOpenEmailClient(client.id)}
-                >
+                <PressableRow key={client.id} style={styles.emailClientOption} onPress={() => handleOpenEmailClient(client.id)} >
                   <View style={[styles.emailClientIconContainer, { backgroundColor: `${bgColor}15` }]}>
                     <Feather name="mail" size={22} color={bgColor} />
                   </View>
                   <Text style={styles.emailClientName}>{client.name}</Text>
                   <Feather name="chevron-right" size={20} color={colors.mutedForeground} style={styles.emailClientArrow} />
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
             
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => {
-                setShowEmailClientPicker(false);
-                setPreviewTemplate(null);
-              }}
-            >
+            <PressableRow style={styles.cancelButton} onPress={() => { setShowEmailClientPicker(false); setPreviewTemplate(null); }} >
               <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </TouchableOpacity>
       </Modal>

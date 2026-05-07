@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -1248,17 +1249,7 @@ export default function ChatHubScreen() {
     const linkedSms = item.type === 'job' ? item.data?.linkedSms : null;
     
     return (
-      <TouchableOpacity
-        key={item.id}
-        style={[styles.conversationCard, item.unreadCount > 0 && styles.conversationCardUnread]}
-        onPress={() => handleConversationPress(item)}
-        onLongPress={() => {
-          if (item.type === 'job' || item.type === 'sms') {
-            showQuickActions(item);
-          }
-        }}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={item.id} style={[styles.conversationCard, item.unreadCount> 0 && styles.conversationCardUnread]} onPress={() => handleConversationPress(item)} onLongPress={() => { if (item.type === 'job' || item.type === 'sms') { showQuickActions(item); } }} >
         <View style={[
           styles.conversationAvatar,
           item.type === 'job' && styles.conversationAvatarJob,
@@ -1325,17 +1316,10 @@ export default function ChatHubScreen() {
               </View>
             )}
             {(item.type === 'job' || item.type === 'sms') && (
-              <TouchableOpacity
-                style={styles.quickActionBadge}
-                onPress={(e) => {
-                  e.stopPropagation?.();
-                  showQuickActions(item);
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
+              <PressableRow style={styles.quickActionBadge} onPress={(e) => { e.stopPropagation?.(); showQuickActions(item); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} >
                 <Feather name="zap" size={10} color={colors.warning} />
                 <Text style={styles.quickActionBadgeText}>Quick</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
             {item.unreadCount > 0 && (
               <View style={styles.unreadBadge}>
@@ -1347,7 +1331,7 @@ export default function ChatHubScreen() {
         </View>
         
         <Feather name="chevron-right" size={20} color={colors.mutedForeground} style={styles.chevronIcon} />
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -1356,20 +1340,7 @@ export default function ChatHubScreen() {
 
     if (twilioConnected) {
       return (
-        <TouchableOpacity 
-          style={styles.twilioConnectedBanner}
-          onPress={() => {
-            Alert.alert(
-              'Business Number',
-              `Your number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nThis number is used for SMS messaging here and AI Receptionist calls.`,
-              [
-                { text: 'Phone Numbers', onPress: () => router.push('/more/phone-numbers') },
-                { text: 'OK', style: 'cancel' },
-              ]
-            );
-          }}
-          activeOpacity={0.8}
-        >
+        <PressableRow style={styles.twilioConnectedBanner} onPress={() => { Alert.alert( 'Business Number', `Your number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nThis number is used for SMS messaging here and AI Receptionist calls.`, [ { text: 'Phone Numbers', onPress: () => router.push('/more/phone-numbers') }, { text: 'OK', style: 'cancel' }, ] ); }} >
           <View style={styles.twilioConnectedIcon}>
             <Feather name="check" size={16} color={colors.white} />
           </View>
@@ -1377,7 +1348,7 @@ export default function ChatHubScreen() {
             {twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'SMS connected'}
           </Text>
           <Feather name="settings" size={16} color={colors.success} style={{ marginLeft: 'auto' }} />
-        </TouchableOpacity>
+        </PressableRow>
       );
     }
 
@@ -1392,12 +1363,9 @@ export default function ChatHubScreen() {
             Connect a number for SMS and AI Receptionist calls
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.twilioSetupButton}
-          onPress={() => router.push('/more/phone-numbers')}
-        >
+        <PressableRow style={styles.twilioSetupButton} onPress={() => router.push('/more/phone-numbers')} >
           <Text style={styles.twilioSetupButtonText}>Set Up</Text>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     );
   };
@@ -1456,27 +1424,18 @@ export default function ChatHubScreen() {
         {renderTwilioBanner()}
         
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity
-            style={[styles.quickActionButton, styles.quickActionButtonPrimary]}
-            onPress={() => router.push('/more/team-chat')}
-          >
+          <PressableRow style={[styles.quickActionButton, styles.quickActionButtonPrimary]} onPress={() => router.push('/more/team-chat')} >
             <Feather name="users" size={18} color={colors.primaryForeground} />
             <Text style={[styles.quickActionText, styles.quickActionTextPrimary]}>Team Chat</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickActionButton, styles.quickActionButtonSuccess]}
-            onPress={() => router.push('/more/new-sms-conversation' as any)}
-          >
+          </PressableRow>
+          <PressableRow style={[styles.quickActionButton, styles.quickActionButtonSuccess]} onPress={() => router.push('/more/new-sms-conversation' as any)} >
             <Feather name="edit-3" size={18} color={colors.white} />
             <Text style={[styles.quickActionText, styles.quickActionTextSuccess]}>New SMS</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickActionButton, styles.quickActionButtonSecondary]}
-            onPress={() => router.push('/more/clients')}
-          >
+          </PressableRow>
+          <PressableRow style={[styles.quickActionButton, styles.quickActionButtonSecondary]} onPress={() => router.push('/more/clients')} >
             <Feather name="user" size={18} color={colors.foreground} />
             <Text style={[styles.quickActionText, styles.quickActionTextSecondary]}>Clients</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
         
         <View style={styles.searchContainer}>
@@ -1497,14 +1456,7 @@ export default function ChatHubScreen() {
             const count = getFilterUnreadCount(filter);
             const isActive = activeFilter === filter;
             return (
-              <TouchableOpacity
-                key={filter}
-                style={[styles.filterButton, isActive && styles.filterButtonActive]}
-                onPress={() => {
-                  setActiveFilter(filter);
-                  if (filter !== 'jobs') setJobStatusFilter('all');
-                }}
-              >
+              <PressableRow key={filter} style={[styles.filterButton, isActive && styles.filterButtonActive]} onPress={() => { setActiveFilter(filter); if (filter !== 'jobs') setJobStatusFilter('all'); }} >
                 <Feather
                   name={filter === 'jobs' ? 'briefcase' : filter === 'team' ? 'users' : 'smartphone'}
                   size={14}
@@ -1521,7 +1473,7 @@ export default function ChatHubScreen() {
                     <Text style={styles.filterBadgeText}>{count > 99 ? '99+' : count}</Text>
                   </View>
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             );
           })}
         </View>
@@ -1534,21 +1486,14 @@ export default function ChatHubScreen() {
             contentContainerStyle={{ gap: spacing.xs, flexDirection: 'row', alignItems: 'center' }}
           >
             {JOB_STATUS_FILTERS.map(sf => (
-              <TouchableOpacity
-                key={sf.key}
-                style={[
-                  styles.subFilterButton,
-                  jobStatusFilter === sf.key && styles.subFilterButtonActive,
-                ]}
-                onPress={() => setJobStatusFilter(sf.key)}
-              >
+              <PressableRow key={sf.key} style={[ styles.subFilterButton, jobStatusFilter === sf.key && styles.subFilterButtonActive, ]} onPress={() => setJobStatusFilter(sf.key)} >
                 <Text style={[
                   styles.subFilterText,
                   jobStatusFilter === sf.key && styles.subFilterTextActive,
                 ]}>
                   {sf.label}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </ScrollView>
         )}

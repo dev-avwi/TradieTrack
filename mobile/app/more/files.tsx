@@ -10,6 +10,7 @@ import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, comp
 import PhotoLibrary from '../../src/components/PhotoLibrary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 
 interface ComplianceDocument {
   id: string;
@@ -977,11 +978,7 @@ export default function FilesScreen() {
         key={doc.id}
         style={[styles.documentCard, isExpanded && styles.documentCardExpanded]}
       >
-        <TouchableOpacity
-          style={styles.documentTopRow}
-          onPress={() => setExpandedId(isExpanded ? null : doc.id)}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={styles.documentTopRow} onPress={() => setExpandedId(isExpanded ? null : doc.id)} >
           <View style={[styles.documentIconContainer, { backgroundColor: `${typeConfig.color}18` }]}>
             <Feather name={typeConfig.icon} size={20} color={typeConfig.color} />
           </View>
@@ -998,7 +995,7 @@ export default function FilesScreen() {
             </View>
           </View>
           <Feather name={isExpanded ? 'chevron-up' : 'chevron-right'} size={18} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
 
         {doc.expiryDate && (
           <View style={styles.expiryRow}>
@@ -1065,22 +1062,14 @@ export default function FilesScreen() {
               </View>
             )}
             <View style={styles.actionButtonsRow}>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => openEditModal(doc)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.editButton} onPress={() => openEditModal(doc)} >
                 <Feather name="edit-2" size={14} color={colors.primaryForeground} />
                 <Text style={styles.editButtonText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDelete(doc)}
-                activeOpacity={0.7}
-              >
+              </PressableRow>
+              <PressableRow style={styles.deleteButton} onPress={() => handleDelete(doc)} >
                 <Feather name="trash-2" size={14} color="#ef4444" />
                 <Text style={styles.deleteButtonText}>Delete</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
         )}
@@ -1092,12 +1081,12 @@ export default function FilesScreen() {
     <View style={styles.complianceSection}>
       <View style={styles.complianceHeader}>
         <Text style={styles.sectionTitle}>COMPLIANCE DOCUMENTS</Text>
-        <TouchableOpacity onPress={openCreateModal} activeOpacity={0.7}>
+        <PressableRow onPress={openCreateModal} >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
             <Feather name="plus" size={14} color={colors.primary} />
             <Text style={{ ...typography.body, color: colors.primary, fontWeight: '500' }}>Add</Text>
           </View>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       {complianceCount > 0 && (
@@ -1129,17 +1118,12 @@ export default function FilesScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
             <View style={styles.complianceFilterRow}>
               {COMPLIANCE_FILTERS.map(tab => (
-                <TouchableOpacity
-                  key={tab.key}
-                  style={[styles.complianceFilterTab, complianceFilter === tab.key && styles.complianceFilterTabActive]}
-                  onPress={() => setComplianceFilter(tab.key)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={tab.key} style={[styles.complianceFilterTab, complianceFilter === tab.key && styles.complianceFilterTabActive]} onPress={() => setComplianceFilter(tab.key)} >
                   <Text style={[styles.complianceFilterTabText, complianceFilter === tab.key && styles.complianceFilterTabTextActive]}>
                     {tab.label}
                     {tab.key !== 'all' && ` (${tab.key === 'valid' ? validCount : tab.key === 'expiring_soon' ? expiringSoonCount : expiredCount})`}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </ScrollView>
@@ -1160,10 +1144,10 @@ export default function FilesScreen() {
               : 'Add licences, insurance, certifications and other compliance documents here.'}
           </Text>
           {complianceFilter === 'all' && (
-            <TouchableOpacity style={styles.emptyAddButton} onPress={openCreateModal} activeOpacity={0.7}>
+            <PressableRow style={styles.emptyAddButton} onPress={openCreateModal} >
               <Feather name="plus" size={16} color={colors.primaryForeground} />
               <Text style={styles.emptyAddButtonText}>Add Document</Text>
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
       ) : (
@@ -1176,11 +1160,7 @@ export default function FilesScreen() {
     <View style={styles.quickAccessSection}>
       <Text style={styles.sectionTitle}>QUICK ACCESS</Text>
 
-      <TouchableOpacity
-        style={styles.categoryCard}
-        onPress={() => setActiveFilter('photos')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.categoryCard} onPress={() => setActiveFilter('photos')} >
         <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
           <Feather name="camera" size={16} color={CATEGORY_COLORS.photos.color} />
         </View>
@@ -1189,13 +1169,9 @@ export default function FilesScreen() {
           <Text style={styles.categoryCount}>Browse, upload & manage all photos</Text>
         </View>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
-      <TouchableOpacity
-        style={styles.categoryCard}
-        onPress={() => router.push('/more/documents' as any)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.categoryCard} onPress={() => router.push('/more/documents' as any)} >
         <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
           <Feather name="folder" size={16} color={CATEGORY_COLORS.voiceNotes.color} />
         </View>
@@ -1204,13 +1180,9 @@ export default function FilesScreen() {
           <Text style={styles.categoryCount}>Quotes, invoices & receipts</Text>
         </View>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
-      <TouchableOpacity
-        style={styles.categoryCard}
-        onPress={() => setActiveFilter('compliance')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.categoryCard} onPress={() => setActiveFilter('compliance')} >
         <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.compliance.bg }]}>
           <Feather name="shield" size={16} color={CATEGORY_COLORS.compliance.color} />
         </View>
@@ -1219,7 +1191,7 @@ export default function FilesScreen() {
           <Text style={styles.categoryCount}>Licences, insurance & certifications</Text>
         </View>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 
@@ -1262,11 +1234,7 @@ export default function FilesScreen() {
 
   const renderDocumentsContent = () => (
     <View style={styles.quickAccessSection}>
-      <TouchableOpacity
-        style={styles.categoryCard}
-        onPress={() => router.push('/(tabs)/work' as any)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.categoryCard} onPress={() => router.push('/(tabs)/work' as any)} >
         <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
           <Feather name="mic" size={16} color={CATEGORY_COLORS.voiceNotes.color} />
         </View>
@@ -1275,13 +1243,9 @@ export default function FilesScreen() {
           <Text style={styles.categoryCount}>Attached to jobs</Text>
         </View>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
-      <TouchableOpacity
-        style={styles.categoryCard}
-        onPress={() => router.push('/more/documents' as any)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.categoryCard} onPress={() => router.push('/more/documents' as any)} >
         <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.photos.bg }]}>
           <Feather name="folder" size={16} color={CATEGORY_COLORS.photos.color} />
         </View>
@@ -1290,7 +1254,7 @@ export default function FilesScreen() {
           <Text style={styles.categoryCount}>Business documents</Text>
         </View>
         <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 
@@ -1311,9 +1275,9 @@ export default function FilesScreen() {
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{editingDoc ? 'Edit Document' : 'Add Document'}</Text>
-            <TouchableOpacity style={styles.modalCloseButton} onPress={closeModal}>
+            <PressableRow style={styles.modalCloseButton} onPress={closeModal}>
               <Feather name="x" size={22} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -1321,16 +1285,11 @@ export default function FilesScreen() {
               <Text style={styles.formLabel}>Document Type</Text>
               <View style={styles.typeSelector}>
                 {DOCUMENT_TYPES.map(dt => (
-                  <TouchableOpacity
-                    key={dt.value}
-                    style={[styles.typeOption, form.type === dt.value && styles.typeOptionSelected]}
-                    onPress={() => setForm(f => ({ ...f, type: dt.value }))}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={dt.value} style={[styles.typeOption, form.type === dt.value && styles.typeOptionSelected]} onPress={() => setForm(f => ({ ...f, type: dt.value }))} >
                     <Text style={[styles.typeOptionText, form.type === dt.value && styles.typeOptionTextSelected]}>
                       {dt.label}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
             </View>
@@ -1450,29 +1409,23 @@ export default function FilesScreen() {
                 <View style={styles.uploadedIndicator}>
                   <Feather name="image" size={16} color="#22c55e" />
                   <Text style={styles.uploadedText}>Photo selected</Text>
-                  <TouchableOpacity
-                    style={styles.removeUploadButton}
-                    onPress={() => setAttachmentUri(null)}
-                  >
+                  <PressableRow style={styles.removeUploadButton} onPress={() => setAttachmentUri(null)} >
                     <Feather name="x" size={16} color="#ef4444" />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               ) : hasExistingAttachment ? (
                 <View style={styles.uploadedIndicator}>
                   <Feather name="paperclip" size={16} color="#22c55e" />
                   <Text style={styles.uploadedText}>Existing attachment</Text>
-                  <TouchableOpacity
-                    style={styles.removeUploadButton}
-                    onPress={handlePickImage}
-                  >
+                  <PressableRow style={styles.removeUploadButton} onPress={handlePickImage} >
                     <Feather name="refresh-cw" size={14} color={colors.mutedForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               ) : (
-                <TouchableOpacity style={styles.uploadButton} onPress={handlePickImage} activeOpacity={0.7}>
+                <PressableRow style={styles.uploadButton} onPress={handlePickImage} >
                   <Feather name="camera" size={18} color={colors.mutedForeground} />
                   <Text style={styles.uploadButtonText}>Take Photo or Choose from Library</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
 
@@ -1480,21 +1433,16 @@ export default function FilesScreen() {
           </ScrollView>
 
           <View style={styles.modalFooter}>
-            <TouchableOpacity style={styles.cancelButton} onPress={closeModal} activeOpacity={0.7}>
+            <PressableRow style={styles.cancelButton} onPress={closeModal} >
               <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-              onPress={handleSave}
-              disabled={isSaving}
-              activeOpacity={0.7}
-            >
+            </PressableRow>
+            <PressableRow style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} onPress={handleSave} disabled={isSaving} >
               {isSaving ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
                 <Text style={styles.saveButtonText}>{editingDoc ? 'Update' : 'Add Document'}</Text>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -1522,10 +1470,10 @@ export default function FilesScreen() {
               <Text style={styles.pageTitle}>Files</Text>
               <Text style={styles.pageSubtitle}>Photos, documents & compliance</Text>
             </View>
-            <TouchableOpacity style={styles.addButton} onPress={openCreateModal} activeOpacity={0.7}>
+            <PressableRow style={styles.addButton} onPress={openCreateModal} >
               <Feather name="plus" size={16} color={colors.primaryForeground} />
               <Text style={styles.addButtonText}>Add Document</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           {isLoading && (
@@ -1539,9 +1487,9 @@ export default function FilesScreen() {
             <View style={styles.errorContainer}>
               <Feather name="alert-circle" size={40} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={handleRefresh} activeOpacity={0.7}>
+              <PressableRow style={styles.retryButton} onPress={handleRefresh} >
                 <Text style={styles.retryButtonText}>Try Again</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
 
@@ -1550,21 +1498,11 @@ export default function FilesScreen() {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.xs }}>
                 <View style={styles.filterRow}>
                   {FILTER_TABS.map(tab => (
-                    <TouchableOpacity
-                      key={tab.key}
-                      style={[styles.filterTab, activeFilter === tab.key && styles.filterTabActive]}
-                      onPress={() => {
-                        setActiveFilter(tab.key);
-                        if (tab.key !== 'compliance') {
-                          setComplianceFilter('all');
-                        }
-                      }}
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow key={tab.key} style={[styles.filterTab, activeFilter === tab.key && styles.filterTabActive]} onPress={() => { setActiveFilter(tab.key); if (tab.key !== 'compliance') { setComplianceFilter('all'); } }} >
                       <Text style={[styles.filterTabText, activeFilter === tab.key && styles.filterTabTextActive]}>
                         {tab.label}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               </ScrollView>

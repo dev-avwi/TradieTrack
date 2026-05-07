@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
@@ -210,14 +211,7 @@ function SmartActionItem({
       isRunning && styles.actionItemRunning,
       (hasMissingRequirements && !isCompleted) && styles.actionItemDisabled,
     ]}>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }}
-        onPress={() => {
-          if (!isDisabled) onExecute();
-        }}
-        disabled={!!isDisabled}
-      >
+      <PressableRow style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flex: 1 }} onPress={() => { if (!isDisabled) onExecute(); }} disabled={!!isDisabled} >
         <View style={[
           styles.actionIcon,
           isCompleted && styles.actionIconCompleted,
@@ -257,16 +251,12 @@ function SmartActionItem({
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           </View>
         )}
-      </TouchableOpacity>
+      </PressableRow>
 
       {onDismiss && !isRunning && (
-        <TouchableOpacity
-          onPress={onDismiss}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ padding: spacing.xs, marginLeft: spacing.xs }}
-        >
+        <PressableRow onPress={onDismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ padding: spacing.xs, marginLeft: spacing.xs }} >
           <Feather name="x" size={14} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
     </View>
   );
@@ -315,13 +305,9 @@ export default function SmartActionsPanel({
             </View>
           )}
           {onHideAll && (
-            <TouchableOpacity
-              onPress={onHideAll}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{ padding: spacing.xs }}
-            >
+            <PressableRow onPress={onHideAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ padding: spacing.xs }} >
               <Feather name="eye-off" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
       </View>

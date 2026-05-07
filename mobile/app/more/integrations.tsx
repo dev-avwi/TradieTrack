@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
@@ -1037,23 +1038,14 @@ export default function IntegrationsScreen() {
                   )}
 
                   {isStripeFullyConnected ? (
-                    <TouchableOpacity 
-                      style={[styles.actionButton, styles.actionButtonSecondary]}
-                      onPress={handleOpenStripeDashboard}
-                      data-testid="button-stripe-dashboard"
-                    >
+                    <PressableRow style={[styles.actionButton, styles.actionButtonSecondary]} onPress={handleOpenStripeDashboard} data-testid="button-stripe-dashboard" >
                       <Feather name="external-link" size={16} color={colors.foreground} />
                       <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
                         View Stripe Dashboard
                       </Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ) : (
-                    <TouchableOpacity 
-                      style={[styles.actionButton, styles.actionButtonPrimary]}
-                      onPress={handleConnectStripe}
-                      disabled={isConnecting || !stripeStatus?.stripeAvailable}
-                      data-testid="button-connect-stripe"
-                    >
+                    <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={handleConnectStripe} disabled={isConnecting || !stripeStatus?.stripeAvailable} data-testid="button-connect-stripe" >
                       {isConnecting ? (
                         <ActivityIndicator size="small" color={colors.primaryForeground} />
                       ) : (
@@ -1062,7 +1054,7 @@ export default function IntegrationsScreen() {
                       <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                         {isConnecting ? 'Connecting...' : isStripePartiallyConnected ? 'Complete Setup' : 'Connect Stripe'}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   )}
                 </View>
               </View>
@@ -1177,12 +1169,7 @@ export default function IntegrationsScreen() {
                       </Text>
                       <View style={{ gap: 8, marginTop: 8 }}>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <TouchableOpacity 
-                            style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]}
-                            onPress={handleSyncXeroContacts}
-                            disabled={isSyncingContacts || isPushingInvoices}
-                            data-testid="button-sync-xero-contacts"
-                          >
+                          <PressableRow style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]} onPress={handleSyncXeroContacts} disabled={isSyncingContacts || isPushingInvoices} data-testid="button-sync-xero-contacts" >
                             {isSyncingContacts ? (
                               <ActivityIndicator size="small" color={colors.primaryForeground} />
                             ) : (
@@ -1191,13 +1178,8 @@ export default function IntegrationsScreen() {
                             <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                               {isSyncingContacts ? 'Syncing...' : 'Sync Contacts'}
                             </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]}
-                            onPress={handlePushXeroInvoices}
-                            disabled={isSyncingContacts || isPushingInvoices}
-                            data-testid="button-push-xero-invoices"
-                          >
+                          </PressableRow>
+                          <PressableRow style={[styles.actionButton, styles.actionButtonPrimary, { flex: 1 }]} onPress={handlePushXeroInvoices} disabled={isSyncingContacts || isPushingInvoices} data-testid="button-push-xero-invoices" >
                             {isPushingInvoices ? (
                               <ActivityIndicator size="small" color={colors.primaryForeground} />
                             ) : (
@@ -1206,18 +1188,14 @@ export default function IntegrationsScreen() {
                             <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                               {isPushingInvoices ? 'Pushing...' : 'Push Invoices'}
                             </Text>
-                          </TouchableOpacity>
+                          </PressableRow>
                         </View>
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonSecondary]}
-                          onPress={handleDisconnectXero}
-                          data-testid="button-disconnect-xero"
-                        >
+                        <PressableRow style={[styles.actionButton, styles.actionButtonSecondary]} onPress={handleDisconnectXero} data-testid="button-disconnect-xero" >
                           <Feather name="link-2" size={16} color={colors.destructive} />
                           <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
                             Disconnect Xero
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       </View>
                     </>
                   ) : (
@@ -1242,16 +1220,12 @@ export default function IntegrationsScreen() {
                         </View>
                       </View>
                       {xeroStatus?.configured && (
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonPrimary]}
-                          onPress={handleConnectXero}
-                          data-testid="button-connect-xero"
-                        >
+                        <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={handleConnectXero} data-testid="button-connect-xero" >
                           <Feather name="link" size={16} color={colors.primaryForeground} />
                           <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                             Connect Xero
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
                     </>
                   )}
@@ -1310,12 +1284,7 @@ export default function IntegrationsScreen() {
                         Invoices and contacts are synced with your MYOB AccountRight company file.
                       </Text>
                       <View style={{ gap: 8, marginTop: 8 }}>
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonPrimary]}
-                          onPress={handleSyncMyob}
-                          disabled={isSyncingMyob}
-                          data-testid="button-sync-myob"
-                        >
+                        <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={handleSyncMyob} disabled={isSyncingMyob} data-testid="button-sync-myob" >
                           {isSyncingMyob ? (
                             <ActivityIndicator size="small" color={colors.primaryForeground} />
                           ) : (
@@ -1324,17 +1293,13 @@ export default function IntegrationsScreen() {
                           <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                             {isSyncingMyob ? 'Syncing...' : 'Sync Now'}
                           </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonSecondary]}
-                          onPress={handleDisconnectMyob}
-                          data-testid="button-disconnect-myob"
-                        >
+                        </PressableRow>
+                        <PressableRow style={[styles.actionButton, styles.actionButtonSecondary]} onPress={handleDisconnectMyob} data-testid="button-disconnect-myob" >
                           <Feather name="link-2" size={16} color={colors.destructive} />
                           <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
                             Disconnect MYOB
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       </View>
                     </>
                   ) : (
@@ -1359,12 +1324,7 @@ export default function IntegrationsScreen() {
                         </View>
                       </View>
                       {myobStatus?.configured && (
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonPrimary]}
-                          onPress={handleConnectMyob}
-                          disabled={isConnectingMyob}
-                          data-testid="button-connect-myob"
-                        >
+                        <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={handleConnectMyob} disabled={isConnectingMyob} data-testid="button-connect-myob" >
                           {isConnectingMyob ? (
                             <ActivityIndicator size="small" color={colors.primaryForeground} />
                           ) : (
@@ -1373,7 +1333,7 @@ export default function IntegrationsScreen() {
                           <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                             {isConnectingMyob ? 'Connecting...' : 'Connect MYOB'}
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
                     </>
                   )}
@@ -1432,12 +1392,7 @@ export default function IntegrationsScreen() {
                         Invoices and contacts are synced with your QuickBooks Online account.
                       </Text>
                       <View style={{ gap: 8, marginTop: 8 }}>
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonPrimary]}
-                          onPress={handleSyncQuickBooks}
-                          disabled={isSyncingQuickBooks}
-                          data-testid="button-sync-quickbooks"
-                        >
+                        <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={handleSyncQuickBooks} disabled={isSyncingQuickBooks} data-testid="button-sync-quickbooks" >
                           {isSyncingQuickBooks ? (
                             <ActivityIndicator size="small" color={colors.primaryForeground} />
                           ) : (
@@ -1446,17 +1401,13 @@ export default function IntegrationsScreen() {
                           <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                             {isSyncingQuickBooks ? 'Syncing...' : 'Sync Now'}
                           </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonSecondary]}
-                          onPress={handleDisconnectQuickBooks}
-                          data-testid="button-disconnect-quickbooks"
-                        >
+                        </PressableRow>
+                        <PressableRow style={[styles.actionButton, styles.actionButtonSecondary]} onPress={handleDisconnectQuickBooks} data-testid="button-disconnect-quickbooks" >
                           <Feather name="link-2" size={16} color={colors.destructive} />
                           <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
                             Disconnect QuickBooks
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       </View>
                     </>
                   ) : (
@@ -1481,12 +1432,7 @@ export default function IntegrationsScreen() {
                         </View>
                       </View>
                       {quickBooksStatus?.configured && (
-                        <TouchableOpacity 
-                          style={[styles.actionButton, styles.actionButtonPrimary]}
-                          onPress={handleConnectQuickBooks}
-                          disabled={isConnectingQuickBooks}
-                          data-testid="button-connect-quickbooks"
-                        >
+                        <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={handleConnectQuickBooks} disabled={isConnectingQuickBooks} data-testid="button-connect-quickbooks" >
                           {isConnectingQuickBooks ? (
                             <ActivityIndicator size="small" color={colors.primaryForeground} />
                           ) : (
@@ -1495,7 +1441,7 @@ export default function IntegrationsScreen() {
                           <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                             {isConnectingQuickBooks ? 'Connecting...' : 'Connect QuickBooks'}
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
                     </>
                   )}
@@ -1558,12 +1504,7 @@ export default function IntegrationsScreen() {
                       <Text style={styles.featureText}>Payment confirmations</Text>
                     </View>
                   </View>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.actionButtonSecondary]}
-                    onPress={handleTestSms}
-                    disabled={isSendingTestSms}
-                    data-testid="button-test-sms"
-                  >
+                  <PressableRow style={[styles.actionButton, styles.actionButtonSecondary]} onPress={handleTestSms} disabled={isSendingTestSms} data-testid="button-test-sms" >
                     {isSendingTestSms ? (
                       <ActivityIndicator size="small" color={colors.foreground} />
                     ) : (
@@ -1572,7 +1513,7 @@ export default function IntegrationsScreen() {
                     <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
                       {isSendingTestSms ? 'Loading...' : 'Preview SMS Template'}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
 
@@ -1615,12 +1556,7 @@ export default function IntegrationsScreen() {
                       <Text style={styles.detailSubtext}>
                         Jobs with scheduled dates will automatically sync to your Google Calendar.
                       </Text>
-                      <TouchableOpacity 
-                        style={[styles.actionButton, styles.actionButtonPrimary, { marginBottom: 8 }]}
-                        onPress={handleSyncAllJobs}
-                        disabled={isSyncingAllJobs}
-                        data-testid="button-sync-all-jobs"
-                      >
+                      <PressableRow style={[styles.actionButton, styles.actionButtonPrimary, { marginBottom: 8 }]} onPress={handleSyncAllJobs} disabled={isSyncingAllJobs} data-testid="button-sync-all-jobs" >
                         {isSyncingAllJobs ? (
                           <ActivityIndicator size="small" color={colors.primaryForeground} />
                         ) : (
@@ -1629,17 +1565,13 @@ export default function IntegrationsScreen() {
                         <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                           {isSyncingAllJobs ? 'Syncing...' : 'Sync All Jobs to Calendar'}
                         </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.actionButton, styles.actionButtonSecondary]}
-                        onPress={handleDisconnectGoogleCalendar}
-                        data-testid="button-disconnect-google-calendar"
-                      >
+                      </PressableRow>
+                      <PressableRow style={[styles.actionButton, styles.actionButtonSecondary]} onPress={handleDisconnectGoogleCalendar} data-testid="button-disconnect-google-calendar" >
                         <Feather name="link-2" size={16} color={colors.destructive} />
                         <Text style={[styles.actionButtonText, { color: colors.destructive }]}>
                           Disconnect
                         </Text>
-                      </TouchableOpacity>
+                      </PressableRow>
                     </>
                   ) : (
                     <>
@@ -1660,12 +1592,7 @@ export default function IntegrationsScreen() {
                           <Text style={styles.featureText}>Get reminders on your phone</Text>
                         </View>
                       </View>
-                      <TouchableOpacity 
-                        style={[styles.actionButton, styles.actionButtonPrimary]}
-                        onPress={handleConnectGoogleCalendar}
-                        disabled={isConnectingCalendar}
-                        data-testid="button-connect-google-calendar"
-                      >
+                      <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={handleConnectGoogleCalendar} disabled={isConnectingCalendar} data-testid="button-connect-google-calendar" >
                         {isConnectingCalendar ? (
                           <ActivityIndicator size="small" color={colors.primaryForeground} />
                         ) : (
@@ -1674,7 +1601,7 @@ export default function IntegrationsScreen() {
                         <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>
                           {isConnectingCalendar ? 'Connecting...' : 'Connect Google Calendar'}
                         </Text>
-                      </TouchableOpacity>
+                      </PressableRow>
                     </>
                   )}
                 </View>

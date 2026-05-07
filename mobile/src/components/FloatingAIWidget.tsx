@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { colors } from '../lib/colors';
@@ -296,13 +297,13 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
             </View>
             <View style={styles.headerRight}>
               {chatHistory.length > 0 && (
-                <TouchableOpacity onPress={clearChat} style={styles.clearButton}>
+                <PressableRow onPress={clearChat} style={styles.clearButton}>
                   <Text style={styles.clearButtonText}>Clear</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <PressableRow onPress={onClose} style={styles.closeButton}>
                 <Feather name="x" size={20} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
 
@@ -331,13 +332,9 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
                     "Draft a follow-up email for a quote",
                     "Show me this week's jobs",
                   ]).map((suggestion, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => sendMessage(suggestion)}
-                      style={styles.suggestionButton}
-                    >
+                    <PressableRow key={index} onPress={() => sendMessage(suggestion)} style={styles.suggestionButton} >
                       <Text style={styles.suggestionText}>{suggestion}</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               </View>
@@ -356,26 +353,18 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
                     {msg.role === 'assistant' && msg.richContent && msg.richContent.length > 0 && (
                       <View style={styles.richContentContainer}>
                         {msg.richContent.filter(item => item.type !== 'action_button').map((item) => (
-                          <TouchableOpacity
-                            key={item.id}
-                            onPress={() => handleRichContentClick(item)}
-                            style={styles.richContentItem}
-                          >
+                          <PressableRow key={item.id} onPress={() => handleRichContentClick(item)} style={styles.richContentItem} >
                             {getRichContentIcon(item.type)}
                             <Text style={styles.richContentLabel}>{item.label}</Text>
                             <Feather name="arrow-right" size={14} color={colors.mutedForeground} />
-                          </TouchableOpacity>
+                          </PressableRow>
                         ))}
 
                         {msg.richContent.filter(item => item.type === 'action_button').map((item) => (
-                          <TouchableOpacity
-                            key={item.id}
-                            onPress={() => handleRichContentClick(item)}
-                            style={styles.actionButton}
-                          >
+                          <PressableRow key={item.id} onPress={() => handleRichContentClick(item)} style={styles.actionButton} >
                             {item.label.includes('Map') && <Feather name="map-pin" size={14} color={colors.white} />}
                             <Text style={styles.actionButtonText}>{item.label}</Text>
-                          </TouchableOpacity>
+                          </PressableRow>
                         ))}
                       </View>
                     )}
@@ -384,15 +373,15 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
                   {/* Pending Action Confirmation */}
                   {msg.role === 'assistant' && pendingAction && index === chatHistory.length - 1 && (
                     <View style={styles.confirmationButtons}>
-                      <TouchableOpacity onPress={confirmAction} style={styles.confirmButton}>
+                      <PressableRow onPress={confirmAction} style={styles.confirmButton}>
                         <Feather name="check" size={16} color={colors.white} />
                         <Text style={styles.confirmButtonText}>
                           {pendingAction.type === 'send_email' ? 'Send it' : 'Do it'}
                         </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={cancelAction} style={styles.cancelButton}>
+                      </PressableRow>
+                      <PressableRow onPress={cancelAction} style={styles.cancelButton}>
                         <Text style={styles.cancelButtonText}>Cancel</Text>
-                      </TouchableOpacity>
+                      </PressableRow>
                     </View>
                   )}
 
@@ -400,13 +389,9 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
                   {msg.role === 'assistant' && msg.suggestedFollowups && msg.suggestedFollowups.length > 0 && index === chatHistory.length - 1 && !pendingAction && (
                     <View style={styles.followupContainer}>
                       {msg.suggestedFollowups.slice(0, 3).map((followup, i) => (
-                        <TouchableOpacity
-                          key={i}
-                          onPress={() => sendMessage(followup)}
-                          style={styles.followupButton}
-                        >
+                        <PressableRow key={i} onPress={() => sendMessage(followup)} style={styles.followupButton} >
                           <Text style={styles.followupText}>{followup}</Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       ))}
                     </View>
                   )}
@@ -434,16 +419,9 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
               returnKeyType="send"
               multiline={false}
             />
-            <TouchableOpacity
-              onPress={() => sendMessage(message)}
-              disabled={!message.trim() || isLoading}
-              style={[
-                styles.sendButton,
-                (!message.trim() || isLoading) && styles.sendButtonDisabled,
-              ]}
-            >
+            <PressableRow onPress={() => sendMessage(message)} disabled={!message.trim() || isLoading} style={[ styles.sendButton, (!message.trim() || isLoading) && styles.sendButtonDisabled, ]} >
               <Feather name="send" size={20} color={colors.white} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
@@ -454,13 +432,9 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
 // Floating button component to trigger the widget
 export function FloatingAIButton({ onPress }: { onPress: () => void }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.9}
-      style={styles.floatingButton}
-    >
+    <PressableRow onPress={onPress} style={styles.floatingButton} >
       <Feather name="star" size={24} color={colors.white} />
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 

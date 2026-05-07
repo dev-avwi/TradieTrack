@@ -12,6 +12,7 @@ import {
   UIManager,
   Alert
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -452,11 +453,7 @@ function AccordionCategory({
 
   return (
     <View style={styles.categoryCard}>
-      <TouchableOpacity 
-        style={styles.categoryHeader} 
-        onPress={handleToggle}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.categoryHeader} onPress={handleToggle} >
         <View style={styles.categoryIconContainer}>
           <Feather name={category.icon} size={iconSizes.lg} color={colors.primary} />
         </View>
@@ -464,7 +461,7 @@ function AccordionCategory({
         <Animated.View style={{ transform: [{ rotate: rotation }] }}>
           <Feather name="chevron-down" size={iconSizes.lg} color={colors.mutedForeground} />
         </Animated.View>
-      </TouchableOpacity>
+      </PressableRow>
 
       {isExpanded && (
         <View style={styles.categoryItems}>
@@ -519,16 +516,12 @@ function FAQItemComponent({ item, isExpanded, onToggle, isLast, colors, styles }
 
   return (
     <View style={[styles.faqItem, isLast && styles.faqItemLast]}>
-      <TouchableOpacity 
-        style={styles.faqQuestion} 
-        onPress={handleToggle}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.faqQuestion} onPress={handleToggle} >
         <Text style={styles.faqQuestionText}>{item.question}</Text>
         <Animated.View style={{ transform: [{ rotate: rotation }] }}>
           <Feather name="chevron-down" size={iconSizes.md} color={colors.mutedForeground} />
         </Animated.View>
-      </TouchableOpacity>
+      </PressableRow>
       
       {isExpanded && (
         <View style={styles.faqAnswer}>
@@ -636,11 +629,7 @@ export default function SupportScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity 
-            style={styles.tourCard}
-            onPress={() => setShowTour(true)}
-            activeOpacity={0.8}
-          >
+          <PressableRow style={styles.tourCard} onPress={() => setShowTour(true)} >
             <View style={styles.tourIconContainer}>
               <Feather name="navigation" size={iconSizes.xl} color={colors.primary} />
             </View>
@@ -649,7 +638,7 @@ export default function SupportScreen() {
               <Text style={styles.tourSubtitle}>Take a guided walkthrough of the app</Text>
             </View>
             <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
 
           <View style={styles.faqSection}>
             <Text style={styles.sectionTitle}>FREQUENTLY ASKED QUESTIONS</Text>
@@ -671,11 +660,7 @@ export default function SupportScreen() {
           <View style={styles.contactSection}>
             <Text style={styles.sectionTitle}>REPORT A PROBLEM</Text>
             
-            <TouchableOpacity 
-              style={[styles.tourCard, { borderColor: colors.destructive }]}
-              onPress={() => router.push('/more/report-bug')}
-              activeOpacity={0.8}
-            >
+            <PressableRow style={[styles.tourCard, { borderColor: colors.destructive }]} onPress={() => router.push('/more/report-bug')} >
               <View style={[styles.tourIconContainer, { backgroundColor: colors.destructive + '20' }]}>
                 <Feather name="alert-circle" size={iconSizes.xl} color={colors.destructive} />
               </View>
@@ -684,16 +669,12 @@ export default function SupportScreen() {
                 <Text style={styles.tourSubtitle}>Something not working? Let us know!</Text>
               </View>
               <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
 
             <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>CONTACT US</Text>
             
             <View style={styles.contactCard}>
-              <TouchableOpacity 
-                style={[styles.contactItem, styles.contactItemBorder]}
-                onPress={handleEmailSupport}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={[styles.contactItem, styles.contactItemBorder]} onPress={handleEmailSupport} >
                 <View style={styles.contactIconContainer}>
                   <Feather name="mail" size={iconSizes.lg} color={colors.primary} />
                 </View>
@@ -702,13 +683,9 @@ export default function SupportScreen() {
                   <Text style={styles.contactSubtitle}>admin@avwebinnovation.com</Text>
                 </View>
                 <Feather name="external-link" size={iconSizes.md} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity 
-                style={styles.contactItem}
-                onPress={handleOpenDocs}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.contactItem} onPress={handleOpenDocs} >
                 <View style={styles.contactIconContainer}>
                   <Feather name="book-open" size={iconSizes.lg} color={colors.primary} />
                 </View>
@@ -717,7 +694,7 @@ export default function SupportScreen() {
                   <Text style={styles.contactSubtitle}>Browse guides and tutorials</Text>
                 </View>
                 <Feather name="external-link" size={iconSizes.md} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
 
@@ -736,14 +713,10 @@ export default function SupportScreen() {
               </View>
             ))}
           </View>
-          <TouchableOpacity
-            style={[styles.copyDebugButton, { backgroundColor: colors.primary }]}
-            onPress={handleCopyDebugInfo}
-            activeOpacity={0.8}
-          >
+          <PressableRow style={[styles.copyDebugButton, { backgroundColor: colors.primary }]} onPress={handleCopyDebugInfo} >
             <Feather name="copy" size={iconSizes.md} color={colors.white} />
             <Text style={[styles.copyDebugText, { color: colors.white }]}>Copy Debug Info</Text>
-          </TouchableOpacity>
+          </PressableRow>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>JobRunner Mobile</Text>

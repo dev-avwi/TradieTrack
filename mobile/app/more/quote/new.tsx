@@ -15,6 +15,7 @@ import {
   Animated,
   Image
 } from 'react-native';
+import { PressableRow } from '../../../src/components/ui/PressableRow';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -1243,10 +1244,7 @@ export default function NewQuoteScreen() {
                   <Feather name="user" size={16} color={colors.primary} />
                   <Text style={styles.cardHeaderText}>Client</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.selectButton}
-                  onPress={() => setShowClientPicker(true)}
-                >
+                <PressableRow style={styles.selectButton} onPress={() => setShowClientPicker(true)} >
                   {form.clientId ? (
                     <View style={styles.selectedClient}>
                       <View style={styles.clientAvatar}>
@@ -1260,7 +1258,7 @@ export default function NewQuoteScreen() {
                     <Text style={styles.selectPlaceholder}>Tap to select a client...</Text>
                   )}
                   <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               {/* Quote Details Card */}
@@ -1333,43 +1331,28 @@ export default function NewQuoteScreen() {
                       </View>
                       <Text style={styles.lineItemTotal}>{formatCurrency(itemTotal)}</Text>
                       <View style={styles.lineItemActions}>
-                        <TouchableOpacity 
-                          style={styles.iconButton}
-                          onPress={() => handleEditLineItem(index)}
-                        >
+                        <PressableRow style={styles.iconButton} onPress={() => handleEditLineItem(index)} >
                           <Feather name="edit-2" size={14} color={colors.mutedForeground} />
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.iconButton}
-                          onPress={() => removeLineItem(index)}
-                        >
+                        </PressableRow>
+                        <PressableRow style={styles.iconButton} onPress={() => removeLineItem(index)} >
                           <Feather name="trash-2" size={14} color={colors.destructive} />
-                        </TouchableOpacity>
+                        </PressableRow>
                       </View>
                     </View>
                   );
                 })}
 
                 <View style={styles.addButtonsRow}>
-                  <TouchableOpacity
-                    style={styles.addItemButton}
-                    onPress={handleAddLineItem}
-                  >
+                  <PressableRow style={styles.addItemButton} onPress={handleAddLineItem} >
                     <Feather name="plus" size={16} color={colors.foreground} />
                     <Text style={styles.addItemText}>Add Item</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.catalogButton}
-                    onPress={handleOpenCatalog}
-                  >
+                  </PressableRow>
+                  <PressableRow style={styles.catalogButton} onPress={handleOpenCatalog} >
                     <Feather name="book-open" size={16} color={colors.foreground} />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.catalogButton, { backgroundColor: colors.primaryLight }]}
-                    onPress={() => setShowAIGenerator(true)}
-                  >
+                  </PressableRow>
+                  <PressableRow style={[styles.catalogButton, { backgroundColor: colors.primaryLight }]} onPress={() => setShowAIGenerator(true)} >
                     <Feather name="zap" size={16} color={colors.primary} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
 
@@ -1407,33 +1390,23 @@ export default function NewQuoteScreen() {
                     <Feather name="dollar-sign" size={16} color={colors.primary} />
                     <Text style={styles.cardHeaderText}>Require Deposit</Text>
                   </View>
-                  <TouchableOpacity
-                    style={[styles.toggleSwitch, form.requireDeposit && styles.toggleSwitchOn]}
-                    onPress={() => setForm({ ...form, requireDeposit: !form.requireDeposit })}
-                  >
+                  <PressableRow style={[styles.toggleSwitch, form.requireDeposit && styles.toggleSwitchOn]} onPress={() => setForm({ ...form, requireDeposit: !form.requireDeposit })} >
                     <View style={[styles.toggleKnob, form.requireDeposit && styles.toggleKnobOn]} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
                 {form.requireDeposit && (
                   <View style={styles.depositOptions}>
                     <Text style={styles.depositLabel}>Deposit Amount</Text>
                     <View style={styles.depositPercentRow}>
                       {['25', '50', '75'].map((percent) => (
-                        <TouchableOpacity
-                          key={percent}
-                          style={[
-                            styles.depositPercentOption,
-                            form.depositPercent === percent && styles.depositPercentSelected
-                          ]}
-                          onPress={() => setForm({ ...form, depositPercent: percent })}
-                        >
+                        <PressableRow key={percent} style={[ styles.depositPercentOption, form.depositPercent === percent && styles.depositPercentSelected ]} onPress={() => setForm({ ...form, depositPercent: percent })} >
                           <Text style={[
                             styles.depositPercentText,
                             form.depositPercent === percent && styles.depositPercentTextSelected
                           ]}>
                             {percent}%
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       ))}
                     </View>
                     <Text style={styles.depositAmount}>
@@ -1462,22 +1435,7 @@ export default function NewQuoteScreen() {
               </View>
 
               {/* Submit Button - Uses business primary color */}
-              <TouchableOpacity
-                style={{
-                  backgroundColor: colors.primary,
-                  paddingVertical: 14,
-                  paddingHorizontal: 20,
-                  borderRadius: 10,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  opacity: isLoading ? 0.6 : 1,
-                }}
-                onPress={handleSave}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
+              <PressableRow style={{ backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: isLoading ? 0.6 : 1, }} onPress={handleSave} disabled={isLoading} >
                 {isLoading ? (
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
@@ -1486,7 +1444,7 @@ export default function NewQuoteScreen() {
                     <Text style={{ color: colors.primaryForeground, fontSize: 16, fontWeight: '600' }}>{isEditing ? 'Update Quote' : 'Create Quote'}</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             </ScrollView>
             )}
           </KeyboardAvoidingView>
@@ -1508,16 +1466,9 @@ export default function NewQuoteScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{showQuickAddClient ? 'Quick Add Client' : 'Select Client'}</Text>
-            <TouchableOpacity onPress={() => {
-              if (showQuickAddClient) {
-                setShowQuickAddClient(false);
-                setQuickAddForm({ name: '', email: '', phone: '' });
-              } else {
-                setShowClientPicker(false);
-              }
-            }}>
+            <PressableRow onPress={() => { if (showQuickAddClient) { setShowQuickAddClient(false); setQuickAddForm({ name: '', email: '', phone: '' }); } else { setShowClientPicker(false); } }}>
               <Feather name={showQuickAddClient ? 'arrow-left' : 'x'} size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           
           {showQuickAddClient ? (
@@ -1557,34 +1508,19 @@ export default function NewQuoteScreen() {
                     keyboardType="phone-pad"
                   />
                 </View>
-                <TouchableOpacity
-                  style={[styles.saveItemButton, { opacity: isCreatingClient ? 0.6 : 1 }]}
-                  onPress={handleQuickAddClient}
-                  disabled={isCreatingClient}
-                >
+                <PressableRow style={[styles.saveItemButton, { opacity: isCreatingClient ? 0.6 : 1 }]} onPress={handleQuickAddClient} disabled={isCreatingClient} >
                   {isCreatingClient ? (
                     <ActivityIndicator size="small" color={colors.primaryForeground} />
                   ) : (
                     <Text style={styles.saveItemButtonText}>Add & Select Client</Text>
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               </ScrollView>
             </KeyboardAvoidingView>
           ) : (
             <ScrollView style={styles.modalContent}>
               {/* Quick Add Client Button */}
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: colors.primaryLight,
-                  padding: 14,
-                  borderRadius: 10,
-                  marginBottom: 16,
-                  gap: 10,
-                }}
-                onPress={() => setShowQuickAddClient(true)}
-              >
+              <PressableRow style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryLight, padding: 14, borderRadius: 10, marginBottom: 16, gap: 10, }} onPress={() => setShowQuickAddClient(true)} >
                 <View style={{
                   width: 36,
                   height: 36,
@@ -1600,7 +1536,7 @@ export default function NewQuoteScreen() {
                   <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Create a new client without leaving this screen</Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.primary} />
-              </TouchableOpacity>
+              </PressableRow>
 
               {clients.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -1612,11 +1548,7 @@ export default function NewQuoteScreen() {
                 </View>
               ) : (
                 clients.map((client) => (
-                  <TouchableOpacity
-                    key={client.id}
-                    style={styles.clientOption}
-                    onPress={() => handleSelectClient(client)}
-                  >
+                  <PressableRow key={client.id} style={styles.clientOption} onPress={() => handleSelectClient(client)} >
                     <View style={styles.clientOptionAvatar}>
                       <Text style={styles.clientOptionAvatarText}>
                         {client.name.charAt(0).toUpperCase()}
@@ -1628,7 +1560,7 @@ export default function NewQuoteScreen() {
                         <Text style={styles.clientOptionEmail}>{client.email}</Text>
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))
               )}
             </ScrollView>
@@ -1649,9 +1581,9 @@ export default function NewQuoteScreen() {
             <Text style={styles.modalTitle}>
               {editingItemIndex === -1 ? 'Add Item' : 'Edit Item'}
             </Text>
-            <TouchableOpacity onPress={() => setShowLineItemEditor(false)}>
+            <PressableRow onPress={() => setShowLineItemEditor(false)}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <View style={styles.modalContent}>
             <View style={styles.inputGroup}>
@@ -1697,14 +1629,11 @@ export default function NewQuoteScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.saveItemButton}
-              onPress={handleSaveLineItem}
-            >
+            <PressableRow style={styles.saveItemButton} onPress={handleSaveLineItem} >
               <Text style={styles.saveItemButtonText}>
                 {editingItemIndex === -1 ? 'Add Item' : 'Save Changes'}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </AppBottomSheet>
@@ -1720,9 +1649,9 @@ export default function NewQuoteScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>AI Quote Generator</Text>
-            <TouchableOpacity onPress={() => { setShowAIGenerator(false); setShowVoiceRecorder(false); }}>
+            <PressableRow onPress={() => { setShowAIGenerator(false); setShowVoiceRecorder(false); }}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <ScrollView style={styles.modalContent} keyboardShouldPersistTaps="handled">
             <Text style={{ fontSize: 14, color: colors.mutedForeground, marginBottom: 16 }}>
@@ -1742,60 +1671,18 @@ export default function NewQuoteScreen() {
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  backgroundColor: colors.muted,
-                  borderRadius: 10,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-                onPress={() => handlePickAIPhoto('camera')}
-              >
+              <PressableRow style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.muted, borderRadius: 10, paddingVertical: 12, borderWidth: 1, borderColor: colors.border, }} onPress={() => handlePickAIPhoto('camera')} >
                 <Feather name="camera" size={18} color={colors.foreground} />
                 <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  backgroundColor: colors.muted,
-                  borderRadius: 10,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-                onPress={() => handlePickAIPhoto('gallery')}
-              >
+              </PressableRow>
+              <PressableRow style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.muted, borderRadius: 10, paddingVertical: 12, borderWidth: 1, borderColor: colors.border, }} onPress={() => handlePickAIPhoto('gallery')} >
                 <Feather name="image" size={18} color={colors.foreground} />
                 <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>Gallery</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  backgroundColor: showVoiceRecorder ? colors.primaryLight : colors.muted,
-                  borderRadius: 10,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: showVoiceRecorder ? colors.primary : colors.border,
-                }}
-                onPress={() => setShowVoiceRecorder(!showVoiceRecorder)}
-              >
+              </PressableRow>
+              <PressableRow style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: showVoiceRecorder ? colors.primaryLight : colors.muted, borderRadius: 10, paddingVertical: 12, borderWidth: 1, borderColor: showVoiceRecorder ? colors.primary : colors.border, }} onPress={() => setShowVoiceRecorder(!showVoiceRecorder)} >
                 <Feather name="mic" size={18} color={showVoiceRecorder ? colors.primary : colors.foreground} />
                 <Text style={{ fontSize: 14, fontWeight: '500', color: showVoiceRecorder ? colors.primary : colors.foreground }}>Voice</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {aiPhotos.length > 0 && (
@@ -1810,22 +1697,9 @@ export default function NewQuoteScreen() {
                         source={{ uri }}
                         style={{ width: 80, height: 80, borderRadius: 10, backgroundColor: colors.muted }}
                       />
-                      <TouchableOpacity
-                        style={{
-                          position: 'absolute',
-                          top: -6,
-                          right: -6,
-                          width: 22,
-                          height: 22,
-                          borderRadius: 11,
-                          backgroundColor: colors.destructive,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        onPress={() => handleRemoveAIPhoto(index)}
-                      >
+                      <PressableRow style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.destructive, alignItems: 'center', justifyContent: 'center', }} onPress={() => handleRemoveAIPhoto(index)} >
                         <Feather name="x" size={12} color={colors.white} />
-                      </TouchableOpacity>
+                      </PressableRow>
                     </View>
                   ))}
                 </ScrollView>
@@ -1848,11 +1722,7 @@ export default function NewQuoteScreen() {
               </View>
             )}
 
-            <TouchableOpacity
-              style={[styles.saveItemButton, (isGeneratingAI || isUploadingPhotos) && { opacity: 0.6 }]}
-              onPress={handleGenerateAI}
-              disabled={isGeneratingAI || isUploadingPhotos}
-            >
+            <PressableRow style={[styles.saveItemButton, (isGeneratingAI || isUploadingPhotos) && { opacity: 0.6 }]} onPress={handleGenerateAI} disabled={isGeneratingAI || isUploadingPhotos} >
               {isGeneratingAI || isUploadingPhotos ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
@@ -1866,7 +1736,7 @@ export default function NewQuoteScreen() {
                   <Text style={styles.saveItemButtonText}>Generate Quote Items</Text>
                 </View>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </ScrollView>
         </View>
       </AppBottomSheet>
@@ -1882,9 +1752,9 @@ export default function NewQuoteScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Product Catalog</Text>
-            <TouchableOpacity onPress={() => { setShowCatalog(false); setCatalogSearch(''); }}>
+            <PressableRow onPress={() => { setShowCatalog(false); setCatalogSearch(''); }}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
             <View style={{
@@ -1911,9 +1781,9 @@ export default function NewQuoteScreen() {
                 autoCorrect={false}
               />
               {catalogSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setCatalogSearch('')}>
+                <PressableRow onPress={() => setCatalogSearch('')}>
                   <Feather name="x-circle" size={16} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
           </View>
@@ -1982,11 +1852,7 @@ export default function NewQuoteScreen() {
                     </View>
                   )}
                   {grouped[category].map((item: any) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={styles.clientOption}
-                      onPress={() => { handleAddCatalogItem(item); setCatalogSearch(''); }}
-                    >
+                    <PressableRow key={item.id} style={styles.clientOption} onPress={() => { handleAddCatalogItem(item); setCatalogSearch(''); }} >
                       <View style={[styles.clientOptionAvatar, { backgroundColor: colors.muted }]}>
                         <Feather name="package" size={18} color={colors.foreground} />
                       </View>
@@ -1998,7 +1864,7 @@ export default function NewQuoteScreen() {
                         </Text>
                       </View>
                       <Feather name="plus" size={20} color={colors.primary} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               ));

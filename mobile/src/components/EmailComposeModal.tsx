@@ -13,6 +13,7 @@ import {
   Alert,
   Linking,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, typography } from '../lib/design-tokens';
@@ -336,9 +337,9 @@ export function EmailComposeModal({
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <PressableRow onPress={onClose} style={styles.closeButton}>
             <Feather name="x" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>
               {type === 'quote' ? 'Send Quote' : type === 'invoice' ? 'Send Invoice' : 'Send Receipt'}
@@ -351,11 +352,7 @@ export function EmailComposeModal({
         {/* Tabs */}
         <View style={styles.tabsContainer}>
           {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => setActiveTab(tab.key)}
-            >
+            <PressableRow key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)} >
               <Feather
                 name={tab.icon}
                 size={16}
@@ -369,7 +366,7 @@ export function EmailComposeModal({
               >
                 {tab.label}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
 
@@ -414,33 +411,21 @@ export function EmailComposeModal({
 
               {/* Quick Actions */}
               <View style={styles.quickActions}>
-                <TouchableOpacity
-                  style={styles.quickActionButton}
-                  onPress={() => setActiveTab('ai')}
-                >
+                <PressableRow style={styles.quickActionButton} onPress={() => setActiveTab('ai')} >
                   <Feather name="zap" size={16} color={colors.primary} />
                   <Text style={styles.quickActionText}>AI</Text>
-                </TouchableOpacity>
+                </PressableRow>
                 
                 {/* Tone adjustment buttons like web app */}
-                <TouchableOpacity
-                  style={styles.toneButton}
-                  onPress={() => adjustTone('friendly')}
-                >
+                <PressableRow style={styles.toneButton} onPress={() => adjustTone('friendly')} >
                   <Text style={styles.toneButtonText}>Friendly</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.toneButton}
-                  onPress={() => adjustTone('formal')}
-                >
+                </PressableRow>
+                <PressableRow style={styles.toneButton} onPress={() => adjustTone('formal')} >
                   <Text style={styles.toneButtonText}>Formal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.toneButton}
-                  onPress={() => adjustTone('brief')}
-                >
+                </PressableRow>
+                <PressableRow style={styles.toneButton} onPress={() => adjustTone('brief')} >
                   <Text style={styles.toneButtonText}>Brief</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
               
               {/* Info about auto-attached content */}
@@ -467,13 +452,10 @@ export function EmailComposeModal({
               </View>
 
               {!aiSuggestion && !isGeneratingAI && (
-                <TouchableOpacity
-                  style={styles.generateButton}
-                  onPress={generateAISuggestion}
-                >
+                <PressableRow style={styles.generateButton} onPress={generateAISuggestion} >
                   <Feather name="zap" size={18} color={colors.primaryForeground} />
                   <Text style={styles.generateButtonText}>Generate AI Suggestion</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
 
               {isGeneratingAI && (
@@ -496,21 +478,15 @@ export function EmailComposeModal({
                   </View>
 
                   <View style={styles.suggestionActions}>
-                    <TouchableOpacity
-                      style={styles.applyButton}
-                      onPress={applyAISuggestion}
-                    >
+                    <PressableRow style={styles.applyButton} onPress={applyAISuggestion} >
                       <Feather name="check" size={16} color={colors.primaryForeground} />
                       <Text style={styles.applyButtonText}>Use This Email</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
 
-                    <TouchableOpacity
-                      style={styles.regenerateButton}
-                      onPress={generateAISuggestion}
-                    >
+                    <PressableRow style={styles.regenerateButton} onPress={generateAISuggestion} >
                       <Feather name="refresh-cw" size={16} color={colors.foreground} />
                       <Text style={styles.regenerateButtonText}>Regenerate</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   </View>
                 </View>
               )}
@@ -557,15 +533,7 @@ export function EmailComposeModal({
         <View style={styles.footer}>
           <View style={styles.footerButtons}>
             {/* Primary: Use JobRunner (backend send) */}
-            <TouchableOpacity
-              onPress={handleSend}
-              disabled={isSending || isOpeningEmailApp || !subject.trim() || !message.trim()}
-              style={[
-                styles.footerButton,
-                styles.footerButtonPrimary,
-                (isSending || !subject.trim() || !message.trim()) && styles.footerButtonDisabled
-              ]}
-            >
+            <PressableRow onPress={handleSend} disabled={isSending || isOpeningEmailApp || !subject.trim() || !message.trim()} style={[ styles.footerButton, styles.footerButtonPrimary, (isSending || !subject.trim() || !message.trim()) && styles.footerButtonDisabled ]} >
               {isSending ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
@@ -574,18 +542,10 @@ export function EmailComposeModal({
                   <Text style={styles.footerButtonPrimaryText}>Use JobRunner</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
 
             {/* Secondary: Open with Email App */}
-            <TouchableOpacity
-              onPress={showEmailAppOptions}
-              disabled={isSending || isOpeningEmailApp || !subject.trim() || !message.trim()}
-              style={[
-                styles.footerButton,
-                styles.footerButtonSecondary,
-                (isOpeningEmailApp || !subject.trim() || !message.trim()) && styles.footerButtonDisabled
-              ]}
-            >
+            <PressableRow onPress={showEmailAppOptions} disabled={isSending || isOpeningEmailApp || !subject.trim() || !message.trim()} style={[ styles.footerButton, styles.footerButtonSecondary, (isOpeningEmailApp || !subject.trim() || !message.trim()) && styles.footerButtonDisabled ]} >
               {isOpeningEmailApp ? (
                 <ActivityIndicator size="small" color={colors.foreground} />
               ) : (
@@ -594,7 +554,7 @@ export function EmailComposeModal({
                   <Text style={styles.footerButtonSecondaryText}>Open Email App</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <Text style={styles.footerHint}>
             JobRunner sends automatically with PDF attached. Email App lets you review first.
@@ -621,42 +581,30 @@ export function EmailComposeModal({
                 Select which app to compose your email in
               </Text>
 
-              <TouchableOpacity
-                style={styles.emailAppOption}
-                onPress={() => openEmailInApp('gmail')}
-              >
+              <PressableRow style={styles.emailAppOption} onPress={() => openEmailInApp('gmail')} >
                 <View style={[styles.emailAppIcon, { backgroundColor: '#EA4335' }]}>
                   <Feather name="mail" size={20} color={colors.white} />
                 </View>
                 <Text style={styles.emailAppLabel}>Gmail</Text>
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity
-                style={styles.emailAppOption}
-                onPress={() => openEmailInApp('outlook')}
-              >
+              <PressableRow style={styles.emailAppOption} onPress={() => openEmailInApp('outlook')} >
                 <View style={[styles.emailAppIcon, { backgroundColor: '#0078D4' }]}>
                   <Feather name="mail" size={20} color={colors.white} />
                 </View>
                 <Text style={styles.emailAppLabel}>Outlook</Text>
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity
-                style={styles.emailAppOption}
-                onPress={() => openEmailInApp('default')}
-              >
+              <PressableRow style={styles.emailAppOption} onPress={() => openEmailInApp('default')} >
                 <View style={[styles.emailAppIcon, { backgroundColor: colors.muted }]}>
                   <Feather name="mail" size={20} color={colors.foreground} />
                 </View>
                 <Text style={styles.emailAppLabel}>Default Email</Text>
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity
-                style={styles.emailAppCancel}
-                onPress={() => setShowEmailAppSelector(false)}
-              >
+              <PressableRow style={styles.emailAppCancel} onPress={() => setShowEmailAppSelector(false)} >
                 <Text style={styles.emailAppCancelText}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </TouchableOpacity>
         </Modal>

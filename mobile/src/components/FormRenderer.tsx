@@ -12,6 +12,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../lib/api';
@@ -253,12 +254,7 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
       case 'checkbox':
         return (
           <View key={field.id} style={styles.fieldContainer}>
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => !readOnly && handleFieldChange(field.id, !value)}
-              activeOpacity={0.7}
-              disabled={readOnly}
-            >
+            <PressableRow style={styles.checkboxRow} onPress={() => !readOnly && handleFieldChange(field.id, !value)} disabled={readOnly} >
               <View style={[styles.checkbox, value && styles.checkboxChecked]}>
                 {value && <Feather name="check" size={14} color={colors.primaryForeground} />}
               </View>
@@ -266,7 +262,7 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
                 {field.label}
                 {field.required && <Text style={styles.required}> *</Text>}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
             {field.helpText && (
               <Text style={styles.helpText}>{field.helpText}</Text>
             )}
@@ -281,18 +277,12 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
               {field.required && <Text style={styles.required}> *</Text>}
             </Text>
             {field.options?.map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={styles.radioRow}
-                onPress={() => !readOnly && handleFieldChange(field.id, option)}
-                activeOpacity={0.7}
-                disabled={readOnly}
-              >
+              <PressableRow key={option} style={styles.radioRow} onPress={() => !readOnly && handleFieldChange(field.id, option)} disabled={readOnly} >
                 <View style={[styles.radio, value === option && styles.radioSelected]}>
                   {value === option && <View style={styles.radioInner} />}
                 </View>
                 <Text style={styles.radioLabel}>{option}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
             {field.helpText && (
               <Text style={styles.helpText}>{field.helpText}</Text>
@@ -309,23 +299,14 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
             </Text>
             <View style={styles.selectOptions}>
               {field.options?.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.selectOption,
-                    value === option && styles.selectOptionActive
-                  ]}
-                  onPress={() => !readOnly && handleFieldChange(field.id, option)}
-                  activeOpacity={0.7}
-                  disabled={readOnly}
-                >
+                <PressableRow key={option} style={[ styles.selectOption, value === option && styles.selectOptionActive ]} onPress={() => !readOnly && handleFieldChange(field.id, option)} disabled={readOnly} >
                   <Text style={[
                     styles.selectOptionText,
                     value === option && styles.selectOptionTextActive
                   ]}>
                     {option}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
             {field.helpText && (
@@ -368,24 +349,16 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
                 <Feather name="check-circle" size={24} color={colors.success} />
                 <Text style={styles.photoText}>Photo captured</Text>
                 {!readOnly && (
-                  <TouchableOpacity
-                    onPress={() => handleFieldChange(field.id, null)}
-                    style={styles.photoRemove}
-                  >
+                  <PressableRow onPress={() => handleFieldChange(field.id, null)} style={styles.photoRemove} >
                     <Feather name="x" size={20} color={colors.destructive} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </View>
             ) : (
-              <TouchableOpacity
-                style={styles.photoButton}
-                onPress={() => handlePhotoCapture(field.id)}
-                activeOpacity={0.7}
-                disabled={readOnly}
-              >
+              <PressableRow style={styles.photoButton} onPress={() => handlePhotoCapture(field.id)} disabled={readOnly} >
                 <Feather name="camera" size={20} color={colors.primary} />
                 <Text style={styles.photoButtonText}>Take Photo</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
             {field.helpText && (
               <Text style={styles.helpText}>{field.helpText}</Text>
@@ -405,24 +378,16 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
                 <Feather name="check-circle" size={24} color={colors.success} />
                 <Text style={styles.signatureText}>Signature captured</Text>
                 {!readOnly && (
-                  <TouchableOpacity
-                    onPress={() => handleFieldChange(field.id, null)}
-                    style={styles.signatureRemove}
-                  >
+                  <PressableRow onPress={() => handleFieldChange(field.id, null)} style={styles.signatureRemove} >
                     <Feather name="x" size={20} color={colors.destructive} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </View>
             ) : (
-              <TouchableOpacity
-                style={styles.signatureButton}
-                onPress={() => setShowSignaturePad(field.id)}
-                activeOpacity={0.7}
-                disabled={readOnly}
-              >
+              <PressableRow style={styles.signatureButton} onPress={() => setShowSignaturePad(field.id)} disabled={readOnly} >
                 <Feather name="edit-3" size={20} color={colors.primary} />
                 <Text style={styles.signatureButtonText}>Capture Signature</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
             {field.helpText && (
               <Text style={styles.helpText}>{field.helpText}</Text>
@@ -509,14 +474,9 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
         <View style={styles.formContainer}>
           <View style={styles.formHeader}>
             <Text style={styles.formTitle}>{selectedForm.name}</Text>
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedForm(null);
-                setFormData({});
-              }}
-            >
+            <PressableRow onPress={() => { setSelectedForm(null); setFormData({}); }} >
               <Feather name="x" size={24} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           
           {selectedForm.description && (
@@ -527,12 +487,7 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
             {selectedForm.fields.map(renderField)}
           </View>
 
-          <TouchableOpacity
-            style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-            onPress={handleSubmitForm}
-            disabled={isSubmitting}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]} onPress={handleSubmitForm} disabled={isSubmitting} >
             {isSubmitting ? (
               <ActivityIndicator size="small" color={colors.primaryForeground} />
             ) : (
@@ -541,17 +496,13 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
                 <Text style={styles.submitButtonText}>Submit Form</Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       ) : forms.length > 0 ? (
-        <TouchableOpacity
-          style={styles.addFormButton}
-          onPress={() => setShowFormSelector(true)}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={styles.addFormButton} onPress={() => setShowFormSelector(true)} >
           <Feather name="plus" size={18} color={colors.primaryForeground} />
           <Text style={styles.addFormButtonText}>Add Checklist</Text>
-        </TouchableOpacity>
+        </PressableRow>
       ) : (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No checklists available</Text>
@@ -568,20 +519,16 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Checklist</Text>
-            <TouchableOpacity onPress={() => setShowFormSelector(false)}>
+            <PressableRow onPress={() => setShowFormSelector(false)}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <FlatList
             data={forms}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.formsList}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.formItem}
-                onPress={() => handleSelectForm(item)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.formItem} onPress={() => handleSelectForm(item)} >
                 <View style={styles.formItemIcon}>
                   <Feather name="file-text" size={20} color={colors.primary} />
                 </View>
@@ -597,7 +544,7 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
                   </Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             )}
           />
         </View>
@@ -613,9 +560,9 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Capture Signature</Text>
-            <TouchableOpacity onPress={() => setShowSignaturePad(null)}>
+            <PressableRow onPress={() => setShowSignaturePad(null)}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <View style={styles.signaturePadContainer}>
             <SignaturePad

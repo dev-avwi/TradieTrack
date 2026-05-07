@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { PressableRow } from './PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../lib/theme';
 
@@ -241,17 +242,7 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
       const today = isToday(day);
 
       days.push(
-        <TouchableOpacity
-          key={day}
-          style={[
-            styles.dayCell,
-            selected && styles.selectedDay,
-            today && !selected && styles.todayDay,
-            disabled && styles.disabledDay,
-          ]}
-          onPress={() => !disabled && handleSelectDate(day)}
-          disabled={disabled}
-        >
+        <PressableRow key={day} style={[ styles.dayCell, selected && styles.selectedDay, today && !selected && styles.todayDay, disabled && styles.disabledDay, ]} onPress={() => !disabled && handleSelectDate(day)} disabled={disabled} >
           <Text
             style={[
               styles.dayText,
@@ -262,7 +253,7 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
           >
             {day}
           </Text>
-        </TouchableOpacity>
+        </PressableRow>
       );
     }
 
@@ -272,14 +263,10 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
   return (
     <View>
       {label && <Text style={styles.label}>{label}</Text>}
-      <TouchableOpacity
-        style={styles.dateButton}
-        onPress={() => setShowPicker(true)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.dateButton} onPress={() => setShowPicker(true)} >
         <Feather name="calendar" size={20} color={colors.primary} />
         <Text style={styles.dateButtonText}>{formatDate(value)}</Text>
-      </TouchableOpacity>
+      </PressableRow>
 
       <Modal
       onRequestClose={() => setShowPicker(false)} visible={showPicker} transparent animationType="fade">
@@ -287,21 +274,21 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
           <View style={styles.pickerContainer}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>Select Date</Text>
-              <TouchableOpacity onPress={() => setShowPicker(false)}>
+              <PressableRow onPress={() => setShowPicker(false)}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <View style={styles.monthHeader}>
-              <TouchableOpacity onPress={handlePrevMonth} style={styles.monthButton}>
+              <PressableRow onPress={handlePrevMonth} style={styles.monthButton}>
                 <Feather name="chevron-left" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
               <Text style={styles.monthTitle}>
                 {MONTHS[viewMonth]} {viewYear}
               </Text>
-              <TouchableOpacity onPress={handleNextMonth} style={styles.monthButton}>
+              <PressableRow onPress={handleNextMonth} style={styles.monthButton}>
                 <Feather name="chevron-right" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <View style={styles.daysHeader}>
@@ -315,16 +302,9 @@ export function DatePicker({ value, onChange, minimumDate, label }: DatePickerPr
             <View style={styles.calendarGrid}>{renderCalendar()}</View>
 
             <View style={styles.pickerFooter}>
-              <TouchableOpacity
-                style={styles.todayButton}
-                onPress={() => {
-                  const today = new Date();
-                  setViewMonth(today.getMonth());
-                  setViewYear(today.getFullYear());
-                }}
-              >
+              <PressableRow style={styles.todayButton} onPress={() => { const today = new Date(); setViewMonth(today.getMonth()); setViewYear(today.getFullYear()); }} >
                 <Text style={styles.todayButtonText}>Go to Today</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
         </View>

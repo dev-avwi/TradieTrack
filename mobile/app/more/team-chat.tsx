@@ -14,6 +14,7 @@ import {
   Image,
   Linking,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -471,9 +472,9 @@ export default function TeamChatScreen() {
         options={{ 
           title: 'Team Chat',
           headerRight: () => (
-            <TouchableOpacity onPress={() => fetchMessages(false)} style={styles.headerButton}>
+            <PressableRow onPress={() => fetchMessages(false)} style={styles.headerButton}>
               <Feather name="refresh-cw" size={20} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           )
         }} 
       />
@@ -494,13 +495,7 @@ export default function TeamChatScreen() {
             </Text>
           </View>
           {pinnedMessages.length > 0 && (
-            <TouchableOpacity
-              style={[
-                styles.pinnedFilter,
-                showPinnedOnly && styles.pinnedFilterActive
-              ]}
-              onPress={() => setShowPinnedOnly(!showPinnedOnly)}
-            >
+            <PressableRow style={[ styles.pinnedFilter, showPinnedOnly && styles.pinnedFilterActive ]} onPress={() => setShowPinnedOnly(!showPinnedOnly)} >
               <Feather name="bookmark" size={14} color={showPinnedOnly ? colors.primaryForeground : colors.warning} />
               <Text style={[
                 styles.pinnedFilterText,
@@ -508,7 +503,7 @@ export default function TeamChatScreen() {
               ]}>
                 {pinnedMessages.length}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
 
@@ -584,12 +579,7 @@ export default function TeamChatScreen() {
                     />
                   )}
                   
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onLongPress={handleLongPress}
-                    delayLongPress={400}
-                    style={{ maxWidth: '75%' }}
-                  >
+                  <PressableRow onLongPress={handleLongPress} delayLongPress={400} style={{ maxWidth: '75%' }} >
                     <View style={[
                       styles.messageBubble,
                       isCurrentUser ? styles.messageBubbleUser : styles.messageBubbleOther,
@@ -608,40 +598,17 @@ export default function TeamChatScreen() {
                       )}
 
                       {msg.attachmentUrl && msg.messageType === 'image' && (
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          onPress={() => {
-                            const u = resolveAttachmentUrl(msg.attachmentUrl);
-                            if (u) Linking.openURL(u);
-                          }}
-                          style={{ marginBottom: msg.message ? 6 : 0 }}
-                        >
+                        <PressableRow onPress={() => { const u = resolveAttachmentUrl(msg.attachmentUrl); if (u) Linking.openURL(u); }} style={{ marginBottom: msg.message ? 6 : 0 }} >
                           <Image
                             source={{ uri: resolveAttachmentUrl(msg.attachmentUrl) || '' }}
                             style={{ width: 220, height: 220, borderRadius: 8, backgroundColor: colors.cardBorder }}
                             resizeMode="cover"
                           />
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
 
                       {msg.attachmentUrl && msg.messageType !== 'image' && (
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            const u = resolveAttachmentUrl(msg.attachmentUrl);
-                            if (u) Linking.openURL(u);
-                          }}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 8,
-                            paddingVertical: 8,
-                            paddingHorizontal: 10,
-                            borderRadius: 8,
-                            backgroundColor: isCurrentUser ? 'rgba(255,255,255,0.15)' : colors.cardBorder,
-                            marginBottom: msg.message ? 6 : 0,
-                          }}
-                        >
+                        <PressableRow onPress={() => { const u = resolveAttachmentUrl(msg.attachmentUrl); if (u) Linking.openURL(u); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: isCurrentUser ? 'rgba(255,255,255,0.15)' : colors.cardBorder, marginBottom: msg.message ? 6 : 0, }} >
                           <Feather name="file" size={16} color={isCurrentUser ? colors.primaryForeground : colors.foreground} />
                           <Text
                             numberOfLines={1}
@@ -654,7 +621,7 @@ export default function TeamChatScreen() {
                           >
                             {msg.attachmentName || 'Attachment'}
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
 
                       {!!msg.message && msg.message !== msg.attachmentName && (
@@ -673,18 +640,11 @@ export default function TeamChatScreen() {
                         {formatTime(msg.createdAt)}
                       </Text>
                       {(msg as any).sendStatus === 'failed' && (
-                        <TouchableOpacity
-                          onPress={async () => {
-                            const { offlineStorage } = await import('@/lib/offline-storage');
-                            const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id);
-                            if (ok) fetchMessages(false);
-                          }}
-                          style={{ marginTop: 4 }}
-                        >
+                        <PressableRow onPress={async () => { const { offlineStorage } = await import('@/lib/offline-storage'); const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id); if (ok) fetchMessages(false); }} style={{ marginTop: 4 }} >
                           <Text style={{ color: colors.destructive, fontSize: 11, fontWeight: '600' }}>
                             Failed to send · tap to retry
                           </Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
                     </View>
 
@@ -694,13 +654,7 @@ export default function TeamChatScreen() {
                         { position: 'relative', bottom: 'auto', right: 'auto', marginTop: 4 }
                       ]}>
                         {canPin && (
-                          <TouchableOpacity 
-                            style={styles.actionItem}
-                            onPress={() => {
-                              setSelectedMessageId(null);
-                              handlePinMessage(msg.id, !msg.isPinned);
-                            }}
-                          >
+                          <PressableRow style={styles.actionItem} onPress={() => { setSelectedMessageId(null); handlePinMessage(msg.id, !msg.isPinned); }} >
                             <Feather 
                               name={msg.isPinned ? "bookmark" : "bookmark"} 
                               size={16} 
@@ -709,22 +663,19 @@ export default function TeamChatScreen() {
                             <Text style={styles.actionText}>
                               {msg.isPinned ? 'Unpin' : 'Pin'}
                             </Text>
-                          </TouchableOpacity>
+                          </PressableRow>
                         )}
                         {canDelete && (
-                          <TouchableOpacity 
-                            style={styles.actionItem}
-                            onPress={confirmDelete}
-                          >
+                          <PressableRow style={styles.actionItem} onPress={confirmDelete} >
                             <Feather name="trash-2" size={16} color={colors.destructive} />
                             <Text style={[styles.actionText, { color: colors.destructive }]}>
                               Delete
                             </Text>
-                          </TouchableOpacity>
+                          </PressableRow>
                         )}
                       </View>
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               );
             })
@@ -732,21 +683,9 @@ export default function TeamChatScreen() {
         </ScrollView>
 
         <View style={styles.inputContainer}>
-          <TouchableOpacity
-            onPress={handleAttachment}
-            disabled={isSending}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: isSending ? 0.5 : 1,
-            }}
-            accessibilityLabel="Attach photo"
-          >
+          <PressableRow onPress={handleAttachment} disabled={isSending} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', opacity: isSending ? 0.5 : 1, }} accessibilityLabel="Attach photo" >
             <Feather name="paperclip" size={20} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
           <TextInput
             value={messageText}
             onChangeText={setMessageText}
@@ -759,20 +698,13 @@ export default function TeamChatScreen() {
             returnKeyType="send"
             onSubmitEditing={handleSendMessage}
           />
-          <TouchableOpacity
-            onPress={handleSendMessage}
-            disabled={!messageText.trim() || isSending}
-            style={[
-              styles.sendButton,
-              (!messageText.trim() || isSending) && styles.sendButtonDisabled
-            ]}
-          >
+          <PressableRow onPress={handleSendMessage} disabled={!messageText.trim() || isSending} style={[ styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled ]} >
             {isSending ? (
               <ActivityIndicator size="small" color={colors.primaryForeground} />
             ) : (
               <Feather name="send" size={20} color={colors.primaryForeground} />
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </KeyboardAvoidingView>
     </>

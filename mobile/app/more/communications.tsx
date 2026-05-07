@@ -11,6 +11,7 @@ import {
   TextInput,
   Linking,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -592,15 +593,7 @@ export default function CommunicationsScreen() {
     const statusConfig = getStatusConfig(item.status);
     
     return (
-      <TouchableOpacity
-        key={item.id}
-        style={styles.itemCard}
-        onPress={() => {
-          setSelectedItem(item);
-          setShowDetail(true);
-        }}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={item.id} style={styles.itemCard} onPress={() => { setSelectedItem(item); setShowDetail(true); }} >
         <View style={styles.itemContent}>
           <View style={[
             styles.itemIconContainer,
@@ -645,15 +638,12 @@ export default function CommunicationsScreen() {
               </View>
               
               {item.entityType && item.entityId && (
-                <TouchableOpacity 
-                  style={styles.entityLink}
-                  onPress={() => handleViewEntity(item.entityType!, item.entityId!)}
-                >
+                <PressableRow style={styles.entityLink} onPress={() => handleViewEntity(item.entityType!, item.entityId!)} >
                   <Feather name="external-link" size={12} color={colors.primary} />
                   <Text style={styles.entityLinkText}>
                     View {item.entityType} {item.entityNumber ? `#${item.entityNumber}` : ''}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
           </View>
@@ -671,7 +661,7 @@ export default function CommunicationsScreen() {
             </View>
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
   
@@ -684,11 +674,11 @@ export default function CommunicationsScreen() {
           <Text style={styles.pageTitle}>Communications</Text>
           <Text style={styles.pageSubtitle}>Emails & SMS history</Text>
         </View>
-        <TouchableOpacity onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <PressableRow onPress={onRefresh} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <View style={styles.heroIconWrap}>
             <Feather name="refresh-cw" size={15} color={colors.primary} />
           </View>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
       
       <View style={styles.statsRow}>
@@ -715,12 +705,7 @@ export default function CommunicationsScreen() {
             const isActive = activeTab === tab;
             const iconName = tab === 'all' ? 'inbox' : tab === 'email' ? 'mail' : 'message-square';
             return (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
-                onPress={() => setActiveTab(tab)}
-                activeOpacity={0.7}
-              >
+              <PressableRow key={tab} style={[styles.filterChip, isActive && styles.filterChipActive]} onPress={() => setActiveTab(tab)} >
                 <Feather
                   name={iconName as any}
                   size={13}
@@ -734,7 +719,7 @@ export default function CommunicationsScreen() {
                     {count}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </PressableRow>
             );
           })}
         </ScrollView>
@@ -750,9 +735,9 @@ export default function CommunicationsScreen() {
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
+          <PressableRow onPress={() => setSearchQuery('')}>
             <Feather name="x" size={iconSizes.sm} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         )}
       </View>
       
@@ -826,9 +811,9 @@ export default function CommunicationsScreen() {
                   <Text style={styles.modalTitle}>
                     {selectedItem.type === 'email' ? 'Email' : 'SMS'} Details
                   </Text>
-                  <TouchableOpacity onPress={() => setShowDetail(false)}>
+                  <PressableRow onPress={() => setShowDetail(false)}>
                     <Feather name="x" size={iconSizes.lg} color={colors.foreground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
                 
                 <ScrollView style={styles.modalBody}>
@@ -894,10 +879,7 @@ export default function CommunicationsScreen() {
                   </View>
                   
                   {selectedItem.entityType && selectedItem.entityId && (
-                    <TouchableOpacity
-                      style={[styles.detailSection, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
-                      onPress={() => handleViewEntity(selectedItem.entityType!, selectedItem.entityId!)}
-                    >
+                    <PressableRow style={[styles.detailSection, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} onPress={() => handleViewEntity(selectedItem.entityType!, selectedItem.entityId!)} >
                       <View>
                         <Text style={styles.detailLabel}>Related Document</Text>
                         <Text style={styles.detailValue}>
@@ -905,7 +887,7 @@ export default function CommunicationsScreen() {
                         </Text>
                       </View>
                       <Feather name="chevron-right" size={iconSizes.md} color={colors.primary} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   )}
                 </ScrollView>
               </>

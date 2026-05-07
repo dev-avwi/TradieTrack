@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { PressableRow } from './PressableRow';
 import * as ImagePicker from 'expo-image-picker';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../lib/theme';
@@ -335,11 +336,7 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
 
   return (
     <>
-      <TouchableOpacity
-        style={styles.trigger}
-        onPress={() => setShowModal(true)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.trigger} onPress={() => setShowModal(true)} >
         <View style={styles.triggerContent}>
           {value ? (
             <Image source={{ uri: value }} style={styles.logoPreview} />
@@ -356,7 +353,7 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
           </View>
         </View>
         <Feather name="upload" size={20} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
       <Modal
         visible={showModal}
@@ -366,13 +363,9 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
       >
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              onPress={() => !uploading && setShowModal(false)} 
-              style={styles.closeButton}
-              disabled={uploading}
-            >
+            <PressableRow onPress={() => !uploading && setShowModal(false)} style={styles.closeButton} disabled={uploading} >
               <Feather name="x" size={24} color={uploading ? colors.mutedForeground : colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={styles.modalTitle}>Business Logo</Text>
             <View style={{ width: 32 }} />
           </View>
@@ -403,35 +396,23 @@ export function LogoPicker({ value, onChange, label }: LogoPickerProps) {
             </View>
 
             <View style={styles.actions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => pickImage(false)}
-                disabled={uploading}
-              >
+              <PressableRow style={styles.actionButton} onPress={() => pickImage(false)} disabled={uploading} >
                 <Feather name="upload" size={24} color={colors.primary} />
                 <Text style={styles.actionButtonText}>Choose Photo</Text>
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => pickImage(true)}
-                disabled={uploading}
-              >
+              <PressableRow style={styles.actionButton} onPress={() => pickImage(true)} disabled={uploading} >
                 <Feather name="camera" size={24} color={colors.primary} />
                 <Text style={styles.actionButtonText}>Take Photo</Text>
-              </TouchableOpacity>
+              </PressableRow>
 
               {value && (
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.removeButton]}
-                  onPress={handleRemoveLogo}
-                  disabled={uploading}
-                >
+                <PressableRow style={[styles.actionButton, styles.removeButton]} onPress={handleRemoveLogo} disabled={uploading} >
                   <Feather name="trash-2" size={24} color={colors.destructive} />
                   <Text style={[styles.actionButtonText, styles.removeButtonText]}>
                     Remove Logo
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
 

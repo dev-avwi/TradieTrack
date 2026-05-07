@@ -10,6 +10,7 @@ import {
   Dimensions,
   Platform
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useStripeTerminal } from '../../src/hooks/useServices';
@@ -778,11 +779,7 @@ export default function TapToPaySetupScreen() {
             </View>
           </ScrollView>
 
-          <TouchableOpacity 
-            style={styles.termsCheckboxRow}
-            onPress={() => setTermsAccepted(!termsAccepted)}
-            data-testid="button-terms-checkbox"
-          >
+          <PressableRow style={styles.termsCheckboxRow} onPress={() => setTermsAccepted(!termsAccepted)} data-testid="button-terms-checkbox" >
             <View style={[
               styles.termsCheckbox,
               termsAccepted && styles.termsCheckboxChecked
@@ -792,7 +789,7 @@ export default function TapToPaySetupScreen() {
             <Text style={styles.termsCheckboxLabel}>
               I have read and agree to the Terms & Conditions for using Tap to Pay on iPhone
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
 
           <Button
             onPress={handleAcceptTerms}

@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography, shadows } from '../lib/design-tokens';
@@ -177,9 +178,9 @@ export function WorkspaceSwitcher({ visible, onClose, onSwitch }: WorkspaceSwitc
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Workspaces</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <PressableRow onPress={onClose} style={styles.closeButton}>
             <Feather name="x" size={22} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         {loading ? (
@@ -203,17 +204,13 @@ export function WorkspaceSwitcher({ visible, onClose, onSwitch }: WorkspaceSwitc
                         {invite.inviterName} invited you as {invite.roleName}
                       </Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.acceptButton}
-                      onPress={() => handleAcceptInvite(invite)}
-                      disabled={acceptingInvite === invite.id}
-                    >
+                    <PressableRow style={styles.acceptButton} onPress={() => handleAcceptInvite(invite)} disabled={acceptingInvite === invite.id} >
                       {acceptingInvite === invite.id ? (
                         <ActivityIndicator size="small" color={colors.primaryForeground} />
                       ) : (
                         <Text style={styles.acceptButtonText}>Accept</Text>
                       )}
-                    </TouchableOpacity>
+                    </PressableRow>
                   </View>
                 ))}
               </View>
@@ -258,13 +255,7 @@ export function WorkspaceSwitcher({ visible, onClose, onSwitch }: WorkspaceSwitc
                 const isSwitching = switching === biz.businessOwnerId;
 
                 return (
-                  <TouchableOpacity
-                    key={biz.businessOwnerId}
-                    style={[styles.businessCard, isActive && styles.businessCardActive]}
-                    onPress={() => handleSwitch(biz.businessOwnerId)}
-                    disabled={isSwitching || isActive}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={biz.businessOwnerId} style={[styles.businessCard, isActive && styles.businessCardActive]} onPress={() => handleSwitch(biz.businessOwnerId)} disabled={isSwitching || isActive} >
                     <View style={[styles.businessLogo, isActive && styles.businessLogoActive]}>
                       {biz.logoUrl ? (
                         <Image source={{ uri: biz.logoUrl }} style={styles.logoImage} />
@@ -298,7 +289,7 @@ export function WorkspaceSwitcher({ visible, onClose, onSwitch }: WorkspaceSwitc
                         <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               })}
             </View>
@@ -339,24 +330,12 @@ export function WorkspaceBadge({ onPress }: { onPress: () => void }) {
   if (businessCount <= 1) return null;
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: colors.primaryLight,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 3,
-        borderRadius: radius.full,
-      }}
-      activeOpacity={0.7}
-    >
+    <PressableRow onPress={onPress} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.primaryLight, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full, }} >
       <Feather name="repeat" size={12} color={colors.primary} />
       <Text style={{ ...typography.captionSmall, fontWeight: '600', color: colors.primary }}>
         {businessSettings?.businessName || 'Switch'}
       </Text>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 

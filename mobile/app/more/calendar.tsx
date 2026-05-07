@@ -9,6 +9,7 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore } from '../../src/lib/store';
@@ -672,40 +673,19 @@ export default function CalendarScreen() {
               <Text style={styles.pageSubtitle}>Schedule and track your jobs</Text>
             </View>
             <View style={styles.headerActions}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.dispatchButton}
-                onPress={() => router.push('/more/dispatch-board')}
-              >
+              <PressableRow style={styles.dispatchButton} onPress={() => router.push('/more/dispatch-board')} >
                 <Feather name="columns" size={16} color={colors.foreground} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.scheduleButton}
-                onPress={handleScheduleJob}
-              >
+              </PressableRow>
+              <PressableRow style={styles.scheduleButton} onPress={handleScheduleJob} >
                 <Feather name="plus" size={18} color={colors.primaryForeground} />
                 <Text style={styles.scheduleButtonText}>New Job</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
 
           <View style={styles.tabsContainer}>
             {SCHEDULE_TABS.map(tab => (
-              <TouchableOpacity
-                key={tab.key}
-                style={[styles.tabButton, viewMode === tab.key && styles.tabButtonActive]}
-                onPress={() => {
-                  if (tab.key === 'today') {
-                    setViewMode('today');
-                    setCurrentDate(new Date());
-                    setSelectedDate(new Date());
-                  } else {
-                    setViewMode(tab.key as ViewMode);
-                  }
-                }}
-                activeOpacity={0.7}
-              >
+              <PressableRow key={tab.key} style={[styles.tabButton, viewMode === tab.key && styles.tabButtonActive]} onPress={() => { if (tab.key === 'today') { setViewMode('today'); setCurrentDate(new Date()); setSelectedDate(new Date()); } else { setViewMode(tab.key as ViewMode); } }} >
                 <Feather 
                   name={tab.icon as any} 
                   size={14} 
@@ -714,22 +694,22 @@ export default function CalendarScreen() {
                 <Text style={[styles.tabText, viewMode === tab.key && styles.tabTextActive]}>
                   {tab.label}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </View>
 
           {viewMode !== 'today' && (
             <View style={styles.dateNavigation}>
-              <TouchableOpacity onPress={goToPrevious} style={styles.navButton} activeOpacity={0.7}>
+              <PressableRow onPress={goToPrevious} style={styles.navButton} >
                 <Feather name="chevron-left" size={20} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
               <View style={styles.dateRangeContainer}>
                 <Text style={styles.dateRangeText}>{getDateRangeLabel()}</Text>
                 <Text style={styles.jobsCountText}>{scheduledJobsCount} jobs scheduled</Text>
               </View>
-              <TouchableOpacity onPress={goToNext} style={styles.navButton} activeOpacity={0.7}>
+              <PressableRow onPress={goToNext} style={styles.navButton} >
                 <Feather name="chevron-right" size={20} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
 
@@ -801,27 +781,12 @@ export default function CalendarScreen() {
                     <View style={{ marginBottom: spacing.md }}>
                       <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.xs }}>Outside Hours</Text>
                       {earlyLateJobs.map(job => (
-                        <TouchableOpacity
-                          key={`early-${job.id}`}
-                          activeOpacity={0.7}
-                          onPress={() => router.push(`/job/${job.id}`)}
-                          style={{
-                            backgroundColor: colors.card,
-                            borderRadius: radius.md,
-                            padding: spacing.sm,
-                            marginBottom: spacing.xs,
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: spacing.sm,
-                          }}
-                        >
+                        <PressableRow key={`early-${job.id}`} onPress={() => router.push(`/job/${job.id}`)} style={{ backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.xs, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, }} >
                           <Feather name="clock" size={14} color={colors.mutedForeground} />
                           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{formatTime(job.scheduledAt)}</Text>
                           <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, flex: 1 }} numberOfLines={1}>{job.title}</Text>
                           <StatusBadge status={job.status} size="sm" />
-                        </TouchableOpacity>
+                        </PressableRow>
                       ))}
                     </View>
                   )}
@@ -857,28 +822,7 @@ export default function CalendarScreen() {
                       const isConflict = conflictingJobIds.has(job.id);
                       const accentColor = isConflict ? colors.destructive : colors.primary;
                       return (
-                        <TouchableOpacity
-                          key={job.id}
-                          activeOpacity={0.7}
-                          onPress={() => router.push(`/job/${job.id}`)}
-                          style={{
-                            position: 'absolute',
-                            top: pos.top + 1,
-                            left: 58,
-                            right: 10,
-                            height: Math.max(pos.height - 2, 32),
-                            backgroundColor: colors.card,
-                            borderLeftWidth: 3,
-                            borderLeftColor: accentColor,
-                            borderRadius: radius.md,
-                            paddingHorizontal: spacing.sm,
-                            paddingVertical: 4,
-                            justifyContent: 'center',
-                            zIndex: 5,
-                            borderWidth: StyleSheet.hairlineWidth,
-                            borderColor: colors.cardBorder,
-                          }}
-                        >
+                        <PressableRow key={job.id} onPress={() => router.push(`/job/${job.id}`)} style={{ position: 'absolute', top: pos.top + 1, left: 58, right: 10, height: Math.max(pos.height - 2, 32), backgroundColor: colors.card, borderLeftWidth: 3, borderLeftColor: accentColor, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: 4, justifyContent: 'center', zIndex: 5, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.cardBorder, }} >
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                             <Text style={{ fontSize: 11, fontWeight: '700', color: accentColor }}>
                               {formatTime(job.scheduledAt)}
@@ -895,7 +839,7 @@ export default function CalendarScreen() {
                               <Text style={{ fontSize: 10, color: colors.mutedForeground }} numberOfLines={1}>{job.address}</Text>
                             </View>
                           )}
-                        </TouchableOpacity>
+                        </PressableRow>
                       );
                     })}
                   </View>
@@ -911,16 +855,7 @@ export default function CalendarScreen() {
                 {weekDates.map((date, index) => {
                   const dateJobs = getJobsForDate(date);
                   return (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.weekDay,
-                        isToday(date) && styles.weekDayToday,
-                        isSelected(date) && styles.weekDaySelected,
-                      ]}
-                      onPress={() => setSelectedDate(date)}
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow key={index} style={[ styles.weekDay, isToday(date) && styles.weekDayToday, isSelected(date) && styles.weekDaySelected, ]} onPress={() => setSelectedDate(date)} >
                       <Text style={[
                         styles.weekDayName,
                         (isToday(date) || isSelected(date)) && styles.weekDayTextActive
@@ -941,7 +876,7 @@ export default function CalendarScreen() {
                           )}
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </PressableRow>
                   );
                 })}
               </View>
@@ -965,16 +900,7 @@ export default function CalendarScreen() {
                   }
                   const dateJobs = getJobsForDate(date);
                   return (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.monthDay,
-                        isToday(date) && styles.monthDayToday,
-                        isSelected(date) && styles.monthDaySelected,
-                      ]}
-                      onPress={() => setSelectedDate(date)}
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow key={index} style={[ styles.monthDay, isToday(date) && styles.monthDayToday, isSelected(date) && styles.monthDaySelected, ]} onPress={() => setSelectedDate(date)} >
                       <Text style={[
                         styles.monthDayNumber,
                         isToday(date) && styles.monthDayNumberToday,
@@ -994,7 +920,7 @@ export default function CalendarScreen() {
                           )}
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </PressableRow>
                   );
                 })}
               </View>
@@ -1038,12 +964,7 @@ export default function CalendarScreen() {
                 </View>
               ) : (
                 selectedDateJobs.map(job => (
-                  <TouchableOpacity
-                    key={job.id}
-                    style={[styles.jobCard, conflictingJobIds.has(job.id) && styles.conflictJobCard]}
-                    activeOpacity={0.7}
-                    onPress={() => router.push(`/job/${job.id}`)}
-                  >
+                  <PressableRow key={job.id} style={[styles.jobCard, conflictingJobIds.has(job.id) && styles.conflictJobCard]} onPress={() => router.push(`/job/${job.id}`)} >
                     <View style={styles.jobCardLeft}>
                       <View style={styles.jobTimeContainer}>
                         <Feather name="clock" size={14} color={colors.primary} />
@@ -1072,7 +993,7 @@ export default function CalendarScreen() {
                         </View>
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))
               )}
             </View>

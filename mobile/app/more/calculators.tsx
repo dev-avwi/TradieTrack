@@ -12,6 +12,7 @@ import {
   Platform,
   Share,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -575,10 +576,10 @@ function ShareResultsButton({ title, results, styles }: { title: string; results
   }, [title, results]);
 
   return (
-    <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+    <PressableRow style={styles.shareButton} onPress={handleShare}>
       <Feather name="share-2" size={iconSizes.sm} color={styles.shareButtonText.color} />
       <Text style={styles.shareButtonText}>Share</Text>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -695,12 +696,12 @@ function PipeSizingCalculator({ colors, styles, onResult }: { colors: any; style
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
+          <PressableRow style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
             <Text style={styles.calculateButtonText}>Calculate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+          </PressableRow>
+          <PressableRow style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 
@@ -828,12 +829,12 @@ function WaterFlowCalculator({ colors, styles, onResult }: { colors: any; styles
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
+          <PressableRow style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
             <Text style={styles.calculateButtonText}>Calculate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+          </PressableRow>
+          <PressableRow style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 
@@ -932,31 +933,21 @@ function DrainFallCalculator({ colors, styles, onResult }: { colors: any; styles
 
         <Text style={styles.inputLabel}>Drain Type</Text>
         <View style={styles.segmentRow}>
-          <TouchableOpacity
-            style={[styles.segmentButton, drainType === 'sewer' && styles.segmentButtonActive]}
-            onPress={() => { setDrainType('sewer'); setCalculated(false); }}
-          >
+          <PressableRow style={[styles.segmentButton, drainType === 'sewer' && styles.segmentButtonActive]} onPress={() => { setDrainType('sewer'); setCalculated(false); }} >
             <Text style={[styles.segmentButtonText, drainType === 'sewer' && styles.segmentButtonTextActive]}>Sewer / Sanitary</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.segmentButton, drainType === 'stormwater' && styles.segmentButtonActive]}
-            onPress={() => { setDrainType('stormwater'); setCalculated(false); }}
-          >
+          </PressableRow>
+          <PressableRow style={[styles.segmentButton, drainType === 'stormwater' && styles.segmentButtonActive]} onPress={() => { setDrainType('stormwater'); setCalculated(false); }} >
             <Text style={[styles.segmentButtonText, drainType === 'stormwater' && styles.segmentButtonTextActive]}>Stormwater</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Pipe Size (DN)</Text>
           <View style={styles.tileSizeGrid}>
             {availableSizes.map(size => (
-              <TouchableOpacity
-                key={size}
-                style={[styles.tileSizeButton, pipeSize === size && styles.tileSizeButtonActive]}
-                onPress={() => { setPipeSize(size); setCalculated(false); }}
-              >
+              <PressableRow key={size} style={[styles.tileSizeButton, pipeSize === size && styles.tileSizeButtonActive]} onPress={() => { setPipeSize(size); setCalculated(false); }} >
                 <Text style={[styles.tileSizeButtonText, pipeSize === size && styles.tileSizeButtonTextActive]}>DN{size}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </View>
         </View>
@@ -975,12 +966,12 @@ function DrainFallCalculator({ colors, styles, onResult }: { colors: any; styles
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
+          <PressableRow style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
             <Text style={styles.calculateButtonText}>Calculate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+          </PressableRow>
+          <PressableRow style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 
@@ -1131,16 +1122,12 @@ ActualGap = (Span - Balusters × Width) / Gaps"
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[styles.calculateButton, !results && styles.calculateButtonDisabled]}
-            onPress={handleCalculate}
-            disabled={!results}
-          >
+          <PressableRow style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results} >
             <Text style={styles.calculateButtonText}>Calculate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+          </PressableRow>
+          <PressableRow style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 
@@ -1253,18 +1240,12 @@ function ConcreteCalculator({ colors, styles, onResult }: { colors: any; styles:
 
         <Text style={styles.inputLabel}>Shape</Text>
         <View style={styles.segmentRow}>
-          <TouchableOpacity
-            style={[styles.segmentButton, shape === 'rectangle' && styles.segmentButtonActive]}
-            onPress={() => { setShape('rectangle'); setCalculated(false); }}
-          >
+          <PressableRow style={[styles.segmentButton, shape === 'rectangle' && styles.segmentButtonActive]} onPress={() => { setShape('rectangle'); setCalculated(false); }} >
             <Text style={[styles.segmentButtonText, shape === 'rectangle' && styles.segmentButtonTextActive]}>Rectangle / Square</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.segmentButton, shape === 'circle' && styles.segmentButtonActive]}
-            onPress={() => { setShape('circle'); setCalculated(false); }}
-          >
+          </PressableRow>
+          <PressableRow style={[styles.segmentButton, shape === 'circle' && styles.segmentButtonActive]} onPress={() => { setShape('circle'); setCalculated(false); }} >
             <Text style={[styles.segmentButtonText, shape === 'circle' && styles.segmentButtonTextActive]}>Circle</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         {shape === 'rectangle' ? (
@@ -1308,12 +1289,12 @@ function ConcreteCalculator({ colors, styles, onResult }: { colors: any; styles:
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
+          <PressableRow style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
             <Text style={styles.calculateButtonText}>Calculate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+          </PressableRow>
+          <PressableRow style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 
@@ -1451,13 +1432,9 @@ function TileCalculator({ colors, styles, onResult }: { colors: any; styles: any
           <Text style={styles.inputLabel}>Tile Size</Text>
           <View style={styles.tileSizeGrid}>
             {tileSizes.map(size => (
-              <TouchableOpacity
-                key={size.value}
-                style={[styles.tileSizeButton, tileSize === size.value && styles.tileSizeButtonActive]}
-                onPress={() => { setTileSize(size.value); setCalculated(false); }}
-              >
+              <PressableRow key={size.value} style={[styles.tileSizeButton, tileSize === size.value && styles.tileSizeButtonActive]} onPress={() => { setTileSize(size.value); setCalculated(false); }} >
                 <Text style={[styles.tileSizeButtonText, tileSize === size.value && styles.tileSizeButtonTextActive]}>{size.label}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </View>
         </View>
@@ -1473,23 +1450,19 @@ function TileCalculator({ colors, styles, onResult }: { colors: any; styles: any
         </View>
         <View style={styles.wastageButtons}>
           {[5, 7, 10, 12, 15].map(pct => (
-            <TouchableOpacity
-              key={pct}
-              style={[styles.wastageButton, wastagePercent === pct && styles.wastageButtonActive]}
-              onPress={() => { setWastagePercent(pct); setCalculated(false); }}
-            >
+            <PressableRow key={pct} style={[styles.wastageButton, wastagePercent === pct && styles.wastageButtonActive]} onPress={() => { setWastagePercent(pct); setCalculated(false); }} >
               <Text style={[styles.wastageButtonText, wastagePercent === pct && styles.wastageButtonTextActive]}>{pct}%</Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
+          <PressableRow style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
             <Text style={styles.calculateButtonText}>Calculate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+          </PressableRow>
+          <PressableRow style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 
@@ -1657,12 +1630,12 @@ function PaintCalculator({ colors, styles, onResult }: { colors: any; styles: an
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
+          <PressableRow style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
             <Text style={styles.calculateButtonText}>Calculate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+          </PressableRow>
+          <PressableRow style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 
@@ -1808,12 +1781,12 @@ Raker = sqrt(Rise² + Run²)"
         </View>
 
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
+          <PressableRow style={[styles.calculateButton, !results && styles.calculateButtonDisabled]} onPress={handleCalculate} disabled={!results}>
             <Text style={styles.calculateButtonText}>Calculate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+          </PressableRow>
+          <PressableRow style={styles.resetButton} onPress={handleReset}>
             <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
 
@@ -1906,12 +1879,7 @@ export default function CalculatorsScreen() {
   };
 
   const renderCalcCard = (calc: CalculatorInfo, isRecommended?: boolean) => (
-    <TouchableOpacity
-      key={calc.id}
-      style={styles.calcCard}
-      onPress={() => setActiveCalc(calc.id)}
-      activeOpacity={0.7}
-    >
+    <PressableRow key={calc.id} style={styles.calcCard} onPress={() => setActiveCalc(calc.id)} >
       <View style={[styles.calcIconContainer, { backgroundColor: calc.categoryColor + '20' }]}>
         <Feather name={calc.icon} size={iconSizes.xl} color={calc.categoryColor} />
       </View>
@@ -1933,7 +1901,7 @@ export default function CalculatorsScreen() {
         </View>
       </View>
       <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} style={styles.chevron} />
-    </TouchableOpacity>
+    </PressableRow>
   );
 
   return (
@@ -1951,10 +1919,10 @@ export default function CalculatorsScreen() {
           >
             {activeCalc ? (
               <>
-                <TouchableOpacity style={styles.backButton} onPress={() => setActiveCalc(null)}>
+                <PressableRow style={styles.backButton} onPress={() => setActiveCalc(null)}>
                   <Feather name="arrow-left" size={iconSizes.xl} color={colors.primary} />
                   <Text style={styles.backButtonText}>Back to Calculators</Text>
-                </TouchableOpacity>
+                </PressableRow>
                 {renderCalculator()}
               </>
             ) : (

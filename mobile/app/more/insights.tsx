@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -884,15 +885,7 @@ export default function InsightsScreen() {
             {TABS.map((tab) => {
               const isActive = activeTab === tab.key;
               return (
-                <TouchableOpacity
-                  key={tab.key}
-                  style={[
-                    styles.tabButton,
-                    isActive ? styles.tabButtonActive : styles.tabButtonInactive,
-                  ]}
-                  onPress={() => setActiveTab(tab.key)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={tab.key} style={[ styles.tabButton, isActive ? styles.tabButtonActive : styles.tabButtonInactive, ]} onPress={() => setActiveTab(tab.key)} >
                   <Feather
                     name={tab.icon as any}
                     size={iconSizes.sm}
@@ -901,7 +894,7 @@ export default function InsightsScreen() {
                   <Text style={[styles.tabText, isActive ? styles.tabTextActive : styles.tabTextInactive]}>
                     {tab.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
           </ScrollView>
@@ -910,9 +903,9 @@ export default function InsightsScreen() {
             <View style={styles.errorContainer}>
               <Feather name="alert-circle" size={40} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={() => { setIsLoading(true); setError(null); fetchData(); }} activeOpacity={0.7}>
+              <PressableRow style={styles.retryButton} onPress={() => { setIsLoading(true); setError(null); fetchData(); }} >
                 <Text style={styles.retryButtonText}>Try Again</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
 

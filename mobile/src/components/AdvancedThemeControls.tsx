@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows } from '../lib/design-tokens';
@@ -106,11 +107,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
         <Text style={styles.sectionTitle}>Appearance Mode</Text>
         <View style={styles.modeSelector}>
           {(['light', 'dark', 'system'] as const).map((m) => (
-            <TouchableOpacity
-              key={m}
-              style={[styles.modeOption, mode === m && styles.modeOptionActive]}
-              onPress={() => setMode(m)}
-            >
+            <PressableRow key={m} style={[styles.modeOption, mode === m && styles.modeOptionActive]} onPress={() => setMode(m)} >
               <Feather
                 name={m === 'light' ? 'sun' : m === 'dark' ? 'moon' : 'smartphone'}
                 size={18}
@@ -121,7 +118,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
               >
                 {m.charAt(0).toUpperCase() + m.slice(1)}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
       </View>
@@ -129,10 +126,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
       {/* Theme Presets */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Theme Preset</Text>
-        <TouchableOpacity
-          style={styles.presetSelector}
-          onPress={() => setShowPresetPicker(true)}
-        >
+        <PressableRow style={styles.presetSelector} onPress={() => setShowPresetPicker(true)} >
           <View style={styles.presetInfo}>
             <View
               style={[
@@ -150,7 +144,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
             </View>
           </View>
           <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       {/* Primary Color */}
@@ -158,19 +152,11 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
         <Text style={styles.sectionTitle}>Primary Color</Text>
         <View style={styles.colorGrid}>
           {PRESET_COLORS.map((color) => (
-            <TouchableOpacity
-              key={color.hex}
-              style={[
-                styles.colorSwatch,
-                { backgroundColor: color.hex },
-                activePalette.primary === color.hex && styles.colorSwatchSelected,
-              ]}
-              onPress={() => setCustomPrimaryColor(color.hex)}
-            >
+            <PressableRow key={color.hex} style={[ styles.colorSwatch, { backgroundColor: color.hex }, activePalette.primary === color.hex && styles.colorSwatchSelected, ]} onPress={() => setCustomPrimaryColor(color.hex)} >
               {activePalette.primary === color.hex && (
                 <Feather name="check" size={16} color={colors.white} />
               )}
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
 
@@ -196,13 +182,9 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
                 },
               ]}
             />
-            <TouchableOpacity
-              style={styles.applyButton}
-              onPress={handleCustomColorApply}
-              disabled={!/^#[0-9A-Fa-f]{6}$/.test(customColor)}
-            >
+            <PressableRow style={styles.applyButton} onPress={handleCustomColorApply} disabled={!/^#[0-9A-Fa-f]{6}$/.test(customColor)} >
               <Text style={styles.applyButtonText}>Apply</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </View>
@@ -238,14 +220,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
         <Text style={styles.inputLabel}>Heading Weight</Text>
         <View style={styles.optionRow}>
           {HEADING_WEIGHT_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.optionChip,
-                activeTypography.headingWeight === option.value && styles.optionChipActive,
-              ]}
-              onPress={() => setTypography({ headingWeight: option.value })}
-            >
+            <PressableRow key={option.value} style={[ styles.optionChip, activeTypography.headingWeight === option.value && styles.optionChipActive, ]} onPress={() => setTypography({ headingWeight: option.value })} >
               <Text
                 style={[
                   styles.optionChipText,
@@ -254,7 +229,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
               >
                 {option.label}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
       </View>
@@ -266,14 +241,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
         <Text style={styles.inputLabel}>Corner Radius</Text>
         <View style={styles.optionRow}>
           {BORDER_RADIUS_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.optionChip,
-                activeAppearance.borderRadius === option.value && styles.optionChipActive,
-              ]}
-              onPress={() => setAppearance({ borderRadius: option.value })}
-            >
+            <PressableRow key={option.value} style={[ styles.optionChip, activeAppearance.borderRadius === option.value && styles.optionChipActive, ]} onPress={() => setAppearance({ borderRadius: option.value })} >
               <Text
                 style={[
                   styles.optionChipText,
@@ -282,21 +250,14 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
               >
                 {option.label}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
 
         <Text style={styles.inputLabel}>Shadow Intensity</Text>
         <View style={styles.optionRow}>
           {SHADOW_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.optionChip,
-                activeAppearance.shadowIntensity === option.value && styles.optionChipActive,
-              ]}
-              onPress={() => setAppearance({ shadowIntensity: option.value })}
-            >
+            <PressableRow key={option.value} style={[ styles.optionChip, activeAppearance.shadowIntensity === option.value && styles.optionChipActive, ]} onPress={() => setAppearance({ shadowIntensity: option.value })} >
               <Text
                 style={[
                   styles.optionChipText,
@@ -305,21 +266,14 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
               >
                 {option.label}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
 
         <Text style={styles.inputLabel}>Animation Speed</Text>
         <View style={styles.optionRow}>
           {ANIMATION_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.optionChip,
-                activeAppearance.animationSpeed === option.value && styles.optionChipActive,
-              ]}
-              onPress={() => setAppearance({ animationSpeed: option.value })}
-            >
+            <PressableRow key={option.value} style={[ styles.optionChip, activeAppearance.animationSpeed === option.value && styles.optionChipActive, ]} onPress={() => setAppearance({ animationSpeed: option.value })} >
               <Text
                 style={[
                   styles.optionChipText,
@@ -328,17 +282,11 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
               >
                 {option.label}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.compactToggle,
-            activeAppearance.compactMode && styles.compactToggleActive,
-          ]}
-          onPress={() => setAppearance({ compactMode: !activeAppearance.compactMode })}
-        >
+        <PressableRow style={[ styles.compactToggle, activeAppearance.compactMode && styles.compactToggleActive, ]} onPress={() => setAppearance({ compactMode: !activeAppearance.compactMode })} >
           <View style={styles.compactToggleContent}>
             <Feather
               name="minimize-2"
@@ -362,14 +310,14 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
               <Feather name="check" size={14} color={colors.primaryForeground} />
             )}
           </View>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       {/* Reset Button */}
-      <TouchableOpacity style={styles.resetButton} onPress={resetToDefaults}>
+      <PressableRow style={styles.resetButton} onPress={resetToDefaults}>
         <Feather name="refresh-cw" size={16} color={colors.destructive} />
         <Text style={styles.resetButtonText}>Reset to Defaults</Text>
-      </TouchableOpacity>
+      </PressableRow>
 
       {/* Preset Picker Modal */}
       <Modal
@@ -384,17 +332,7 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
             <Text style={styles.sheetTitle}>Choose Theme Preset</Text>
             <ScrollView style={styles.presetList}>
               {PRESET_THEMES.map((preset) => (
-                <TouchableOpacity
-                  key={preset.id}
-                  style={[
-                    styles.presetItem,
-                    activePresetId === preset.id && styles.presetItemActive,
-                  ]}
-                  onPress={() => {
-                    setActivePreset(preset.id);
-                    setShowPresetPicker(false);
-                  }}
-                >
+                <PressableRow key={preset.id} style={[ styles.presetItem, activePresetId === preset.id && styles.presetItemActive, ]} onPress={() => { setActivePreset(preset.id); setShowPresetPicker(false); }} >
                   <View
                     style={[
                       styles.presetColorDot,
@@ -408,15 +346,12 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
                   {activePresetId === preset.id && (
                     <Feather name="check" size={18} color={colors.primary} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </ScrollView>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setShowPresetPicker(false)}
-            >
+            <PressableRow style={styles.cancelButton} onPress={() => setShowPresetPicker(false)} >
               <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </Modal>

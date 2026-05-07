@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator 
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -243,9 +244,9 @@ export default function SearchScreen() {
             autoFocus
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')}>
+            <PressableRow onPress={() => setQuery('')}>
               <Feather name="x" size={iconSizes.lg} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
       </View>
@@ -261,12 +262,7 @@ export default function SearchScreen() {
           </View>
         ) : results.length > 0 ? (
           results.map((result) => (
-            <TouchableOpacity
-              key={`${result.type}-${result.id}`}
-              style={styles.resultItem}
-              onPress={result.onPress}
-              activeOpacity={0.7}
-            >
+            <PressableRow key={`${result.type}-${result.id}`} style={styles.resultItem} onPress={result.onPress} >
               <View style={[styles.resultIcon, { backgroundColor: `${result.iconColor}15` }]}>
                 <Feather name={result.icon} size={iconSizes.lg} color={result.iconColor} />
               </View>
@@ -279,7 +275,7 @@ export default function SearchScreen() {
               <View style={styles.resultType}>
                 <Text style={styles.resultTypeText}>{result.type}</Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           ))
         ) : query.length > 0 ? (
           <View style={styles.empty}>

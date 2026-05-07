@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -644,37 +645,22 @@ export default function BrandingScreen() {
               )}
               
               <View style={styles.logoActions}>
-                <TouchableOpacity
-                  style={[styles.logoButton, styles.logoButtonPrimary]}
-                  onPress={() => pickImage(false)}
-                  disabled={isUploadingLogo}
-                  data-testid="button-upload-logo"
-                >
+                <PressableRow style={[styles.logoButton, styles.logoButtonPrimary]} onPress={() => pickImage(false)} disabled={isUploadingLogo} data-testid="button-upload-logo" >
                   <Feather name="upload" size={14} color={colors.primaryForeground} />
                   <Text style={[styles.logoButtonText, styles.logoButtonTextPrimary]}>
                     {logoUrl ? 'Change' : 'Upload'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
                 
-                <TouchableOpacity
-                  style={styles.logoButton}
-                  onPress={() => pickImage(true)}
-                  disabled={isUploadingLogo}
-                  data-testid="button-camera-logo"
-                >
+                <PressableRow style={styles.logoButton} onPress={() => pickImage(true)} disabled={isUploadingLogo} data-testid="button-camera-logo" >
                   <Feather name="camera" size={14} color={colors.foreground} />
                   <Text style={styles.logoButtonText}>Camera</Text>
-                </TouchableOpacity>
+                </PressableRow>
                 
                 {logoUrl && (
-                  <TouchableOpacity
-                    style={[styles.logoButton, styles.logoRemoveButton]}
-                    onPress={handleRemoveLogo}
-                    disabled={isUploadingLogo}
-                    data-testid="button-remove-logo"
-                  >
+                  <PressableRow style={[styles.logoButton, styles.logoRemoveButton]} onPress={handleRemoveLogo} disabled={isUploadingLogo} data-testid="button-remove-logo" >
                     <Feather name="trash-2" size={14} color={colors.destructive} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </View>
             </View>
@@ -685,12 +671,7 @@ export default function BrandingScreen() {
           <View style={styles.card}>
             <View style={styles.modeSelector}>
               {(['light', 'dark', 'system'] as const).map((m) => (
-                <TouchableOpacity
-                  key={m}
-                  style={[styles.modeOption, mode === m && styles.modeOptionActive]}
-                  onPress={() => setMode(m)}
-                  data-testid={`mode-${m}`}
-                >
+                <PressableRow key={m} style={[styles.modeOption, mode === m && styles.modeOptionActive]} onPress={() => setMode(m)} data-testid={`mode-${m}`} >
                   <Feather
                     name={m === 'light' ? 'sun' : m === 'dark' ? 'moon' : 'smartphone'}
                     size={16}
@@ -701,7 +682,7 @@ export default function BrandingScreen() {
                   >
                     {m.charAt(0).toUpperCase() + m.slice(1)}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </View>
@@ -711,20 +692,11 @@ export default function BrandingScreen() {
           <View style={styles.card}>
             <View style={styles.colorGrid}>
               {PRESET_COLORS.map((color) => (
-                <TouchableOpacity
-                  key={color.hex}
-                  style={[
-                    styles.colorSwatch,
-                    { backgroundColor: color.hex },
-                    activePalette.primary === color.hex && styles.colorSwatchSelected,
-                  ]}
-                  onPress={() => handleColorSelect(color.hex)}
-                  data-testid={`color-${color.name.toLowerCase()}`}
-                >
+                <PressableRow key={color.hex} style={[ styles.colorSwatch, { backgroundColor: color.hex }, activePalette.primary === color.hex && styles.colorSwatchSelected, ]} onPress={() => handleColorSelect(color.hex)} data-testid={`color-${color.name.toLowerCase()}`} >
                   {activePalette.primary === color.hex && (
                     <Feather name="check" size={16} color={colors.white} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
 
@@ -747,14 +719,9 @@ export default function BrandingScreen() {
                     { backgroundColor: isValidHex(customColor) ? customColor : activePalette.primary },
                   ]}
                 />
-                <TouchableOpacity
-                  style={[styles.applyButton, !isValidHex(customColor) && { opacity: 0.5 }]}
-                  onPress={handleCustomColorApply}
-                  disabled={!isValidHex(customColor)}
-                  data-testid="button-apply-color"
-                >
+                <PressableRow style={[styles.applyButton, !isValidHex(customColor) && { opacity: 0.5 }]} onPress={handleCustomColorApply} disabled={!isValidHex(customColor)} data-testid="button-apply-color" >
                   <Text style={styles.applyButtonText}>Apply</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             </View>
           </View>
@@ -789,15 +756,7 @@ export default function BrandingScreen() {
             <Text style={[styles.inputLabel, { marginTop: spacing.lg }]}>Heading Weight</Text>
             <View style={styles.optionGrid}>
               {HEADING_WEIGHT_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.optionChip,
-                    activeTypography.headingWeight === opt.value && styles.optionChipActive,
-                  ]}
-                  onPress={() => setTypography({ headingWeight: opt.value })}
-                  data-testid={`heading-${opt.value}`}
-                >
+                <PressableRow key={opt.value} style={[ styles.optionChip, activeTypography.headingWeight === opt.value && styles.optionChipActive, ]} onPress={() => setTypography({ headingWeight: opt.value })} data-testid={`heading-${opt.value}`} >
                   <Text
                     style={[
                       styles.optionChipText,
@@ -806,7 +765,7 @@ export default function BrandingScreen() {
                   >
                     {opt.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </View>
@@ -817,15 +776,7 @@ export default function BrandingScreen() {
             <Text style={styles.inputLabel}>Corner Radius</Text>
             <View style={styles.optionGrid}>
               {BORDER_RADIUS_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.optionChip,
-                    activeAppearance.borderRadius === opt.value && styles.optionChipActive,
-                  ]}
-                  onPress={() => setAppearance({ borderRadius: opt.value })}
-                  data-testid={`radius-${opt.value}`}
-                >
+                <PressableRow key={opt.value} style={[ styles.optionChip, activeAppearance.borderRadius === opt.value && styles.optionChipActive, ]} onPress={() => setAppearance({ borderRadius: opt.value })} data-testid={`radius-${opt.value}`} >
                   <Text
                     style={[
                       styles.optionChipText,
@@ -834,22 +785,14 @@ export default function BrandingScreen() {
                   >
                     {opt.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
 
             <Text style={[styles.inputLabel, { marginTop: spacing.lg }]}>Shadow Intensity</Text>
             <View style={styles.optionGrid}>
               {SHADOW_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.optionChip,
-                    activeAppearance.shadowIntensity === opt.value && styles.optionChipActive,
-                  ]}
-                  onPress={() => setAppearance({ shadowIntensity: opt.value })}
-                  data-testid={`shadow-${opt.value}`}
-                >
+                <PressableRow key={opt.value} style={[ styles.optionChip, activeAppearance.shadowIntensity === opt.value && styles.optionChipActive, ]} onPress={() => setAppearance({ shadowIntensity: opt.value })} data-testid={`shadow-${opt.value}`} >
                   <Text
                     style={[
                       styles.optionChipText,
@@ -858,22 +801,14 @@ export default function BrandingScreen() {
                   >
                     {opt.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
 
             <Text style={[styles.inputLabel, { marginTop: spacing.lg }]}>Animation Speed</Text>
             <View style={styles.optionGrid}>
               {ANIMATION_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.optionChip,
-                    activeAppearance.animationSpeed === opt.value && styles.optionChipActive,
-                  ]}
-                  onPress={() => setAppearance({ animationSpeed: opt.value })}
-                  data-testid={`animation-${opt.value}`}
-                >
+                <PressableRow key={opt.value} style={[ styles.optionChip, activeAppearance.animationSpeed === opt.value && styles.optionChipActive, ]} onPress={() => setAppearance({ animationSpeed: opt.value })} data-testid={`animation-${opt.value}`} >
                   <Text
                     style={[
                       styles.optionChipText,
@@ -882,7 +817,7 @@ export default function BrandingScreen() {
                   >
                     {opt.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </View>
@@ -902,12 +837,9 @@ export default function BrandingScreen() {
             <View style={[styles.previewBadge, { backgroundColor: `${activePalette.primary}20` }]}>
               <Text style={[styles.previewBadgeText, { color: activePalette.primary }]}>In Progress</Text>
             </View>
-            <TouchableOpacity 
-              style={[styles.previewButton, { backgroundColor: activePalette.primary }]}
-              activeOpacity={0.8}
-            >
+            <PressableRow style={[styles.previewButton, { backgroundColor: activePalette.primary }]} >
               <Text style={styles.previewButtonText}>Primary Button</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <View style={styles.infoRow}>
@@ -918,14 +850,10 @@ export default function BrandingScreen() {
           </View>
 
           {/* Reset Button */}
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleResetTheme}
-            data-testid="button-reset-theme"
-          >
+          <PressableRow style={styles.resetButton} onPress={handleResetTheme} data-testid="button-reset-theme" >
             <Feather name="refresh-cw" size={16} color={colors.destructive} />
             <Text style={styles.resetButtonText}>Reset to Defaults</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </ScrollView>
     </>

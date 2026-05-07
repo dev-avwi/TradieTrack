@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -313,31 +314,16 @@ export default function DocumentsScreen() {
       </View>
       <View style={styles.headerActions}>
         <View style={styles.viewToggle}>
-          <TouchableOpacity
-            style={[styles.viewToggleButton, viewMode === 'grid' && styles.viewToggleButtonActive]}
-            onPress={() => setViewMode('grid')}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={[styles.viewToggleButton, viewMode === 'grid' && styles.viewToggleButtonActive]} onPress={() => setViewMode('grid')} >
             <Feather name="grid" size={18} color={viewMode === 'grid' ? colors.primary : colors.mutedForeground} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.viewToggleButton, viewMode === 'list' && styles.viewToggleButtonActive]}
-            onPress={() => setViewMode('list')}
-            activeOpacity={0.7}
-          >
+          </PressableRow>
+          <PressableRow style={[styles.viewToggleButton, viewMode === 'list' && styles.viewToggleButtonActive]} onPress={() => setViewMode('list')} >
             <Feather name="list" size={18} color={viewMode === 'list' ? colors.primary : colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => {
-            if (activeTab === 'quotes') router.push('/more/quote/new');
-            else if (activeTab === 'invoices') router.push('/more/invoice/new');
-          }}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={styles.addButton} onPress={() => { if (activeTab === 'quotes') router.push('/more/quote/new'); else if (activeTab === 'invoices') router.push('/more/invoice/new'); }} >
           <Feather name="plus" size={18} color={colors.white} />
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     </View>
   );
@@ -376,9 +362,9 @@ export default function DocumentsScreen() {
         onChangeText={setSearchQuery}
       />
       {searchQuery.length > 0 && (
-        <TouchableOpacity onPress={() => setSearchQuery('')}>
+        <PressableRow onPress={() => setSearchQuery('')}>
           <Feather name="x" size={18} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
     </View>
   );
@@ -399,11 +385,7 @@ export default function DocumentsScreen() {
 
   const renderTabs = () => (
     <View style={styles.tabContainer}>
-      <TouchableOpacity
-        style={[styles.tab, activeTab === 'quotes' && styles.activeTab]}
-        onPress={() => setActiveTab('quotes')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={[styles.tab, activeTab === 'quotes' && styles.activeTab]} onPress={() => setActiveTab('quotes')} >
         <Feather 
           name="file-text" 
           size={iconSizes.md} 
@@ -415,13 +397,9 @@ export default function DocumentsScreen() {
         <View style={[styles.tabBadge, { backgroundColor: '#3b82f6' }]}>
           <Text style={styles.tabBadgeText}>{quotes.length}</Text>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
       
-      <TouchableOpacity
-        style={[styles.tab, activeTab === 'invoices' && styles.activeTab]}
-        onPress={() => setActiveTab('invoices')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={[styles.tab, activeTab === 'invoices' && styles.activeTab]} onPress={() => setActiveTab('invoices')} >
         <Feather 
           name="file" 
           size={iconSizes.md} 
@@ -433,13 +411,9 @@ export default function DocumentsScreen() {
         <View style={[styles.tabBadge, { backgroundColor: '#f59e0b' }]}>
           <Text style={styles.tabBadgeText}>{invoices.length}</Text>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
       
-      <TouchableOpacity
-        style={[styles.tab, activeTab === 'receipts' && styles.activeTab]}
-        onPress={() => setActiveTab('receipts')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={[styles.tab, activeTab === 'receipts' && styles.activeTab]} onPress={() => setActiveTab('receipts')} >
         <Feather 
           name="credit-card" 
           size={iconSizes.md} 
@@ -451,22 +425,18 @@ export default function DocumentsScreen() {
         <View style={[styles.tabBadge, { backgroundColor: '#22c55e' }]}>
           <Text style={styles.tabBadgeText}>{receipts.length}</Text>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 
   const renderViewAllButton = () => (
-    <TouchableOpacity
-      style={styles.viewAllButton}
-      onPress={handleViewAll}
-      activeOpacity={0.7}
-    >
+    <PressableRow style={styles.viewAllButton} onPress={handleViewAll} >
       <Feather name="maximize-2" size={16} color={colors.primary} />
       <Text style={styles.viewAllText}>
         View All {activeTab === 'quotes' ? 'Quotes' : activeTab === 'invoices' ? 'Invoices' : 'Receipts'}
       </Text>
       <Feather name="chevron-right" size={16} color={colors.primary} />
-    </TouchableOpacity>
+    </PressableRow>
   );
 
   const renderQuoteFilters = () => (
@@ -476,12 +446,7 @@ export default function DocumentsScreen() {
           const config = filter === 'all' ? null : getQuoteStatusConfig(filter);
           const count = filter === 'all' ? quotes.length : quotes.filter(q => q.status === filter).length;
           return (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterChip, quoteFilter === filter && styles.activeFilterChip]}
-              onPress={() => setQuoteFilter(filter)}
-              activeOpacity={0.7}
-            >
+            <PressableRow key={filter} style={[styles.filterChip, quoteFilter === filter && styles.activeFilterChip]} onPress={() => setQuoteFilter(filter)} >
               {config && <Feather name={config.icon} size={14} color={quoteFilter === filter ? colors.white : config.color} />}
               <Text style={[styles.filterText, quoteFilter === filter && styles.activeFilterText]}>
                 {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -491,7 +456,7 @@ export default function DocumentsScreen() {
                   {count}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           );
         })}
       </View>
@@ -505,12 +470,7 @@ export default function DocumentsScreen() {
           const config = filter === 'all' ? null : getInvoiceStatusConfig(filter);
           const count = filter === 'all' ? invoices.length : invoices.filter(i => i.status === filter).length;
           return (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterChip, invoiceFilter === filter && styles.activeFilterChip]}
-              onPress={() => setInvoiceFilter(filter)}
-              activeOpacity={0.7}
-            >
+            <PressableRow key={filter} style={[styles.filterChip, invoiceFilter === filter && styles.activeFilterChip]} onPress={() => setInvoiceFilter(filter)} >
               {config && <Feather name={config.icon} size={14} color={invoiceFilter === filter ? colors.white : config.color} />}
               <Text style={[styles.filterText, invoiceFilter === filter && styles.activeFilterText]}>
                 {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -520,7 +480,7 @@ export default function DocumentsScreen() {
                   {count}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           );
         })}
       </View>
@@ -533,12 +493,7 @@ export default function DocumentsScreen() {
         {(['all', 'bank_transfer', 'card', 'cash'] as ReceiptFilterType[]).map((filter) => {
           const count = filter === 'all' ? receipts.length : receipts.filter(r => r.paymentMethod === filter).length;
           return (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterChip, receiptFilter === filter && styles.activeFilterChip]}
-              onPress={() => setReceiptFilter(filter)}
-              activeOpacity={0.7}
-            >
+            <PressableRow key={filter} style={[styles.filterChip, receiptFilter === filter && styles.activeFilterChip]} onPress={() => setReceiptFilter(filter)} >
               <Text style={[styles.filterText, receiptFilter === filter && styles.activeFilterText]}>
                 {getPaymentMethodLabel(filter === 'all' ? 'All' : filter)}
               </Text>
@@ -547,7 +502,7 @@ export default function DocumentsScreen() {
                   {count}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           );
         })}
       </View>
@@ -571,11 +526,7 @@ export default function DocumentsScreen() {
   ) => {
     const isActive = sortField === field;
     return (
-      <TouchableOpacity
-        style={[styles.sortableColumn, { flex, justifyContent: 'center', alignItems: align }]}
-        onPress={() => handleSortChange(field)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={[styles.sortableColumn, { flex, justifyContent: 'center', alignItems: align }]} onPress={() => handleSortChange(field)} >
         <View style={styles.sortableColumnContent}>
           <Text style={[
             styles.sortableColumnText,
@@ -588,7 +539,7 @@ export default function DocumentsScreen() {
             isActive && styles.sortArrowActive
           ]}>↕</Text>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -620,60 +571,40 @@ export default function DocumentsScreen() {
   // Quote-specific header (2 columns: Quote | Status)
   const renderQuoteSortHeader = () => (
     <View style={styles.sortHeaderRow}>
-      <TouchableOpacity
-        style={styles.sortHeaderTitleColumn}
-        onPress={() => handleSortChange('client')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.sortHeaderTitleColumn} onPress={() => handleSortChange('client')} >
         <Text style={[styles.sortableColumnText, sortField === 'client' && styles.sortableColumnTextActive]}>Quote</Text>
         <SortIndicator field="client" isActive={sortField === 'client'} />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.sortHeaderStatusColumn, { width: COLUMN_WIDTHS.status }]}
-        onPress={() => handleSortChange('status')}
-        activeOpacity={0.7}
-      >
+      </PressableRow>
+      <PressableRow style={[styles.sortHeaderStatusColumn, { width: COLUMN_WIDTHS.status }]} onPress={() => handleSortChange('status')} >
         <Text style={[styles.sortableColumnText, sortField === 'status' && styles.sortableColumnTextActive]}>
           Status
         </Text>
         <SortIndicator field="status" isActive={sortField === 'status'} />
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 
   // Invoice/Receipt header (4 columns: Client | Status | Amount | Menu)
   const renderInvoiceSortHeader = () => (
     <View style={styles.sortHeaderRow}>
-      <TouchableOpacity
-        style={styles.sortHeaderTitleColumn}
-        onPress={() => handleSortChange('client')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.sortHeaderTitleColumn} onPress={() => handleSortChange('client')} >
         <Text style={[styles.sortableColumnText, sortField === 'client' && styles.sortableColumnTextActive]}>
           {activeTab === 'invoices' ? 'Invoice' : 'Receipt'}
         </Text>
         <SortIndicator field="client" isActive={sortField === 'client'} />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.sortHeaderStatusColumn, { width: COLUMN_WIDTHS.status }]}
-        onPress={() => handleSortChange('status')}
-        activeOpacity={0.7}
-      >
+      </PressableRow>
+      <PressableRow style={[styles.sortHeaderStatusColumn, { width: COLUMN_WIDTHS.status }]} onPress={() => handleSortChange('status')} >
         <Text style={[styles.sortableColumnText, sortField === 'status' && styles.sortableColumnTextActive]}>
           Status
         </Text>
         <SortIndicator field="status" isActive={sortField === 'status'} />
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.sortHeaderAmountColumn, { width: COLUMN_WIDTHS.amount }]}
-        onPress={() => handleSortChange('amount')}
-        activeOpacity={0.7}
-      >
+      </PressableRow>
+      <PressableRow style={[styles.sortHeaderAmountColumn, { width: COLUMN_WIDTHS.amount }]} onPress={() => handleSortChange('amount')} >
         <Text style={[styles.sortableColumnText, sortField === 'amount' && styles.sortableColumnTextActive]}>
           Amount
         </Text>
         <SortIndicator field="amount" isActive={sortField === 'amount'} />
-      </TouchableOpacity>
+      </PressableRow>
       <View style={{ width: COLUMN_WIDTHS.menu }} />
     </View>
   );
@@ -691,12 +622,7 @@ export default function DocumentsScreen() {
     const client = clientMap.get(quote.clientId);
     
     return (
-      <TouchableOpacity
-        key={quote.id}
-        style={[styles.gridCard, { borderLeftColor: statusConfig.color }]}
-        onPress={() => router.push(`/more/quote/${quote.id}`)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={quote.id} style={[styles.gridCard, { borderLeftColor: statusConfig.color }]} onPress={() => router.push(`/more/quote/${quote.id}`)} >
         <View style={styles.gridCardHeader}>
           <Text style={styles.gridCardTitle} numberOfLines={1}>
             {quote.title || quote.number || `Q-${quote.id.slice(0, 6)}`}
@@ -714,7 +640,7 @@ export default function DocumentsScreen() {
             {quote.createdAt ? formatDistanceToNow(new Date(quote.createdAt), { addSuffix: true }) : ''}
           </Text>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -723,13 +649,7 @@ export default function DocumentsScreen() {
     const client = clientMap.get(quote.clientId);
     
     return (
-      <TouchableOpacity
-        key={quote.id}
-        style={[styles.listRow, !isLast && styles.listRowWithDivider]}
-        onPress={() => router.push(`/more/quote/${quote.id}`)}
-        activeOpacity={0.7}
-        data-testid={`row-quote-${quote.id}`}
-      >
+      <PressableRow key={quote.id} style={[styles.listRow, !isLast && styles.listRowWithDivider]} onPress={() => router.push(`/more/quote/${quote.id}`)} data-testid={`row-quote-${quote.id}`} >
         <View style={styles.listRowContent}>
           <View style={styles.listRowTitleColumn}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
@@ -747,7 +667,7 @@ export default function DocumentsScreen() {
             </View>
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -758,12 +678,7 @@ export default function DocumentsScreen() {
     const linkedReceipt = receipts.find(r => r.invoiceId === invoice.id);
     
     return (
-      <TouchableOpacity
-        key={invoice.id}
-        style={[styles.gridCard, { borderLeftColor: statusConfig.color }]}
-        onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={invoice.id} style={[styles.gridCard, { borderLeftColor: statusConfig.color }]} onPress={() => router.push(`/more/invoice/${invoice.id}`)} >
         <View style={styles.gridCardHeader}>
           <Text style={styles.gridCardTitle} numberOfLines={1}>
             {invoice.title || invoice.number || `INV-${invoice.id.slice(0, 6)}`}
@@ -787,7 +702,7 @@ export default function DocumentsScreen() {
             <Text style={styles.linkedBadgeText}>Receipt</Text>
           </View>
         )}
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -797,13 +712,7 @@ export default function DocumentsScreen() {
     const client = clientMap.get(invoice.clientId);
     
     return (
-      <TouchableOpacity
-        key={invoice.id}
-        style={[styles.listRow, !isLast && styles.listRowWithDivider]}
-        onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-        activeOpacity={0.7}
-        data-testid={`row-invoice-${invoice.id}`}
-      >
+      <PressableRow key={invoice.id} style={[styles.listRow, !isLast && styles.listRowWithDivider]} onPress={() => router.push(`/more/invoice/${invoice.id}`)} data-testid={`row-invoice-${invoice.id}`} >
         <View style={styles.listRowContent}>
           <View style={styles.listRowTitleColumn}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
@@ -824,15 +733,12 @@ export default function DocumentsScreen() {
             <Text style={styles.listRowAmount}>{formatCurrency(invoice.total)}</Text>
           </View>
           <View style={{ width: COLUMN_WIDTHS.menu, alignItems: 'center' }}>
-            <TouchableOpacity 
-              onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
+            <PressableRow onPress={() => router.push(`/more/invoice/${invoice.id}`)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} >
               <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -840,12 +746,7 @@ export default function DocumentsScreen() {
     const client = clientMap.get(receipt.clientId);
     
     return (
-      <TouchableOpacity
-        key={receipt.id}
-        style={[styles.gridCard, { borderLeftColor: '#22c55e' }]}
-        onPress={() => router.push(`/more/receipt/${receipt.id}`)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={receipt.id} style={[styles.gridCard, { borderLeftColor: '#22c55e' }]} onPress={() => router.push(`/more/receipt/${receipt.id}`)} >
         <View style={styles.gridCardHeader}>
           <Text style={styles.gridCardTitle} numberOfLines={1}>
             {receipt.receiptNumber}
@@ -861,7 +762,7 @@ export default function DocumentsScreen() {
             {format(new Date(receipt.paidAt), 'dd MMM')}
           </Text>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -869,13 +770,7 @@ export default function DocumentsScreen() {
     const client = clientMap.get(receipt.clientId);
     
     return (
-      <TouchableOpacity
-        key={receipt.id}
-        style={[styles.listRow, !isLast && styles.listRowWithDivider]}
-        onPress={() => router.push(`/more/receipt/${receipt.id}`)}
-        activeOpacity={0.7}
-        data-testid={`row-receipt-${receipt.id}`}
-      >
+      <PressableRow key={receipt.id} style={[styles.listRow, !isLast && styles.listRowWithDivider]} onPress={() => router.push(`/more/receipt/${receipt.id}`)} data-testid={`row-receipt-${receipt.id}`} >
         <View style={styles.listRowContent}>
           <View style={styles.listRowTitleColumn}>
             <Text style={styles.listRowTitle} numberOfLines={1}>
@@ -896,15 +791,12 @@ export default function DocumentsScreen() {
             <Text style={styles.listRowAmount}>{formatCurrency(receipt.amount)}</Text>
           </View>
           <View style={{ width: COLUMN_WIDTHS.menu, alignItems: 'center' }}>
-            <TouchableOpacity 
-              onPress={() => router.push(`/more/receipt/${receipt.id}`)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
+            <PressableRow onPress={() => router.push(`/more/receipt/${receipt.id}`)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} >
               <Feather name="more-vertical" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -922,10 +814,10 @@ export default function DocumentsScreen() {
         <Text style={styles.emptyTitle}>{title}</Text>
         <Text style={styles.emptySubtitle}>{subtitle}</Text>
         {action && (
-          <TouchableOpacity style={styles.emptyButton} onPress={action}>
+          <PressableRow style={styles.emptyButton} onPress={action}>
             <Feather name="plus" size={16} color={colors.primary} />
             <Text style={styles.emptyButtonText}>{actionText}</Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
       </View>
     );

@@ -11,6 +11,7 @@ import {
   Switch,
   ActivityIndicator,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { AppBottomSheet } from './ui/AppBottomSheet';
@@ -328,17 +329,13 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onCancel} style={styles.backButton}>
+        <PressableRow onPress={onCancel} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color={colors.foreground} />
-        </TouchableOpacity>
+        </PressableRow>
         <Text style={styles.headerTitle}>
           {form?.id ? 'Edit Form' : 'Create Form'}
         </Text>
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={isSaving}
-          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-        >
+        <PressableRow onPress={handleSave} disabled={isSaving} style={[styles.saveButton, isSaving && styles.saveButtonDisabled]} >
           {isSaving ? (
             <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
@@ -347,15 +344,12 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
               <Text style={styles.saveButtonText}>Save</Text>
             </>
           )}
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       {/* Tab Switcher */}
       <View style={styles.tabBar}>
-        <TouchableOpacity
-          style={[styles.tab, viewMode === 'builder' && styles.tabActive]}
-          onPress={() => setViewMode('builder')}
-        >
+        <PressableRow style={[styles.tab, viewMode === 'builder' && styles.tabActive]} onPress={() => setViewMode('builder')} >
           <Feather 
             name="edit-2" 
             size={16} 
@@ -364,11 +358,8 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
           <Text style={[styles.tabText, viewMode === 'builder' && styles.tabTextActive]}>
             Builder
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, viewMode === 'preview' && styles.tabActive]}
-          onPress={() => setViewMode('preview')}
-        >
+        </PressableRow>
+        <PressableRow style={[styles.tab, viewMode === 'preview' && styles.tabActive]} onPress={() => setViewMode('preview')} >
           <Feather 
             name="eye" 
             size={16} 
@@ -377,7 +368,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
           <Text style={[styles.tabText, viewMode === 'preview' && styles.tabTextActive]}>
             Preview
           </Text>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       {/* Conditional Content */}
@@ -420,10 +411,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Category</Text>
-            <TouchableOpacity
-              style={styles.categorySelector}
-              onPress={() => setShowCategoryPicker(true)}
-            >
+            <PressableRow style={styles.categorySelector} onPress={() => setShowCategoryPicker(true)} >
               <View style={styles.categoryDisplay}>
                 <Feather
                   name={CATEGORIES.find(c => c.value === category)?.icon || 'file-text'}
@@ -435,7 +423,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
                 </Text>
               </View>
               <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <View style={styles.switchRow}>
@@ -491,56 +479,36 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
                   </View>
                   
                   <View style={styles.fieldActions}>
-                    <TouchableOpacity
-                      style={styles.fieldActionButton}
-                      onPress={() => moveField(index, 'up')}
-                      disabled={index === 0}
-                    >
+                    <PressableRow style={styles.fieldActionButton} onPress={() => moveField(index, 'up')} disabled={index === 0} >
                       <Feather
                         name="chevron-up"
                         size={18}
                         color={index === 0 ? colors.muted : colors.mutedForeground}
                       />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.fieldActionButton}
-                      onPress={() => moveField(index, 'down')}
-                      disabled={index === fields.length - 1}
-                    >
+                    </PressableRow>
+                    <PressableRow style={styles.fieldActionButton} onPress={() => moveField(index, 'down')} disabled={index === fields.length - 1} >
                       <Feather
                         name="chevron-down"
                         size={18}
                         color={index === fields.length - 1 ? colors.muted : colors.mutedForeground}
                       />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.fieldActionButton}
-                      onPress={() => {
-                        setEditingField(field);
-                        setShowFieldEditor(true);
-                      }}
-                    >
+                    </PressableRow>
+                    <PressableRow style={styles.fieldActionButton} onPress={() => { setEditingField(field); setShowFieldEditor(true); }} >
                       <Feather name="edit-2" size={16} color={colors.foreground} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.fieldActionButton}
-                      onPress={() => deleteField(field.id)}
-                    >
+                    </PressableRow>
+                    <PressableRow style={styles.fieldActionButton} onPress={() => deleteField(field.id)} >
                       <Feather name="trash-2" size={16} color={colors.destructive} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   </View>
                 </View>
               ))}
             </View>
           )}
 
-          <TouchableOpacity
-            style={styles.addFieldButton}
-            onPress={() => setShowFieldPicker(true)}
-          >
+          <PressableRow style={styles.addFieldButton} onPress={() => setShowFieldPicker(true)} >
             <Feather name="plus" size={20} color={colors.primary} />
             <Text style={styles.addFieldText}>Add Field</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </ScrollView>
       )}
@@ -557,11 +525,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
             <Text style={styles.sheetTitle}>Add Field</Text>
             <ScrollView style={styles.fieldTypeList}>
               {FIELD_TYPES.map((fieldType) => (
-                <TouchableOpacity
-                  key={fieldType.type}
-                  style={styles.fieldTypeItem}
-                  onPress={() => addField(fieldType.type)}
-                >
+                <PressableRow key={fieldType.type} style={styles.fieldTypeItem} onPress={() => addField(fieldType.type)} >
                   <View style={styles.fieldTypeIcon}>
                     <Feather name={fieldType.icon} size={20} color={colors.primary} />
                   </View>
@@ -570,15 +534,12 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
                     <Text style={styles.fieldTypeDesc}>{fieldType.description}</Text>
                   </View>
                   <Feather name="plus" size={18} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </ScrollView>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setShowFieldPicker(false)}
-            >
+            <PressableRow style={styles.cancelButton} onPress={() => setShowFieldPicker(false)} >
               <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+            </PressableRow>
         </View>
       </AppBottomSheet>
 
@@ -605,17 +566,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
         <View>
             <Text style={styles.sheetTitle}>Select Category</Text>
             {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat.value}
-                style={[
-                  styles.categoryOption,
-                  category === cat.value && styles.categoryOptionActive,
-                ]}
-                onPress={() => {
-                  setCategory(cat.value);
-                  setShowCategoryPicker(false);
-                }}
-              >
+              <PressableRow key={cat.value} style={[ styles.categoryOption, category === cat.value && styles.categoryOptionActive, ]} onPress={() => { setCategory(cat.value); setShowCategoryPicker(false); }} >
                 <Feather
                   name={cat.icon}
                   size={20}
@@ -632,7 +583,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
                 {category === cat.value && (
                   <Feather name="check" size={18} color={colors.primary} />
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             ))}
         </View>
       </AppBottomSheet>
@@ -699,13 +650,13 @@ function FieldEditorModal({ visible, field, onSave, onClose, colors }: FieldEdit
       >
       <View>
           <View style={styles.sheetHeader}>
-            <TouchableOpacity onPress={onClose}>
+            <PressableRow onPress={onClose}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={styles.sheetTitle}>Edit Field</Text>
-            <TouchableOpacity onPress={handleSave}>
+            <PressableRow onPress={handleSave}>
               <Text style={styles.saveText}>Save</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <ScrollView style={styles.editorContent}>
@@ -761,9 +712,9 @@ function FieldEditorModal({ visible, field, onSave, onClose, colors }: FieldEdit
                 {options.map((option, index) => (
                   <View key={index} style={styles.optionRow}>
                     <Text style={styles.optionText}>{option}</Text>
-                    <TouchableOpacity onPress={() => removeOption(index)}>
+                    <PressableRow onPress={() => removeOption(index)}>
                       <Feather name="x" size={16} color={colors.destructive} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   </View>
                 ))}
                 <View style={styles.addOptionRow}>
@@ -775,12 +726,9 @@ function FieldEditorModal({ visible, field, onSave, onClose, colors }: FieldEdit
                     placeholderTextColor={colors.mutedForeground}
                     onSubmitEditing={addOption}
                   />
-                  <TouchableOpacity
-                    style={styles.addOptionButton}
-                    onPress={addOption}
-                  >
+                  <PressableRow style={styles.addOptionButton} onPress={addOption} >
                     <Feather name="plus" size={18} color={colors.primaryForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
             )}

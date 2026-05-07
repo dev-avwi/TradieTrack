@@ -14,6 +14,7 @@ import {
   Image,
   Linking,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -479,12 +480,7 @@ export default function DirectMessagesScreen() {
           ) : (
             <>
               {filteredConversations.map((conversation) => (
-                <TouchableOpacity 
-                  key={conversation.otherUser.id}
-                  style={styles.conversationItem} 
-                  onPress={() => setSelectedUser(conversation.otherUser)} 
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={conversation.otherUser.id} style={styles.conversationItem} onPress={() => setSelectedUser(conversation.otherUser)} >
                   <TeamAvatar
                     firstName={conversation.otherUser.firstName}
                     lastName={conversation.otherUser.lastName}
@@ -515,7 +511,7 @@ export default function DirectMessagesScreen() {
                       )}
                     </View>
                   </View>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
               
               {availableNewContacts.length > 0 && (
@@ -524,12 +520,7 @@ export default function DirectMessagesScreen() {
                     <Text style={styles.sectionDividerText}>Start New Conversation</Text>
                   </View>
                   {availableNewContacts.map((member) => (
-                    <TouchableOpacity 
-                      key={member.id}
-                      style={styles.conversationItem} 
-                      onPress={() => setSelectedUser(member)} 
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow key={member.id} style={styles.conversationItem} onPress={() => setSelectedUser(member)} >
                       <TeamAvatar
                         firstName={member.firstName}
                         lastName={member.lastName}
@@ -547,7 +538,7 @@ export default function DirectMessagesScreen() {
                         </Text>
                       </View>
                       <Feather name="message-square" size={20} color={colors.mutedForeground} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </>
               )}
@@ -725,9 +716,9 @@ function ChatView({
       <Stack.Screen options={{ headerShown: false }} />
       
       <View style={styles.chatHeader}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+        <PressableRow onPress={onBack} style={styles.backButton}>
           <Feather name="arrow-left" size={24} color={colors.foreground} />
-        </TouchableOpacity>
+        </PressableRow>
         <TeamAvatar
           firstName={selectedUser.firstName}
           lastName={selectedUser.lastName}
@@ -775,39 +766,16 @@ function ChatView({
                   isOwn ? styles.messageBubbleOwn : styles.messageBubbleOther
                 ]}>
                   {message.attachmentUrl && message.attachmentType === 'image' && (
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        const u = resolveAttachmentUrl(message.attachmentUrl);
-                        if (u) Linking.openURL(u);
-                      }}
-                      style={{ marginBottom: message.content && message.content !== (message as any).attachmentName ? 6 : 0 }}
-                    >
+                    <PressableRow onPress={() => { const u = resolveAttachmentUrl(message.attachmentUrl); if (u) Linking.openURL(u); }} style={{ marginBottom: message.content && message.content !== (message as any).attachmentName ? 6 : 0 }} >
                       <Image
                         source={{ uri: resolveAttachmentUrl(message.attachmentUrl) || '' }}
                         style={{ width: 220, height: 220, borderRadius: 8, backgroundColor: colors.cardBorder }}
                         resizeMode="cover"
                       />
-                    </TouchableOpacity>
+                    </PressableRow>
                   )}
                   {message.attachmentUrl && message.attachmentType !== 'image' && (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        const u = resolveAttachmentUrl(message.attachmentUrl);
-                        if (u) Linking.openURL(u);
-                      }}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 8,
-                        paddingVertical: 8,
-                        paddingHorizontal: 10,
-                        borderRadius: 8,
-                        backgroundColor: isOwn ? 'rgba(255,255,255,0.15)' : colors.cardBorder,
-                        marginBottom: 6,
-                      }}
-                    >
+                    <PressableRow onPress={() => { const u = resolveAttachmentUrl(message.attachmentUrl); if (u) Linking.openURL(u); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: isOwn ? 'rgba(255,255,255,0.15)' : colors.cardBorder, marginBottom: 6, }} >
                       <Feather name="file" size={16} color={isOwn ? colors.primaryForeground : colors.foreground} />
                       <Text
                         numberOfLines={1}
@@ -820,7 +788,7 @@ function ChatView({
                       >
                         {message.content || 'Attachment'}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   )}
                   {!!message.content && !(message.attachmentUrl && message.attachmentType !== 'image') && (
                     <Text style={[
@@ -849,18 +817,11 @@ function ChatView({
                     </View>
                   )}
                   {(message as any).sendStatus === 'failed' && (
-                    <TouchableOpacity
-                      onPress={async () => {
-                        const { offlineStorage } = await import('@/lib/offline-storage');
-                        const ok = await offlineStorage.retryFailedChatMessage((message as any).localId || message.id);
-                        if (ok) fetchMessages();
-                      }}
-                      style={{ marginTop: 4 }}
-                    >
+                    <PressableRow onPress={async () => { const { offlineStorage } = await import('@/lib/offline-storage'); const ok = await offlineStorage.retryFailedChatMessage((message as any).localId || message.id); if (ok) fetchMessages(); }} style={{ marginTop: 4 }} >
                       <Text style={{ color: colors.destructive, fontSize: 11, fontWeight: '600' }}>
                         Failed to send · tap to retry
                       </Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   )}
                 </View>
               </View>
@@ -870,21 +831,9 @@ function ChatView({
       </ScrollView>
 
       <View style={styles.inputContainer}>
-        <TouchableOpacity
-          onPress={handleAttachment}
-          disabled={isSending}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: isSending ? 0.5 : 1,
-          }}
-          accessibilityLabel="Attach photo"
-        >
+        <PressableRow onPress={handleAttachment} disabled={isSending} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', opacity: isSending ? 0.5 : 1, }} accessibilityLabel="Attach photo" >
           <Feather name="paperclip" size={20} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
         <TextInput
           value={newMessage}
           onChangeText={setNewMessage}
@@ -897,20 +846,13 @@ function ChatView({
           returnKeyType="send"
           onSubmitEditing={handleSend}
         />
-        <TouchableOpacity
-          onPress={handleSend}
-          disabled={!newMessage.trim() || isSending}
-          style={[
-            styles.sendButton,
-            (!newMessage.trim() || isSending) && styles.sendButtonDisabled
-          ]}
-        >
+        <PressableRow onPress={handleSend} disabled={!newMessage.trim() || isSending} style={[ styles.sendButton, (!newMessage.trim() || isSending) && styles.sendButtonDisabled ]} >
           {isSending ? (
             <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
             <Feather name="send" size={20} color={colors.primaryForeground} />
           )}
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     </KeyboardAvoidingView>
   );

@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
@@ -173,17 +174,13 @@ export default function ProfileEditScreen() {
         options={{ 
           title: 'Edit Profile',
           headerRight: () => (
-            <TouchableOpacity
-              onPress={handleSave}
-              disabled={isLoading}
-              style={styles.headerButton}
-            >
+            <PressableRow onPress={handleSave} disabled={isLoading} style={styles.headerButton} >
               {isLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <Feather name="save" size={22} color={colors.primary} />
               )}
-            </TouchableOpacity>
+            </PressableRow>
           ),
         }} 
       />
@@ -279,11 +276,7 @@ export default function ProfileEditScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={isLoading}
-          >
+          <PressableRow style={[styles.saveButton, isLoading && styles.saveButtonDisabled]} onPress={handleSave} disabled={isLoading} >
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.primaryForeground} />
             ) : (
@@ -292,7 +285,7 @@ export default function ProfileEditScreen() {
                 <Text style={styles.saveButtonText}>Save Changes</Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </ScrollView>
       </KeyboardAvoidingView>

@@ -14,6 +14,7 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -372,31 +373,24 @@ export default function LeadsScreen() {
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <PressableRow onPress={() => setSearchQuery('')}>
                 <Feather name="x" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             )}
           </View>
 
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => { resetForm(); setEditingLead(null); setShowForm(true); }}
-          >
+          <PressableRow style={styles.addButton} onPress={() => { resetForm(); setEditingLead(null); setShowForm(true); }} >
             <Feather name="plus" size={18} color={colors.primaryForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll} style={{ flexGrow: 0 }}>
           {FILTERS.map(f => (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
-              onPress={() => setActiveFilter(f.key)}
-            >
+            <PressableRow key={f.key} style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]} onPress={() => setActiveFilter(f.key)} >
               <Text style={[styles.filterChipText, activeFilter === f.key && styles.filterChipTextActive]}>
                 {f.label} {statusCounts[f.key] ? `(${statusCounts[f.key]})` : ''}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </ScrollView>
 
@@ -408,10 +402,10 @@ export default function LeadsScreen() {
               </View>
               <Text style={styles.emptyTitle}>Something went wrong</Text>
               <Text style={styles.emptySubtitle}>{error}</Text>
-              <TouchableOpacity style={styles.emptyButton} onPress={() => { setLoading(true); fetchLeads(); }}>
+              <PressableRow style={styles.emptyButton} onPress={() => { setLoading(true); fetchLeads(); }}>
                 <Feather name="refresh-cw" size={iconSizes.sm} color={colors.white} />
                 <Text style={styles.emptyButtonText}>Retry</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           ) : filteredLeads.length === 0 ? (
             <View style={styles.emptyState}>
@@ -423,10 +417,10 @@ export default function LeadsScreen() {
                 {searchQuery || activeFilter !== 'all' ? 'Try adjusting your filters' : 'Add your first lead to start building your pipeline'}
               </Text>
               {!searchQuery && activeFilter === 'all' && (
-                <TouchableOpacity style={styles.emptyButton} onPress={() => { resetForm(); setEditingLead(null); setShowForm(true); }}>
+                <PressableRow style={styles.emptyButton} onPress={() => { resetForm(); setEditingLead(null); setShowForm(true); }}>
                   <Feather name="plus" size={iconSizes.sm} color={colors.white} />
                   <Text style={styles.emptyButtonText}>Add Lead</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
           ) : (
@@ -434,7 +428,7 @@ export default function LeadsScreen() {
               const statusConfig = getStatusConfig(lead.status as LeadStatus, colors);
               const hasValue = lead.estimatedValue && parseFloat(lead.estimatedValue) > 0;
               return (
-                <TouchableOpacity key={lead.id} style={styles.card} onPress={() => handleEdit(lead)} activeOpacity={0.7}>
+                <PressableRow key={lead.id} style={styles.card} onPress={() => handleEdit(lead)} >
                   <View style={styles.cardTop}>
                     <View style={styles.cardAvatar}>
                       <Text style={styles.cardAvatarText}>{lead.name.charAt(0).toUpperCase()}</Text>
@@ -482,23 +476,17 @@ export default function LeadsScreen() {
 
                     <View style={styles.cardActionRow}>
                       {(lead.status || 'new') !== 'won' && (
-                        <TouchableOpacity
-                          style={[styles.cardActionBtn, { backgroundColor: `${colors.success}12` }]}
-                          onPress={(e) => { e.stopPropagation?.(); setLeadToConvert(lead); setShowConvertModal(true); }}
-                        >
+                        <PressableRow style={[styles.cardActionBtn, { backgroundColor: `${colors.success}12` }]} onPress={(e) => { e.stopPropagation?.(); setLeadToConvert(lead); setShowConvertModal(true); }} >
                           <Feather name="user-check" size={13} color={colors.success} />
                           <Text style={[styles.cardActionText, { color: colors.success }]}>Convert</Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
-                      <TouchableOpacity
-                        style={[styles.cardActionBtn, { backgroundColor: colors.muted }]}
-                        onPress={(e) => { e.stopPropagation?.(); handleDelete(lead); }}
-                      >
+                      <PressableRow style={[styles.cardActionBtn, { backgroundColor: colors.muted }]} onPress={(e) => { e.stopPropagation?.(); handleDelete(lead); }} >
                         <Feather name="trash-2" size={13} color={colors.destructive} />
-                      </TouchableOpacity>
+                      </PressableRow>
                     </View>
                   </View>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })
           )}
@@ -509,13 +497,13 @@ export default function LeadsScreen() {
       onRequestClose={() => setShowForm(false)} visible={showForm} animationType="slide" presentationStyle="pageSheet">
         <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => { setShowForm(false); setEditingLead(null); resetForm(); }}>
+            <PressableRow onPress={() => { setShowForm(false); setEditingLead(null); resetForm(); }}>
               <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={styles.modalTitle}>{editingLead ? 'Edit Lead' : 'New Lead'}</Text>
-            <TouchableOpacity onPress={handleSave} disabled={saving}>
+            <PressableRow onPress={handleSave} disabled={saving}>
               {saving ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={styles.modalSave}>Save</Text>}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <ScrollView style={styles.formScroll} contentContainerStyle={styles.formContent}>
             <View style={styles.formGroup}>
@@ -534,14 +522,10 @@ export default function LeadsScreen() {
               <Text style={styles.formLabel}>Source</Text>
               <View style={styles.optionRow}>
                 {SOURCE_OPTIONS.map(opt => (
-                  <TouchableOpacity
-                    key={opt.value}
-                    style={[styles.optionChip, formData.source === opt.value && { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
-                    onPress={() => setFormData(p => ({ ...p, source: opt.value }))}
-                  >
+                  <PressableRow key={opt.value} style={[styles.optionChip, formData.source === opt.value && { backgroundColor: colors.primaryLight, borderColor: colors.primary }]} onPress={() => setFormData(p => ({ ...p, source: opt.value }))} >
                     <Feather name={opt.icon} size={14} color={formData.source === opt.value ? colors.primary : colors.mutedForeground} />
                     <Text style={[styles.optionChipText, formData.source === opt.value && { color: colors.primary }]}>{opt.label}</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
             </View>
@@ -551,13 +535,9 @@ export default function LeadsScreen() {
                 {STATUS_OPTIONS.map(opt => {
                   const sc = getStatusConfig(opt.value, colors);
                   return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      style={[styles.optionChip, formData.status === opt.value && { backgroundColor: sc.bgColor, borderColor: sc.color }]}
-                      onPress={() => setFormData(p => ({ ...p, status: opt.value }))}
-                    >
+                    <PressableRow key={opt.value} style={[styles.optionChip, formData.status === opt.value && { backgroundColor: sc.bgColor, borderColor: sc.color }]} onPress={() => setFormData(p => ({ ...p, status: opt.value }))} >
                       <Text style={[styles.optionChipText, formData.status === opt.value && { color: sc.color }]}>{opt.label}</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   );
                 })}
               </View>
@@ -586,36 +566,36 @@ export default function LeadsScreen() {
             <Text style={styles.convertSubtitle}>
               {leadToConvert?.name} will be converted to a client. Optionally create related records:
             </Text>
-            <TouchableOpacity style={styles.convertOption} onPress={() => setConvertOptions(p => ({ ...p, createJob: !p.createJob }))}>
+            <PressableRow style={styles.convertOption} onPress={() => setConvertOptions(p => ({ ...p, createJob: !p.createJob }))}>
               <View style={[styles.convertCheckbox, convertOptions.createJob && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
                 {convertOptions.createJob && <Feather name="check" size={14} color={colors.white} />}
               </View>
               <Text style={styles.convertOptionText}>Create a job</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.convertOption} onPress={() => setConvertOptions(p => ({ ...p, createQuote: !p.createQuote }))}>
+            </PressableRow>
+            <PressableRow style={styles.convertOption} onPress={() => setConvertOptions(p => ({ ...p, createQuote: !p.createQuote }))}>
               <View style={[styles.convertCheckbox, convertOptions.createQuote && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
                 {convertOptions.createQuote && <Feather name="check" size={14} color={colors.white} />}
               </View>
               <Text style={styles.convertOptionText}>Create a quote</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.convertOption} onPress={() => setConvertOptions(p => ({ ...p, createInspection: !p.createInspection }))}>
+            </PressableRow>
+            <PressableRow style={styles.convertOption} onPress={() => setConvertOptions(p => ({ ...p, createInspection: !p.createInspection }))}>
               <View style={[styles.convertCheckbox, convertOptions.createInspection && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
                 {convertOptions.createInspection && <Feather name="check" size={14} color={colors.white} />}
               </View>
               <Text style={styles.convertOptionText}>Create an inspection</Text>
-            </TouchableOpacity>
+            </PressableRow>
             <View style={styles.convertActions}>
-              <TouchableOpacity style={styles.convertCancelBtn} onPress={() => { setShowConvertModal(false); setLeadToConvert(null); }}>
+              <PressableRow style={styles.convertCancelBtn} onPress={() => { setShowConvertModal(false); setLeadToConvert(null); }}>
                 <Text style={styles.convertCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.convertConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleConvert} disabled={saving}>
+              </PressableRow>
+              <PressableRow style={[styles.convertConfirmBtn, { backgroundColor: colors.primary }]} onPress={handleConvert} disabled={saving}>
                 {saving ? <ActivityIndicator size="small" color={colors.white} /> : (
                   <>
                     <Feather name="user-check" size={16} color={colors.white} />
                     <Text style={styles.convertConfirmText}>Convert</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
         </View>

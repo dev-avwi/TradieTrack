@@ -13,6 +13,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useClientsStore, useInvoicesStore, useJobsStore } from '../../src/lib/store';
@@ -59,17 +60,13 @@ function KPIBox({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <TouchableOpacity 
-      style={styles.kpiBox} 
-      onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-    >
+    <PressableRow style={styles.kpiBox} onPress={onPress} >
       <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
         <Feather name={icon as any} size={iconSizes.md} color={colors.primary} />
       </View>
       <Text style={styles.kpiValue}>{value}</Text>
       <Text style={styles.kpiTitle}>{title}</Text>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -159,45 +156,30 @@ function ClientCard({
       
       <View style={styles.clientCardActions}>
         {client.phone && (
-          <TouchableOpacity 
-            style={styles.cardActionButton}
-            onPress={(e) => { e.stopPropagation(); onCall?.(); }}
-          >
+          <PressableRow style={styles.cardActionButton} onPress={(e) => { e.stopPropagation(); onCall?.(); }} >
             <Feather name="phone" size={14} color={colors.primary} />
             <Text style={styles.cardActionText}>Call</Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
         {client.email && (
-          <TouchableOpacity 
-            style={styles.cardActionButton}
-            onPress={(e) => { e.stopPropagation(); onEmail?.(); }}
-          >
+          <PressableRow style={styles.cardActionButton} onPress={(e) => { e.stopPropagation(); onEmail?.(); }} >
             <Feather name="mail" size={14} color={colors.primary} />
             <Text style={styles.cardActionText}>Email</Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
         {client.phone && (
-          <TouchableOpacity 
-            style={styles.cardActionButton}
-            onPress={(e) => { e.stopPropagation(); onSms?.(); }}
-          >
+          <PressableRow style={styles.cardActionButton} onPress={(e) => { e.stopPropagation(); onSms?.(); }} >
             <Feather name="message-circle" size={14} color={colors.primary} />
             <Text style={styles.cardActionText}>SMS</Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
-        <TouchableOpacity 
-          style={[styles.cardActionButton, styles.cardActionButtonPrimary]}
-          onPress={(e) => { e.stopPropagation(); onCreateJob?.(); }}
-        >
+        <PressableRow style={[styles.cardActionButton, styles.cardActionButtonPrimary]} onPress={(e) => { e.stopPropagation(); onCreateJob?.(); }} >
           <Feather name="briefcase" size={14} color={colors.white} />
           <Text style={[styles.cardActionText, styles.cardActionTextPrimary]}>Job</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.cardActionButton, styles.cardActionButtonDestructive]}
-          onPress={(e) => { e.stopPropagation(); onDelete?.(); }}
-        >
+        </PressableRow>
+        <PressableRow style={[styles.cardActionButton, styles.cardActionButtonDestructive]} onPress={(e) => { e.stopPropagation(); onDelete?.(); }} >
           <Feather name="trash-2" size={14} color={colors.destructive} />
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     </AnimatedCardPressable>
   );
@@ -415,14 +397,10 @@ export default function ClientsScreen() {
           <Text style={styles.pageTitle}>Clients</Text>
           <Text style={styles.pageSubtitle}>{clients.length} total</Text>
         </View>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.newButton}
-          onPress={handleCreateClient}
-        >
+        <PressableRow style={styles.newButton} onPress={handleCreateClient} >
           <Feather name="plus" size={iconSizes.lg} color={colors.white} />
           <Text style={styles.newButtonText}>New Client</Text>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       <View style={styles.searchBar}>
@@ -447,15 +425,7 @@ export default function ClientsScreen() {
           const isActive = activeFilter === filter.key;
           
           return (
-            <TouchableOpacity
-              key={filter.key}
-              onPress={() => { setActiveFilter(filter.key); setActiveTagFilter(null); }}
-              activeOpacity={0.7}
-              style={[
-                styles.filterPill,
-                isActive && styles.filterPillActive
-              ]}
-            >
+            <PressableRow key={filter.key} onPress={() => { setActiveFilter(filter.key); setActiveTagFilter(null); }} style={[ styles.filterPill, isActive && styles.filterPillActive ]} >
               <Text style={[
                 styles.filterPillText,
                 isActive && styles.filterPillTextActive
@@ -473,7 +443,7 @@ export default function ClientsScreen() {
                   {count}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           );
         })}
       </ScrollView>
@@ -485,23 +455,14 @@ export default function ClientsScreen() {
           style={styles.tagsFilterScroll}
           contentContainerStyle={styles.filtersContent}
         >
-          <TouchableOpacity
-            onPress={() => setActiveTagFilter(null)}
-            activeOpacity={0.7}
-            style={[styles.tagFilterPill, !activeTagFilter && styles.tagFilterPillActive]}
-          >
+          <PressableRow onPress={() => setActiveTagFilter(null)} style={[styles.tagFilterPill, !activeTagFilter && styles.tagFilterPillActive]} >
             <Feather name="tag" size={12} color={!activeTagFilter ? colors.white : colors.mutedForeground} />
             <Text style={[styles.tagFilterPillText, !activeTagFilter && styles.tagFilterPillTextActive]}>All Tags</Text>
-          </TouchableOpacity>
+          </PressableRow>
           {allTags.map((tag) => (
-            <TouchableOpacity
-              key={tag}
-              onPress={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
-              activeOpacity={0.7}
-              style={[styles.tagFilterPill, activeTagFilter === tag && styles.tagFilterPillActive]}
-            >
+            <PressableRow key={tag} onPress={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)} style={[styles.tagFilterPill, activeTagFilter === tag && styles.tagFilterPillActive]} >
               <Text style={[styles.tagFilterPillText, activeTagFilter === tag && styles.tagFilterPillTextActive]}>{tag}</Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </ScrollView>
       )}
@@ -560,13 +521,10 @@ export default function ClientsScreen() {
             : 'Save client details once, use them everywhere. Makes quoting and invoicing a breeze.'}
         </Text>
         {!searchQuery && activeFilter === 'all' && (
-          <TouchableOpacity 
-            style={styles.emptyStateButton}
-            onPress={handleCreateClient}
-          >
+          <PressableRow style={styles.emptyStateButton} onPress={handleCreateClient} >
             <Feather name="plus" size={16} color={colors.white} />
             <Text style={styles.emptyStateButtonText}>Add Your First Client</Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
       </View>
     );

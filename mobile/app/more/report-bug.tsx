@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Device from 'expo-device';
@@ -354,14 +355,7 @@ export default function ReportBugScreen() {
           <Text style={styles.sectionTitle}>WHAT TYPE OF PROBLEM?</Text>
           <View style={styles.categoryGrid}>
             {CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.categoryButton,
-                  category === cat.id && styles.categoryButtonSelected
-                ]}
-                onPress={() => setCategory(cat.id)}
-              >
+              <PressableRow key={cat.id} style={[ styles.categoryButton, category === cat.id && styles.categoryButtonSelected ]} onPress={() => setCategory(cat.id)} >
                 <Feather 
                   name={cat.icon as any} 
                   size={iconSizes.lg} 
@@ -369,25 +363,18 @@ export default function ReportBugScreen() {
                   style={styles.categoryIcon}
                 />
                 <Text style={styles.categoryLabel}>{cat.label}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </View>
 
           <Text style={styles.sectionTitle}>HOW BAD IS IT?</Text>
           <View style={styles.severityRow}>
             {SEVERITY_LEVELS.map((level) => (
-              <TouchableOpacity
-                key={level.id}
-                style={[
-                  styles.severityButton,
-                  severity === level.id && styles.severityButtonSelected
-                ]}
-                onPress={() => setSeverity(level.id)}
-              >
+              <PressableRow key={level.id} style={[ styles.severityButton, severity === level.id && styles.severityButtonSelected ]} onPress={() => setSeverity(level.id)} >
                 <View style={[styles.severityDot, { backgroundColor: level.color }]} />
                 <Text style={styles.severityLabel}>{level.label}</Text>
                 <Text style={styles.severityDescription}>{level.description}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </View>
 
@@ -443,14 +430,7 @@ export default function ReportBugScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              (isSubmitting || !description.trim()) && styles.submitButtonDisabled
-            ]}
-            onPress={handleSubmit}
-            disabled={isSubmitting || !description.trim()}
-          >
+          <PressableRow style={[ styles.submitButton, (isSubmitting || !description.trim()) && styles.submitButtonDisabled ]} onPress={handleSubmit} disabled={isSubmitting || !description.trim()} >
             {isSubmitting ? (
               <ActivityIndicator color={colors.primaryForeground} size="small" />
             ) : (
@@ -459,7 +439,7 @@ export default function ReportBugScreen() {
             <Text style={styles.submitButtonText}>
               {isSubmitting ? 'Submitting...' : 'Submit Report'}
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
 
           <View style={styles.infoCard}>
             <Feather name="info" size={iconSizes.md} color={colors.primary} />

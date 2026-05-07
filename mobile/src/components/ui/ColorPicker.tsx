@@ -9,6 +9,7 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
+import { PressableRow } from './PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { colors } from '../../lib/colors';
 
@@ -76,11 +77,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
 
   return (
     <>
-      <TouchableOpacity
-        style={styles.trigger}
-        onPress={() => setShowModal(true)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.trigger} onPress={() => setShowModal(true)} >
         <View style={styles.triggerContent}>
           <View style={[styles.colorSwatch, { backgroundColor: value || colors.primary }]} />
           <View style={styles.triggerText}>
@@ -89,7 +86,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
           </View>
         </View>
         <Feather name="sliders" size={20} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
       <Modal
         visible={showModal}
@@ -99,19 +96,15 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
       >
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowModal(false)} style={styles.closeButton}>
+            <PressableRow onPress={() => setShowModal(false)} style={styles.closeButton}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={styles.modalTitle}>Choose Brand Color</Text>
-            <TouchableOpacity 
-              onPress={handleConfirm} 
-              style={[styles.doneButton, !isValidColor && styles.doneButtonDisabled]}
-              disabled={!isValidColor}
-            >
+            <PressableRow onPress={handleConfirm} style={[styles.doneButton, !isValidColor && styles.doneButtonDisabled]} disabled={!isValidColor} >
               <Text style={[styles.doneButtonText, !isValidColor && styles.doneButtonTextDisabled]}>
                 Done
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
@@ -139,20 +132,11 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
               <Text style={styles.sectionLabel}>Preset Colors</Text>
               <View style={styles.presetsGrid}>
                 {PRESET_COLORS.map((color) => (
-                  <TouchableOpacity
-                    key={color.hex}
-                    style={[
-                      styles.presetItem,
-                      { backgroundColor: color.hex },
-                      selectedColor.toLowerCase() === color.hex.toLowerCase() && styles.presetItemSelected,
-                    ]}
-                    onPress={() => handlePresetSelect(color.hex)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={color.hex} style={[ styles.presetItem, { backgroundColor: color.hex }, selectedColor.toLowerCase() === color.hex.toLowerCase() && styles.presetItemSelected, ]} onPress={() => handlePresetSelect(color.hex)} >
                     {selectedColor.toLowerCase() === color.hex.toLowerCase() && (
                       <Feather name="check" size={20} color={colors.white} />
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
             </View>

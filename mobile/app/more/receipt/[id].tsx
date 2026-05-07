@@ -12,6 +12,7 @@ import {
   Linking,
   Modal,
 } from 'react-native';
+import { PressableRow } from '../../../src/components/ui/PressableRow';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -611,12 +612,9 @@ ${businessName}`;
           <Feather name="file" size={48} color={colors.mutedForeground} />
           <Text style={styles.errorTitle}>Receipt Not Found</Text>
           <Text style={styles.errorText}>This receipt could not be found or may have been deleted.</Text>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <PressableRow style={styles.backButton} onPress={() => router.back()} >
             <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </>
     );
@@ -632,24 +630,16 @@ ${businessName}`;
           title: receipt.receiptNumber || 'Receipt',
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity 
-                onPress={() => setShowPreview(true)}
-                style={styles.headerButton}
-              >
+              <PressableRow onPress={() => setShowPreview(true)} style={styles.headerButton} >
                 <Feather name="eye" size={22} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleDeleteReceipt}
-                style={styles.headerButton}
-                disabled={isDeleting}
-                data-testid="button-delete-receipt"
-              >
+              </PressableRow>
+              <PressableRow onPress={handleDeleteReceipt} style={styles.headerButton} disabled={isDeleting} data-testid="button-delete-receipt" >
                 {isDeleting ? (
                   <ActivityIndicator size="small" color={colors.destructive} />
                 ) : (
                   <Feather name="trash-2" size={22} color={colors.destructive} />
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )
         }} 
@@ -696,12 +686,7 @@ ${businessName}`;
         </View>
         
         <View style={styles.actionsRow}>
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.actionButtonPrimary]}
-            onPress={handleSharePdf}
-            disabled={isDownloadingPdf}
-            data-testid="button-download-pdf"
-          >
+          <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={handleSharePdf} disabled={isDownloadingPdf} data-testid="button-download-pdf" >
             {isDownloadingPdf ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
@@ -710,14 +695,9 @@ ${businessName}`;
                 <Text style={styles.actionButtonPrimaryText}>PDF</Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableRow>
           
-          <TouchableOpacity 
-            style={[styles.actionButton, !client?.email && styles.actionButtonDisabled]}
-            onPress={handleSendReceipt}
-            disabled={isSendingEmail || !client?.email}
-            data-testid="button-send-email"
-          >
+          <PressableRow style={[styles.actionButton, !client?.email && styles.actionButtonDisabled]} onPress={handleSendReceipt} disabled={isSendingEmail || !client?.email} data-testid="button-send-email" >
             {isSendingEmail ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
@@ -726,24 +706,14 @@ ${businessName}`;
                 <Text style={[styles.actionButtonText, !client?.email && styles.actionButtonTextDisabled]}>Email</Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableRow>
           
-          <TouchableOpacity 
-            style={[styles.actionButton, !client?.phone && styles.actionButtonDisabled]}
-            onPress={handleShareViaSMS}
-            disabled={!client?.phone}
-            data-testid="button-send-sms"
-          >
+          <PressableRow style={[styles.actionButton, !client?.phone && styles.actionButtonDisabled]} onPress={handleShareViaSMS} disabled={!client?.phone} data-testid="button-send-sms" >
             <Feather name="message-circle" size={18} color={client?.phone ? colors.primary : colors.mutedForeground} />
             <Text style={[styles.actionButtonText, !client?.phone && styles.actionButtonTextDisabled]}>SMS</Text>
-          </TouchableOpacity>
+          </PressableRow>
           
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleDeleteReceipt}
-            disabled={isDeleting}
-            data-testid="button-delete-receipt-content"
-          >
+          <PressableRow style={styles.actionButton} onPress={handleDeleteReceipt} disabled={isDeleting} data-testid="button-delete-receipt-content" >
             {isDeleting ? (
               <ActivityIndicator size="small" color={colors.destructive} />
             ) : (
@@ -752,19 +722,14 @@ ${businessName}`;
                 <Text style={[styles.actionButtonText, { color: colors.destructive }]}>Delete</Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         {(invoice || job) && (
           <View style={styles.linkedSection}>
             <Text style={styles.linkedTitle}>Linked Documents</Text>
             {invoice && (
-              <TouchableOpacity 
-                style={styles.linkedCard}
-                onPress={handleNavigateToInvoice}
-                activeOpacity={0.7}
-                data-testid="link-invoice"
-              >
+              <PressableRow style={styles.linkedCard} onPress={handleNavigateToInvoice} data-testid="link-invoice" >
                 <View style={styles.linkedCardIcon}>
                   <Feather name="file-text" size={20} color={colors.primary} />
                 </View>
@@ -775,15 +740,10 @@ ${businessName}`;
                   </Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             )}
             {job && (
-              <TouchableOpacity 
-                style={styles.linkedCard}
-                onPress={handleNavigateToJob}
-                activeOpacity={0.7}
-                data-testid="link-job"
-              >
+              <PressableRow style={styles.linkedCard} onPress={handleNavigateToJob} data-testid="link-job" >
                 <View style={styles.linkedCardIcon}>
                   <Feather name="briefcase" size={20} color={colors.info} />
                 </View>
@@ -792,7 +752,7 @@ ${businessName}`;
                   <Text style={styles.linkedCardValue} numberOfLines={1}>{job.title}</Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             )}
           </View>
         )}
@@ -930,54 +890,32 @@ ${businessName}`;
       >
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={styles.previewModalHeader}>
-            <TouchableOpacity onPress={() => setShowPreview(false)} style={styles.previewCloseButton}>
+            <PressableRow onPress={() => setShowPreview(false)} style={styles.previewCloseButton}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={styles.previewModalTitle}>Receipt Preview</Text>
             <View style={styles.previewActionButtons}>
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowPreview(false);
-                  setTimeout(() => handleSendReceipt(), 300);
-                }}
-                style={styles.previewActionButton}
-              >
+              <PressableRow onPress={() => { setShowPreview(false); setTimeout(() => handleSendReceipt(), 300); }} style={styles.previewActionButton} >
                 <Feather name="mail" size={20} color={colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowPreview(false);
-                  setTimeout(() => handleSharePdf(), 300);
-                }}
-                style={styles.previewActionButton}
-                disabled={isDownloadingPdf}
-              >
+              </PressableRow>
+              <PressableRow onPress={() => { setShowPreview(false); setTimeout(() => handleSharePdf(), 300); }} style={styles.previewActionButton} disabled={isDownloadingPdf} >
                 <Feather name="share-2" size={20} color={isDownloadingPdf ? colors.mutedForeground : colors.primary} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
           <View style={styles.previewOptionsRow}>
-            <TouchableOpacity
-              style={[styles.previewOptionChip, includeBusinessInfo && styles.previewOptionChipActive]}
-              onPress={() => setIncludeBusinessInfo(!includeBusinessInfo)}
-            >
+            <PressableRow style={[styles.previewOptionChip, includeBusinessInfo && styles.previewOptionChipActive]} onPress={() => setIncludeBusinessInfo(!includeBusinessInfo)} >
               <Feather name={includeBusinessInfo ? "check-square" : "square"} size={14} color={includeBusinessInfo ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.previewOptionChipText, includeBusinessInfo && { color: colors.primary }]}>Business</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.previewOptionChip, includeClientInfo && styles.previewOptionChipActive]}
-              onPress={() => setIncludeClientInfo(!includeClientInfo)}
-            >
+            </PressableRow>
+            <PressableRow style={[styles.previewOptionChip, includeClientInfo && styles.previewOptionChipActive]} onPress={() => setIncludeClientInfo(!includeClientInfo)} >
               <Feather name={includeClientInfo ? "check-square" : "square"} size={14} color={includeClientInfo ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.previewOptionChipText, includeClientInfo && { color: colors.primary }]}>Client</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.previewOptionChip, includePaymentDetails && styles.previewOptionChipActive]}
-              onPress={() => setIncludePaymentDetails(!includePaymentDetails)}
-            >
+            </PressableRow>
+            <PressableRow style={[styles.previewOptionChip, includePaymentDetails && styles.previewOptionChipActive]} onPress={() => setIncludePaymentDetails(!includePaymentDetails)} >
               <Feather name={includePaymentDetails ? "check-square" : "square"} size={14} color={includePaymentDetails ? colors.primary : colors.mutedForeground} />
               <Text style={[styles.previewOptionChipText, includePaymentDetails && { color: colors.primary }]}>Details</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <ScrollView 
             style={{ flex: 1 }} 

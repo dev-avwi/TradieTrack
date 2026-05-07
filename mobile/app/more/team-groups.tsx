@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -679,12 +680,7 @@ export default function TeamGroupsScreen() {
   }, [viewingGroup, teamMembers]);
 
   const renderGroupCard = (group: TeamGroup) => (
-    <TouchableOpacity
-      key={group.id}
-      style={styles.card}
-      onPress={() => handleViewGroup(group)}
-      activeOpacity={0.7}
-    >
+    <PressableRow key={group.id} style={styles.card} onPress={() => handleViewGroup(group)} >
       <View style={styles.cardTopRow}>
         <View style={styles.cardLeftContent}>
           <View style={[styles.colorDot, { backgroundColor: group.color || '#3b82f6' }]} />
@@ -695,13 +691,9 @@ export default function TeamGroupsScreen() {
             ) : null}
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => setActionSheetGroup(group)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
+        <PressableRow style={styles.menuButton} onPress={() => setActionSheetGroup(group)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} >
           <Feather name="more-vertical" size={iconSizes.lg} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       </View>
       <View style={styles.memberBadge}>
         <Feather name="users" size={iconSizes.xs} color={colors.mutedForeground} />
@@ -709,7 +701,7 @@ export default function TeamGroupsScreen() {
           {group.memberCount} member{group.memberCount !== 1 ? 's' : ''}
         </Text>
       </View>
-    </TouchableOpacity>
+    </PressableRow>
   );
 
   return (
@@ -741,10 +733,10 @@ export default function TeamGroupsScreen() {
             <Text style={styles.emptySubtitle}>
               Create your first team group to organise your crew members
             </Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={openCreateModal} activeOpacity={0.7}>
+            <PressableRow style={styles.emptyButton} onPress={openCreateModal} >
               <Feather name="plus" size={iconSizes.lg} color={colors.primaryForeground} />
               <Text style={styles.emptyButtonText}>Create Group</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </ScrollView>
       ) : (
@@ -759,29 +751,29 @@ export default function TeamGroupsScreen() {
       )}
 
       {groups.length > 0 && (
-        <TouchableOpacity style={styles.fab} onPress={openCreateModal} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <PressableRow style={styles.fab} onPress={openCreateModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Feather name="plus" size={iconSizes['2xl']} color={colors.primaryForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
 
       <Modal visible={actionSheetGroup !== null} transparent animationType="fade" onRequestClose={() => setActionSheetGroup(null)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setActionSheetGroup(null)}>
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <TouchableOpacity style={styles.actionSheetItem} onPress={() => actionSheetGroup && handleManageMembers(actionSheetGroup)}>
+            <PressableRow style={styles.actionSheetItem} onPress={() => actionSheetGroup && handleManageMembers(actionSheetGroup)}>
               <Feather name="user-plus" size={iconSizes.xl} color={colors.foreground} />
               <Text style={styles.actionSheetText}>Manage Members</Text>
-            </TouchableOpacity>
+            </PressableRow>
             <View style={styles.actionSheetDivider} />
-            <TouchableOpacity style={styles.actionSheetItem} onPress={() => actionSheetGroup && openEditModal(actionSheetGroup)}>
+            <PressableRow style={styles.actionSheetItem} onPress={() => actionSheetGroup && openEditModal(actionSheetGroup)}>
               <Feather name="edit-2" size={iconSizes.xl} color={colors.foreground} />
               <Text style={styles.actionSheetText}>Edit Group</Text>
-            </TouchableOpacity>
+            </PressableRow>
             <View style={styles.actionSheetDivider} />
-            <TouchableOpacity style={styles.actionSheetItem} onPress={() => actionSheetGroup && handleDelete(actionSheetGroup)}>
+            <PressableRow style={styles.actionSheetItem} onPress={() => actionSheetGroup && handleDelete(actionSheetGroup)}>
               <Feather name="trash-2" size={iconSizes.xl} color={colors.destructive} />
               <Text style={[styles.actionSheetText, styles.actionSheetDestructive]}>Delete Group</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -798,9 +790,9 @@ export default function TeamGroupsScreen() {
                 <Text style={styles.modalTitle}>
                   {editingGroup ? 'Edit Group' : 'Create New Group'}
                 </Text>
-                <TouchableOpacity onPress={() => { setFormModalVisible(false); resetForm(); }}>
+                <PressableRow onPress={() => { setFormModalVisible(false); resetForm(); }}>
                   <Feather name="x" size={iconSizes['2xl']} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
               <ScrollView style={styles.modalBody} keyboardShouldPersistTaps="handled">
                 <Text style={[styles.modalLabel, { marginTop: 0 }]}>Group Name</Text>
@@ -827,42 +819,24 @@ export default function TeamGroupsScreen() {
                 <Text style={styles.modalLabel}>Group Colour</Text>
                 <View style={styles.colorPickerRow}>
                   {colorOptions.map((c) => (
-                    <TouchableOpacity
-                      key={c.value}
-                      style={[
-                        styles.colorButton,
-                        { backgroundColor: c.value },
-                        formColor === c.value && styles.colorButtonSelected,
-                      ]}
-                      onPress={() => setFormColor(c.value)}
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow key={c.value} style={[ styles.colorButton, { backgroundColor: c.value }, formColor === c.value && styles.colorButtonSelected, ]} onPress={() => setFormColor(c.value)} >
                       {formColor === c.value && <View style={styles.colorButtonInner} />}
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
 
-                <TouchableOpacity
-                  style={[styles.modalSaveButton, (!formName.trim() || formSaving) && { opacity: 0.5 }]}
-                  onPress={handleSave}
-                  disabled={!formName.trim() || formSaving}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={[styles.modalSaveButton, (!formName.trim() || formSaving) && { opacity: 0.5 }]} onPress={handleSave} disabled={!formName.trim() || formSaving} >
                   {formSaving ? (
                     <ActivityIndicator size="small" color={colors.primaryForeground} />
                   ) : null}
                   <Text style={styles.modalSaveButtonText}>
                     {formSaving ? 'Saving...' : editingGroup ? 'Update Group' : 'Create Group'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
 
-                <TouchableOpacity
-                  style={styles.modalCancelButton}
-                  onPress={() => { setFormModalVisible(false); resetForm(); }}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.modalCancelButton} onPress={() => { setFormModalVisible(false); resetForm(); }} >
                   <Text style={styles.modalCancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </ScrollView>
         </View>
       </AppBottomSheet>
@@ -880,9 +854,9 @@ export default function TeamGroupsScreen() {
                   <View style={[styles.viewColorDot, { backgroundColor: viewingGroup?.color || '#3b82f6' }]} />
                   <Text style={styles.modalTitle}>{viewingGroup?.name}</Text>
                 </View>
-                <TouchableOpacity onPress={() => { setViewModalVisible(false); setViewingGroup(null); }}>
+                <PressableRow onPress={() => { setViewModalVisible(false); setViewingGroup(null); }}>
                   <Feather name="x" size={iconSizes['2xl']} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
               <ScrollView style={styles.modalBody}>
                 {viewingGroup?.description ? (
@@ -891,14 +865,10 @@ export default function TeamGroupsScreen() {
 
                 <View style={styles.membersHeaderRow}>
                   <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>Members</Text>
-                  <TouchableOpacity
-                    style={styles.manageMembersButton}
-                    onPress={() => setManageMembersVisible(true)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={styles.manageMembersButton} onPress={() => setManageMembersVisible(true)} >
                     <Feather name="user-plus" size={iconSizes.sm} color={colors.foreground} />
                     <Text style={styles.manageMembersText}>Manage</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
 
                 {!viewingGroup?.members || viewingGroup.members.length === 0 ? (
@@ -945,9 +915,9 @@ export default function TeamGroupsScreen() {
         <View>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Manage Members - {viewingGroup?.name}</Text>
-                <TouchableOpacity onPress={() => setManageMembersVisible(false)}>
+                <PressableRow onPress={() => setManageMembersVisible(false)}>
                   <Feather name="x" size={iconSizes['2xl']} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
               <ScrollView style={styles.modalBody}>
                 {viewingGroup?.members && viewingGroup.members.length > 0 && (
@@ -967,13 +937,9 @@ export default function TeamGroupsScreen() {
                             {membership.member?.name || 'Unknown'}
                           </Text>
                         </View>
-                        <TouchableOpacity
-                          style={styles.removeButton}
-                          onPress={() => handleRemoveMember(membership.id)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
+                        <PressableRow style={styles.removeButton} onPress={() => handleRemoveMember(membership.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} >
                           <Feather name="x" size={iconSizes.lg} color={colors.mutedForeground} />
-                        </TouchableOpacity>
+                        </PressableRow>
                       </View>
                     ))}
                   </>
@@ -983,12 +949,7 @@ export default function TeamGroupsScreen() {
                   <>
                     <Text style={styles.sectionTitle}>Add Members</Text>
                     {availableMembers.map((member) => (
-                      <TouchableOpacity
-                        key={member.id}
-                        style={styles.addMemberRow}
-                        onPress={() => handleAddMember(member.id)}
-                        activeOpacity={0.7}
-                      >
+                      <PressableRow key={member.id} style={styles.addMemberRow} onPress={() => handleAddMember(member.id)} >
                         <TeamAvatar
                           name={member.name}
                           email={member.email}
@@ -1005,7 +966,7 @@ export default function TeamGroupsScreen() {
                         <View style={styles.addButton}>
                           <Feather name="plus" size={iconSizes.sm} color={colors.primary} />
                         </View>
-                      </TouchableOpacity>
+                      </PressableRow>
                     ))}
                   </>
                 )}
@@ -1022,13 +983,9 @@ export default function TeamGroupsScreen() {
                   </Text>
                 )}
 
-                <TouchableOpacity
-                  style={styles.doneButton}
-                  onPress={() => setManageMembersVisible(false)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.doneButton} onPress={() => setManageMembersVisible(false)} >
                   <Text style={styles.doneButtonText}>Done</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </ScrollView>
         </View>
       </AppBottomSheet>

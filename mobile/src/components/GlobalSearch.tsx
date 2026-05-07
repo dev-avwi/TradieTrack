@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme, ThemeColors } from '../lib/theme';
@@ -348,11 +349,7 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
     const config = getTypeConfig(item.type);
     
     return (
-      <TouchableOpacity
-        style={styles.resultItem}
-        onPress={() => handleResultPress(item)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.resultItem} onPress={() => handleResultPress(item)} >
         <View style={[styles.resultIconContainer, { backgroundColor: config.color + '20' }]}>
           <Feather name={config.icon} size={iconSizes.md} color={config.color} />
         </View>
@@ -374,7 +371,7 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
             </View>
           )}
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
   
@@ -400,14 +397,14 @@ export function GlobalSearch({ visible, onClose }: GlobalSearchProps) {
                 returnKeyType="search"
               />
               {query.length > 0 && (
-                <TouchableOpacity onPress={() => setQuery('')}>
+                <PressableRow onPress={() => setQuery('')}>
                   <Feather name="x" size={iconSizes.sm} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <PressableRow style={styles.closeButton} onPress={onClose}>
               <Text style={styles.closeText}>Cancel</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           
           <View style={styles.content}>

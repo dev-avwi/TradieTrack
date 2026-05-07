@@ -7,6 +7,7 @@ import { spacing, radius, shadows, typography, typographySizes, pageShell, iconS
 import { api } from '../../src/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 
 interface ActionItem {
   id: string;
@@ -598,29 +599,29 @@ export default function ActionCenterScreen() {
 
     return (
       <View style={styles.statsRow}>
-        <TouchableOpacity style={[styles.statCard, { backgroundColor: colorWithOpacity(colors.destructive, 0.04) }]} onPress={() => scrollToSection('fix_now')} activeOpacity={0.7}>
+        <PressableRow style={[styles.statCard, { backgroundColor: colorWithOpacity(colors.destructive, 0.04) }]} onPress={() => scrollToSection('fix_now')} >
           <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.destructive, 0.12) }]}>
             <Feather name="alert-triangle" size={16} color={colors.destructive} />
           </View>
           <Text style={[styles.statValue, { color: colors.destructive }]}>{fixNowCount}</Text>
           <Text style={styles.statLabel}>Fix Now</Text>
-        </TouchableOpacity>
+        </PressableRow>
 
-        <TouchableOpacity style={styles.statCard} onPress={() => scrollToSection('this_week')} activeOpacity={0.7}>
+        <PressableRow style={styles.statCard} onPress={() => scrollToSection('this_week')} >
           <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.warning, 0.12) }]}>
             <Feather name="clock" size={16} color={colors.warning} />
           </View>
           <Text style={[styles.statValue, { color: colors.foreground }]}>{thisWeekCount}</Text>
           <Text style={styles.statLabel}>This Week</Text>
-        </TouchableOpacity>
+        </PressableRow>
 
-        <TouchableOpacity style={styles.statCard} onPress={() => scrollToSection('suggestions')} activeOpacity={0.7}>
+        <PressableRow style={styles.statCard} onPress={() => scrollToSection('suggestions')} >
           <View style={[styles.statIconContainer, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
             <Feather name="zap" size={16} color={colors.success} />
           </View>
           <Text style={[styles.statValue, { color: colors.foreground }]}>{suggestionsCount}</Text>
           <Text style={styles.statLabel}>Tips</Text>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     );
   };
@@ -654,14 +655,10 @@ export default function ActionCenterScreen() {
             ) : (
               <View style={{ flex: 1 }} />
             )}
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={() => handleCTA(action.ctaUrl)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.ctaButton} onPress={() => handleCTA(action.ctaUrl)} >
               <Text style={styles.ctaText}>{action.cta}</Text>
               <Feather name="chevron-right" size={iconSizes.sm} color={colors.primaryForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </View>
@@ -702,9 +699,9 @@ export default function ActionCenterScreen() {
     <View style={styles.errorContainer}>
       <Feather name="alert-circle" size={40} color={colors.destructive} />
       <Text style={styles.errorText}>{error}</Text>
-      <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+      <PressableRow style={styles.retryButton} onPress={fetchData}>
         <Text style={styles.retryButtonText}>Try Again</Text>
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 
@@ -760,15 +757,15 @@ export default function ActionCenterScreen() {
       >
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <TouchableOpacity onPress={() => setShowBatchModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <PressableRow onPress={() => setShowBatchModal(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Feather name="x" size={22} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Create Invoices</Text>
-            <TouchableOpacity onPress={selectAllBatchJobs} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <PressableRow onPress={selectAllBatchJobs} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
               <Text style={[styles.modalSelectAll, { color: colors.primary }]}>
                 {batchJobs.every(j => j.selected) ? 'Deselect All' : 'Select All'}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <Text style={[styles.batchSubtitle, { color: colors.mutedForeground }]}>
@@ -777,12 +774,7 @@ export default function ActionCenterScreen() {
 
           <ScrollView style={styles.batchJobList} showsVerticalScrollIndicator={false}>
             {batchJobs.map(job => (
-              <TouchableOpacity
-                key={job.id}
-                style={[styles.batchJobItem, { borderColor: job.selected ? colors.primary : colors.border, backgroundColor: job.selected ? colorWithOpacity(colors.primary, 0.04) : 'transparent' }]}
-                onPress={() => toggleBatchJob(job.id)}
-                activeOpacity={0.7}
-              >
+              <PressableRow key={job.id} style={[styles.batchJobItem, { borderColor: job.selected ? colors.primary : colors.border, backgroundColor: job.selected ? colorWithOpacity(colors.primary, 0.04) : 'transparent' }]} onPress={() => toggleBatchJob(job.id)} >
                 <View style={[styles.batchCheckbox, { borderColor: job.selected ? colors.primary : colors.border, backgroundColor: job.selected ? colors.primary : 'transparent' }]}>
                   {job.selected && <Feather name="check" size={14} color={colors.white} />}
                 </View>
@@ -799,7 +791,7 @@ export default function ActionCenterScreen() {
                 <View style={[styles.batchStatusBadge, { backgroundColor: colorWithOpacity(colors.success, 0.12) }]}>
                   <Text style={[styles.batchStatusText, { color: colors.success }]}>Done</Text>
                 </View>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </ScrollView>
 
@@ -807,12 +799,7 @@ export default function ActionCenterScreen() {
             <Text style={[styles.batchFooterText, { color: colors.mutedForeground }]}>
               {selectedCount} of {batchJobs.length} job{batchJobs.length !== 1 ? 's' : ''} selected
             </Text>
-            <TouchableOpacity
-              style={[styles.batchCreateButton, { backgroundColor: selectedCount > 0 ? colors.primary : colors.muted, opacity: isBatchCreating ? 0.7 : 1 }]}
-              onPress={handleBatchCreate}
-              disabled={isBatchCreating || selectedCount === 0}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.batchCreateButton, { backgroundColor: selectedCount> 0 ? colors.primary : colors.muted, opacity: isBatchCreating ? 0.7 : 1 }]} onPress={handleBatchCreate} disabled={isBatchCreating || selectedCount === 0} >
               {isBatchCreating ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
@@ -823,7 +810,7 @@ export default function ActionCenterScreen() {
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </Modal>

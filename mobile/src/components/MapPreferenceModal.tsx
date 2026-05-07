@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useMapsStore, openMapsDirectly, openMapsAddressDirectly, MapsPreference } from '../lib/maps-store';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, typography } from '../lib/design-tokens';
+import { PressableRow } from './ui/PressableRow';
 
 const createStyles = (colors: ThemeColors) => StyleSheet.create({
   overlay: {
@@ -164,12 +165,7 @@ export function MapPreferenceModal() {
           
           <View style={styles.optionsContainer}>
             {Platform.OS === 'ios' && (
-              <TouchableOpacity
-                style={[styles.optionButton, styles.optionButtonApple]}
-                onPress={() => handleSelect('apple')}
-                activeOpacity={0.7}
-                data-testid="button-maps-apple"
-              >
+              <PressableRow style={[styles.optionButton, styles.optionButtonApple]} onPress={() => handleSelect('apple')} data-testid="button-maps-apple" >
                 <View style={[styles.optionIconContainer, styles.appleIconBg]}>
                   <Feather name="map" size={24} color={colors.white} />
                 </View>
@@ -178,15 +174,10 @@ export function MapPreferenceModal() {
                   <Text style={styles.optionDescription}>Built-in iOS maps app</Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             )}
             
-            <TouchableOpacity
-              style={[styles.optionButton, styles.optionButtonGoogle]}
-              onPress={() => handleSelect('google')}
-              activeOpacity={0.7}
-              data-testid="button-maps-google"
-            >
+            <PressableRow style={[styles.optionButton, styles.optionButtonGoogle]} onPress={() => handleSelect('google')} data-testid="button-maps-google" >
               <View style={[styles.optionIconContainer, styles.googleIconBg]}>
                 <Feather name="map-pin" size={24} color={colors.white} />
               </View>
@@ -195,7 +186,7 @@ export function MapPreferenceModal() {
                 <Text style={styles.optionDescription}>Google's navigation app</Text>
               </View>
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           
           <View style={styles.noteContainer}>
@@ -205,14 +196,9 @@ export function MapPreferenceModal() {
             </Text>
           </View>
           
-          <TouchableOpacity 
-            style={styles.cancelButton} 
-            onPress={handleCancel}
-            activeOpacity={0.7}
-            data-testid="button-maps-cancel"
-          >
+          <PressableRow style={styles.cancelButton} onPress={handleCancel} data-testid="button-maps-cancel" >
             <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
     </Modal>

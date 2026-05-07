@@ -10,6 +10,7 @@ import {
   Share,
   Image,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { colors } from '../lib/colors';
 import { useAuthStore } from '../lib/store';
@@ -117,15 +118,15 @@ export function DocumentPreview({
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <PressableRow onPress={onClose} style={styles.closeButton}>
             <Feather name="x" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
           <Text style={styles.headerTitle}>
             {type === 'quote' ? 'Quote' : 'Invoice'} Preview
           </Text>
-          <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+          <PressableRow onPress={handleShare} style={styles.shareButton}>
             <Feather name="share-2" size={20} color={colors.primary} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         {isLoading ? (
@@ -309,10 +310,10 @@ export function DocumentPreview({
 
             {/* Actions */}
             <View style={styles.actions}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+              <PressableRow style={styles.actionButton} onPress={handleShare}>
                 <Feather name="share-2" size={20} color={colors.primary} />
                 <Text style={styles.actionButtonText}>Share</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <View style={{ height: 40 }} />

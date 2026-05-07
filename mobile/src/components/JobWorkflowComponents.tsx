@@ -5,6 +5,7 @@ import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, iconSizes } from '../lib/design-tokens';
 import { JobUrgency } from '../lib/jobUrgency';
 import { api } from '../lib/api';
+import { PressableRow } from './ui/PressableRow';
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'done' | 'invoiced';
 
@@ -247,11 +248,7 @@ export function LinkedDocumentsCard({
         <Text style={styles.title}>Documents</Text>
       </View>
 
-      <TouchableOpacity 
-        style={[styles.documentRow, linkedQuote && styles.documentRowClickable]}
-        onPress={() => linkedQuote && onViewQuote?.(linkedQuote.id)}
-        activeOpacity={linkedQuote ? 0.7 : 1}
-      >
+      <PressableRow style={[styles.documentRow, linkedQuote && styles.documentRowClickable]} onPress={() => linkedQuote && onViewQuote?.(linkedQuote.id)} >
         <View style={[styles.documentIcon, { backgroundColor: linkedQuote ? `${colors.scheduled}15` : colors.muted }]}>
           <Feather name="file-text" size={16} color={linkedQuote ? colors.scheduled : colors.mutedForeground} />
         </View>
@@ -273,19 +270,15 @@ export function LinkedDocumentsCard({
           )}
         </View>
         {!linkedQuote && onCreateQuote ? (
-          <TouchableOpacity style={styles.createButton} onPress={onCreateQuote}>
+          <PressableRow style={styles.createButton} onPress={onCreateQuote}>
             <Text style={styles.createButtonText}>Create Quote</Text>
-          </TouchableOpacity>
+          </PressableRow>
         ) : linkedQuote ? (
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         ) : null}
-      </TouchableOpacity>
+      </PressableRow>
 
-      <TouchableOpacity 
-        style={[styles.documentRow, linkedInvoice && styles.documentRowClickable]}
-        onPress={() => linkedInvoice && onViewInvoice?.(linkedInvoice.id)}
-        activeOpacity={linkedInvoice ? 0.7 : 1}
-      >
+      <PressableRow style={[styles.documentRow, linkedInvoice && styles.documentRowClickable]} onPress={() => linkedInvoice && onViewInvoice?.(linkedInvoice.id)} >
         <View style={[styles.documentIcon, { backgroundColor: linkedInvoice ? `${colors.invoiced}15` : colors.muted }]}>
           <Feather name="file" size={16} color={linkedInvoice ? colors.invoiced : colors.mutedForeground} />
         </View>
@@ -309,21 +302,17 @@ export function LinkedDocumentsCard({
           )}
         </View>
         {!linkedInvoice && onCreateInvoice ? (
-          <TouchableOpacity style={styles.createButton} onPress={onCreateInvoice}>
+          <PressableRow style={styles.createButton} onPress={onCreateInvoice}>
             <Text style={styles.createButtonText}>Create Invoice</Text>
-          </TouchableOpacity>
+          </PressableRow>
         ) : linkedInvoice ? (
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         ) : null}
-      </TouchableOpacity>
+      </PressableRow>
 
       {/* Receipt Row - only show if invoice is paid and receipt exists */}
       {linkedInvoice?.status?.toLowerCase() === 'paid' && (
-        <TouchableOpacity 
-          style={[styles.documentRow, linkedReceipt && styles.documentRowClickable]}
-          onPress={() => linkedReceipt && onViewReceipt?.(linkedReceipt.id)}
-          activeOpacity={linkedReceipt ? 0.7 : 1}
-        >
+        <PressableRow style={[styles.documentRow, linkedReceipt && styles.documentRowClickable]} onPress={() => linkedReceipt && onViewReceipt?.(linkedReceipt.id)} >
           <View style={[styles.documentIcon, { backgroundColor: linkedReceipt ? `${colors.success}15` : colors.muted }]}>
             <Feather name="check-circle" size={16} color={linkedReceipt ? colors.success : colors.mutedForeground} />
           </View>
@@ -347,7 +336,7 @@ export function LinkedDocumentsCard({
           {linkedReceipt ? (
             <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
           ) : null}
-        </TouchableOpacity>
+        </PressableRow>
       )}
     </View>
   );
@@ -689,28 +678,20 @@ export function NextActionCard(props: NextActionCardProps) {
           <Text style={styles.subtitle}>{nextAction.subtitle}</Text>
         </View>
         {nextAction.action && (
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: pColors.btnBg }]}
-            onPress={nextAction.action}
-          >
+          <PressableRow style={[styles.actionButton, { backgroundColor: pColors.btnBg }]} onPress={nextAction.action} >
             <Text style={styles.actionButtonText}>{nextAction.buttonText}</Text>
             <Feather name="arrow-right" size={14} color={colors.primaryForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         )}
       </View>
       {showOnMyWay && (
-        <TouchableOpacity
-          style={[styles.secondaryAction, { borderColor: colors.border }]}
-          onPress={handleOpenSmsPreview}
-          disabled={isSendingSms}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={[styles.secondaryAction, { borderColor: colors.border }]} onPress={handleOpenSmsPreview} disabled={isSendingSms} >
           <Feather name="message-circle" size={16} color={colors.mutedForeground} />
           <Text style={[styles.secondaryActionText, { color: colors.foreground }]}>
             {props.isOverdue ? 'Text Running Late' : 'Text On My Way'}
           </Text>
           <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
 
       <Modal
@@ -737,9 +718,9 @@ export function NextActionCard(props: NextActionCardProps) {
                   <Text style={[styles.smsModalTitle, { color: colors.foreground }]}>
                     {props.isOverdue ? 'Running Late' : 'On My Way'}
                   </Text>
-                  <TouchableOpacity onPress={() => setShowSmsPreview(false)} style={styles.smsModalCloseButton}>
+                  <PressableRow onPress={() => setShowSmsPreview(false)} style={styles.smsModalCloseButton}>
                     <Feather name="x" size={20} color={colors.mutedForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
 
                 <View style={[styles.smsRecipientRow, { backgroundColor: colors.muted }]}>
@@ -784,19 +765,10 @@ export function NextActionCard(props: NextActionCardProps) {
                 )}
 
                 <View style={styles.smsModalActions}>
-                  <TouchableOpacity
-                    style={[styles.smsCancelButton, { borderColor: colors.border }]}
-                    onPress={() => setShowSmsPreview(false)}
-                    activeOpacity={0.8}
-                  >
+                  <PressableRow style={[styles.smsCancelButton, { borderColor: colors.border }]} onPress={() => setShowSmsPreview(false)} >
                     <Text style={[styles.smsCancelButtonText, { color: colors.foreground }]}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.smsSendButton, { backgroundColor: props.isOverdue ? '#ea580c' : colors.primary }]}
-                    onPress={handleSendSms}
-                    disabled={isSendingSms || !smsPreviewMessage.trim()}
-                    activeOpacity={0.8}
-                  >
+                  </PressableRow>
+                  <PressableRow style={[styles.smsSendButton, { backgroundColor: props.isOverdue ? '#ea580c' : colors.primary }]} onPress={handleSendSms} disabled={isSendingSms || !smsPreviewMessage.trim()} >
                     {isSendingSms ? (
                       <ActivityIndicator size="small" color={colors.white} />
                     ) : (
@@ -805,7 +777,7 @@ export function NextActionCard(props: NextActionCardProps) {
                         <Text style={styles.smsSendButtonText}>Send</Text>
                       </>
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
             </TouchableOpacity>
@@ -1068,49 +1040,33 @@ export function PaymentCollectionCard({
       </View>
 
       <View style={styles.buttonGrid}>
-        <TouchableOpacity 
-          style={[styles.paymentButton, { backgroundColor: `${colors.primary}12` }]}
-          onPress={onTapToPay}
-          data-testid="button-tap-to-pay"
-        >
+        <PressableRow style={[styles.paymentButton, { backgroundColor: `${colors.primary}12` }]} onPress={onTapToPay} data-testid="button-tap-to-pay" >
           <View style={[styles.paymentIcon, { backgroundColor: colors.primary }]}>
             <Feather name="smartphone" size={18} color={colors.primaryForeground} />
           </View>
           <Text style={[styles.paymentLabel, { color: colors.primary }]}>Tap to Pay</Text>
-        </TouchableOpacity>
+        </PressableRow>
 
-        <TouchableOpacity 
-          style={[styles.paymentButton, { backgroundColor: `${colors.secondary}40` }]}
-          onPress={onQRCode}
-          data-testid="button-qr-code"
-        >
+        <PressableRow style={[styles.paymentButton, { backgroundColor: `${colors.secondary}40` }]} onPress={onQRCode} data-testid="button-qr-code" >
           <View style={[styles.paymentIcon, { backgroundColor: colors.secondary }]}>
             <Feather name="grid" size={18} color={colors.secondaryForeground} />
           </View>
           <Text style={[styles.paymentLabel, { color: colors.secondaryForeground }]}>QR Code</Text>
-        </TouchableOpacity>
+        </PressableRow>
 
-        <TouchableOpacity 
-          style={[styles.paymentButton, { backgroundColor: `${colors.warning}12` }]}
-          onPress={onPaymentLink}
-          data-testid="button-payment-link"
-        >
+        <PressableRow style={[styles.paymentButton, { backgroundColor: `${colors.warning}12` }]} onPress={onPaymentLink} data-testid="button-payment-link" >
           <View style={[styles.paymentIcon, { backgroundColor: colors.warning }]}>
             <Feather name="link" size={18} color={colors.white} />
           </View>
           <Text style={[styles.paymentLabel, { color: colors.warning }]}>Send Link</Text>
-        </TouchableOpacity>
+        </PressableRow>
 
-        <TouchableOpacity 
-          style={[styles.paymentButton, { backgroundColor: `${colors.success}12` }]}
-          onPress={onRecordCash}
-          data-testid="button-record-cash"
-        >
+        <PressableRow style={[styles.paymentButton, { backgroundColor: `${colors.success}12` }]} onPress={onRecordCash} data-testid="button-record-cash" >
           <View style={[styles.paymentIcon, { backgroundColor: colors.success }]}>
             <Feather name="dollar-sign" size={18} color={colors.white} />
           </View>
           <Text style={[styles.paymentLabel, { color: colors.success }]}>Record Cash</Text>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     </View>
   );
@@ -1225,15 +1181,10 @@ export function ScheduleNotificationCard({
             : "Ready to start?"}
         </Text>
       </View>
-      <TouchableOpacity 
-        style={[styles.actionButton, { backgroundColor: colors.primary }]} 
-        onPress={onStartJob}
-        disabled={isLoading}
-        activeOpacity={0.8}
-      >
+      <PressableRow style={[styles.actionButton, { backgroundColor: colors.primary }]} onPress={onStartJob} disabled={isLoading} >
         <Text style={styles.actionButtonText}>Start Now</Text>
         <Feather name="play" size={14} color={colors.primaryForeground} />
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 }
@@ -1390,12 +1341,7 @@ export function SmsContactCard({
         <Text style={styles.title}>Heading to the job?</Text>
         <Text style={styles.subtitle}>Let the client know you're heading over</Text>
       </View>
-      <TouchableOpacity 
-        style={[styles.actionButton, { backgroundColor: buttonBg }]} 
-        onPress={handleOpenPreview}
-        disabled={isSending}
-        activeOpacity={0.8}
-      >
+      <PressableRow style={[styles.actionButton, { backgroundColor: buttonBg }]} onPress={handleOpenPreview} disabled={isSending} >
         {isSending ? (
           <ActivityIndicator size="small" color={colors.white} />
         ) : (
@@ -1404,7 +1350,7 @@ export function SmsContactCard({
             <Text style={styles.actionButtonText}>{buttonLabel}</Text>
           </>
         )}
-      </TouchableOpacity>
+      </PressableRow>
 
       <Modal
         visible={showPreview}
@@ -1428,9 +1374,9 @@ export function SmsContactCard({
                     <Feather name="message-square" size={20} color={buttonBg} />
                   </View>
                   <Text style={[styles.modalTitle, { color: colors.foreground }]}>{modalTitle}</Text>
-                  <TouchableOpacity onPress={() => setShowPreview(false)} style={styles.modalCloseButton}>
+                  <PressableRow onPress={() => setShowPreview(false)} style={styles.modalCloseButton}>
                     <Feather name="x" size={20} color={colors.mutedForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
 
                 <View style={[styles.recipientRow, { backgroundColor: colors.muted }]}>
@@ -1475,19 +1421,10 @@ export function SmsContactCard({
                 )}
 
                 <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={[styles.cancelButton, { borderColor: colors.border }]}
-                    onPress={() => setShowPreview(false)}
-                    activeOpacity={0.8}
-                  >
+                  <PressableRow style={[styles.cancelButton, { borderColor: colors.border }]} onPress={() => setShowPreview(false)} >
                     <Text style={[styles.cancelButtonText, { color: colors.foreground }]}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.sendButton, { backgroundColor: buttonBg }]}
-                    onPress={handleSendSms}
-                    disabled={isSending || !previewMessage.trim()}
-                    activeOpacity={0.8}
-                  >
+                  </PressableRow>
+                  <PressableRow style={[styles.sendButton, { backgroundColor: buttonBg }]} onPress={handleSendSms} disabled={isSending || !previewMessage.trim()} >
                     {isSending ? (
                       <ActivityIndicator size="small" color={colors.white} />
                     ) : (
@@ -1496,7 +1433,7 @@ export function SmsContactCard({
                         <Text style={styles.sendButtonText}>Send</Text>
                       </>
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
             </TouchableOpacity>
@@ -1721,24 +1658,7 @@ export function WorkerStateQuickActions({ jobId, jobStatus }: WorkerStateQuickAc
     <>
     <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
       {WORKER_STATE_BUTTONS.map(btn => (
-        <TouchableOpacity
-          key={btn.state}
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: spacing.xs,
-            paddingVertical: spacing.sm,
-            borderRadius: radius.md,
-            backgroundColor: btn.bg,
-            borderWidth: 1,
-            borderColor: `${btn.color}30`,
-          }}
-          onPress={() => handleSetState(btn.state)}
-          disabled={updating !== null}
-          activeOpacity={0.7}
-        >
+        <PressableRow key={btn.state} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: btn.bg, borderWidth: 1, borderColor: `${btn.color}30`, }} onPress={() => handleSetState(btn.state)} disabled={updating !== null} >
           {updating === btn.state ? (
             <ActivityIndicator size="small" color={btn.color} />
           ) : (
@@ -1747,7 +1667,7 @@ export function WorkerStateQuickActions({ jobId, jobStatus }: WorkerStateQuickAc
           <Text style={{ fontSize: 13, fontWeight: '600', color: btn.color }}>
             {btn.label}
           </Text>
-        </TouchableOpacity>
+        </PressableRow>
       ))}
     </View>
 
@@ -1792,31 +1712,12 @@ export function WorkerStateQuickActions({ jobId, jobStatus }: WorkerStateQuickAc
             multiline
           />
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-              }}
-              onPress={() => { setShowNoteModal(false); setPendingState(null); }}
-            >
+            <PressableRow style={{ flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', }} onPress={() => { setShowNoteModal(false); setPendingState(null); }} >
               <Text style={{ color: colors.foreground, fontWeight: '600' }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                flex: 1,
-                paddingVertical: spacing.sm,
-                borderRadius: radius.md,
-                backgroundColor: pendingColor,
-                alignItems: 'center',
-              }}
-              onPress={confirmSetState}
-            >
+            </PressableRow>
+            <PressableRow style={{ flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: pendingColor, alignItems: 'center', }} onPress={confirmSetState} >
               <Text style={{ color: colors.white, fontWeight: '600' }}>Confirm</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </KeyboardAvoidingView>

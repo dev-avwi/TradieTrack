@@ -10,6 +10,7 @@ import {
   Dimensions,
   Platform
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme, ThemeColors } from '../lib/theme';
@@ -343,9 +344,9 @@ export function WhatYouMissedPopup() {
                 {notifications.length} update{notifications.length !== 1 ? 's' : ''} since you were away
               </Text>
             </View>
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <PressableRow style={styles.closeButton} onPress={handleClose}>
               <Feather name="x" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <View style={styles.progressContainer}>
@@ -361,12 +362,7 @@ export function WhatYouMissedPopup() {
               const priorityColors = getPriorityColors(notification.priority);
 
               return (
-                <TouchableOpacity
-                  key={notification.id}
-                  style={styles.notificationItem}
-                  onPress={() => handleNotificationPress(notification)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={notification.id} style={styles.notificationItem} onPress={() => handleNotificationPress(notification)} >
                   <View style={[styles.notificationIcon, { backgroundColor: priorityColors.bg }]}>
                     <Feather name={iconName} size={18} color={priorityColors.icon} />
                   </View>
@@ -394,15 +390,15 @@ export function WhatYouMissedPopup() {
                     </Text>
                   </View>
                   <Feather name="chevron-right" size={16} color={colors.mutedForeground} style={{ alignSelf: 'center' }} />
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
           </ScrollView>
 
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.dismissButton} onPress={handleClose} activeOpacity={0.7}>
+            <PressableRow style={styles.dismissButton} onPress={handleClose} >
               <Text style={styles.dismissButtonText}>Got it, thanks!</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </Pressable>
       </Pressable>

@@ -12,6 +12,7 @@ import {
   Platform,
   Switch,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -526,11 +527,7 @@ export default function FormFillScreen() {
         )}
 
         {field.type === 'checkbox' && (
-          <TouchableOpacity
-            style={styles.checkboxRow}
-            onPress={() => updateValue(field.id, !value)}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.checkboxRow} onPress={() => updateValue(field.id, !value)} >
             <View style={[styles.checkboxBox, value && styles.checkboxBoxChecked]}>
               {value && <Feather name="check" size={16} color={colors.primaryForeground} />}
             </View>
@@ -538,41 +535,29 @@ export default function FormFillScreen() {
               {field.label}
               {field.required && <Text style={styles.fieldRequired}> *</Text>}
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
 
         {field.type === 'radio' && (
           <View>
             {(field.options || []).map((option, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={[styles.radioOption, value === option && styles.radioOptionSelected]}
-                onPress={() => updateValue(field.id, option)}
-                activeOpacity={0.7}
-              >
+              <PressableRow key={idx} style={[styles.radioOption, value === option && styles.radioOptionSelected]} onPress={() => updateValue(field.id, option)} >
                 <View style={[styles.radioCircle, value === option && styles.radioCircleSelected]}>
                   {value === option && <View style={styles.radioInner} />}
                 </View>
                 <Text style={styles.radioLabel}>{option}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </View>
         )}
 
         {field.type === 'select' && (
-          <TouchableOpacity
-            style={styles.selectTrigger}
-            onPress={() => {
-              setActiveSelectField(field.id);
-              setShowSelectPicker(true);
-            }}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.selectTrigger} onPress={() => { setActiveSelectField(field.id); setShowSelectPicker(true); }} >
             <Text style={value ? styles.selectText : styles.selectPlaceholder}>
               {value || 'Select an option'}
             </Text>
             <Feather name="chevron-down" size={iconSizes.lg} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         )}
 
         {field.type === 'date' && (
@@ -586,10 +571,10 @@ export default function FormFillScreen() {
         )}
 
         {field.type === 'photo' && (
-          <TouchableOpacity style={styles.photoButton} activeOpacity={0.7}>
+          <PressableRow style={styles.photoButton} >
             <Feather name="camera" size={24} color={colors.mutedForeground} />
             <Text style={styles.photoButtonText}>Take or upload photo</Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
 
         {field.type === 'signature' && (
@@ -621,9 +606,9 @@ export default function FormFillScreen() {
         <Stack.Screen options={{ title: 'Form' }} />
         <Feather name="alert-circle" size={40} color={colors.destructive} />
         <Text style={styles.errorTitle}>{error || 'Form not found'}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => router.back()} activeOpacity={0.7}>
+        <PressableRow style={styles.retryButton} onPress={() => router.back()} >
           <Text style={styles.retryButtonText}>Go Back</Text>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     );
   }
@@ -655,12 +640,7 @@ export default function FormFillScreen() {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          activeOpacity={0.8}
-        >
+        <PressableRow style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]} onPress={handleSubmit} disabled={isSubmitting} >
           {isSubmitting ? (
             <ActivityIndicator size="small" color={colors.primaryForeground} />
           ) : (
@@ -669,7 +649,7 @@ export default function FormFillScreen() {
               <Text style={styles.submitBtnText}>Submit Form</Text>
             </>
           )}
-        </TouchableOpacity>
+        </PressableRow>
       </ScrollView>
 
       {showSelectPicker && activeField && (
@@ -679,26 +659,17 @@ export default function FormFillScreen() {
               <Text style={styles.pickerTitle}>{activeField.label}</Text>
               <ScrollView style={{ maxHeight: 300 }}>
                 {(activeField.options || []).map((option, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    style={[styles.pickerOption, formData[activeField.id] === option && styles.pickerOptionActive]}
-                    onPress={() => {
-                      updateValue(activeField.id, option);
-                      setShowSelectPicker(false);
-                      setActiveSelectField(null);
-                    }}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={idx} style={[styles.pickerOption, formData[activeField.id] === option && styles.pickerOptionActive]} onPress={() => { updateValue(activeField.id, option); setShowSelectPicker(false); setActiveSelectField(null); }} >
                     <Text style={[styles.pickerOptionText, formData[activeField.id] === option && styles.pickerOptionTextActive]}>
                       {option}
                     </Text>
                     {formData[activeField.id] === option && <Feather name="check" size={18} color={colors.primary} />}
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </ScrollView>
-              <TouchableOpacity style={styles.pickerCancel} onPress={() => { setShowSelectPicker(false); setActiveSelectField(null); }} activeOpacity={0.7}>
+              <PressableRow style={styles.pickerCancel} onPress={() => { setShowSelectPicker(false); setActiveSelectField(null); }} >
                 <Text style={styles.pickerCancelText}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </TouchableOpacity>
         </View>

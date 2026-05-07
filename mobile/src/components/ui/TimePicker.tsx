@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
+import { PressableRow } from './PressableRow';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme, ThemeColors } from '../../lib/theme';
@@ -115,18 +116,13 @@ export function TimePicker({ value, onChange, label, disabled }: TimePickerProps
   return (
     <View>
       {label && <Text style={styles.label}>{label}</Text>}
-      <TouchableOpacity
-        style={[styles.timeButton, disabled && styles.disabledButton]}
-        onPress={() => !disabled && handleOpen()}
-        disabled={disabled}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={[styles.timeButton, disabled && styles.disabledButton]} onPress={() => !disabled && handleOpen()} disabled={disabled} >
         <Feather name="clock" size={20} color={disabled ? colors.mutedForeground : colors.primary} />
         <Text style={[styles.timeButtonText, disabled && styles.disabledText]}>
           {formatTime(value)}
         </Text>
         <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
       <Modal
       onRequestClose={() => setShowPicker(false)} visible={showPicker} transparent animationType="slide">
@@ -137,13 +133,13 @@ export function TimePicker({ value, onChange, label, disabled }: TimePickerProps
         >
           <View style={styles.pickerContainer}>
             <View style={styles.pickerHeader}>
-              <TouchableOpacity onPress={() => setShowPicker(false)}>
+              <PressableRow onPress={() => setShowPicker(false)}>
                 <Text style={{ fontSize: 16, color: colors.mutedForeground }}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
               <Text style={styles.pickerTitle}>Select Time</Text>
-              <TouchableOpacity onPress={handleConfirm}>
+              <PressableRow onPress={handleConfirm}>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>Done</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <DateTimePicker

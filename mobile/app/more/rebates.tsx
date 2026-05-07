@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -902,12 +903,7 @@ export default function RebatesScreen() {
           const isActive = activeFilter === filter.key;
           const count = filterCounts[filter.key];
           return (
-            <TouchableOpacity
-              key={filter.key}
-              style={[styles.filterChip, isActive && styles.activeFilterChip]}
-              onPress={() => setActiveFilter(filter.key)}
-              activeOpacity={0.7}
-            >
+            <PressableRow key={filter.key} style={[styles.filterChip, isActive && styles.activeFilterChip]} onPress={() => setActiveFilter(filter.key)} >
               <Text style={[styles.filterText, isActive && styles.activeFilterText]}>
                 {filter.label}
               </Text>
@@ -916,7 +912,7 @@ export default function RebatesScreen() {
                   {count}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           );
         })}
       </View>
@@ -939,22 +935,9 @@ export default function RebatesScreen() {
               <Text style={styles.cardAmount}>{formatCurrency(rebate.amount)}</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => {
-              Alert.alert(
-                rebate.name,
-                undefined,
-                [
-                  { text: 'Edit', onPress: () => openEdit(rebate) },
-                  { text: 'Delete', style: 'destructive', onPress: () => handleDelete(rebate) },
-                  { text: 'Cancel', style: 'cancel' },
-                ]
-              );
-            }}
-          >
+          <PressableRow style={styles.menuButton} onPress={() => { Alert.alert( rebate.name, undefined, [ { text: 'Edit', onPress: () => openEdit(rebate) }, { text: 'Delete', style: 'destructive', onPress: () => handleDelete(rebate) }, { text: 'Cancel', style: 'cancel' }, ] ); }} >
             <Feather name="more-vertical" size={iconSizes.xl} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         {rebate.description ? (
@@ -1004,12 +987,7 @@ export default function RebatesScreen() {
 
         <View style={styles.cardActions}>
           {rebate.status === 'pending' && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonPrimary]}
-              onPress={() => handleSubmit(rebate)}
-              disabled={isActioning}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleSubmit(rebate)} disabled={isActioning} >
               {isActioning ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
@@ -1018,15 +996,10 @@ export default function RebatesScreen() {
                   <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>Submit</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           )}
           {(rebate.status === 'submitted' || rebate.status === 'approved') && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonPrimary]}
-              onPress={() => handleReceive(rebate)}
-              disabled={isActioning}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleReceive(rebate)} disabled={isActioning} >
               {isActioning ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
@@ -1035,24 +1008,16 @@ export default function RebatesScreen() {
                   <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>Received</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           )}
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => openEdit(rebate)}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.actionButton} onPress={() => openEdit(rebate)} >
             <Feather name="edit-2" size={iconSizes.sm} color={colors.foreground} />
             <Text style={styles.actionButtonText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonDestructive]}
-            onPress={() => handleDelete(rebate)}
-            activeOpacity={0.7}
-          >
+          </PressableRow>
+          <PressableRow style={[styles.actionButton, styles.actionButtonDestructive]} onPress={() => handleDelete(rebate)} >
             <Feather name="trash-2" size={iconSizes.sm} color={colors.destructive} />
             <Text style={[styles.actionButtonText, styles.actionButtonTextDestructive]}>Delete</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
     );
@@ -1072,30 +1037,23 @@ export default function RebatesScreen() {
           <View style={styles.modalHandle} />
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={onClose}>
+            <PressableRow onPress={onClose}>
               <Feather name="x" size={iconSizes['2xl']} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
-          <TouchableOpacity
-            style={styles.pickerItem}
-            onPress={() => { onSelect(''); onClose(); }}
-          >
+          <PressableRow style={styles.pickerItem} onPress={() => { onSelect(''); onClose(); }} >
             <Text style={[styles.pickerItemText, { color: colors.mutedForeground }]}>None</Text>
             {selectedId === '' && <Feather name="check" size={iconSizes.lg} color={colors.primary} />}
-          </TouchableOpacity>
+          </PressableRow>
           <ScrollView>
             {items.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                style={styles.pickerItem}
-                onPress={() => { onSelect(item.id); onClose(); }}
-              >
+              <PressableRow key={item.id} style={styles.pickerItem} onPress={() => { onSelect(item.id); onClose(); }} >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.pickerItemText}>{item.label}</Text>
                   {item.sublabel ? <Text style={styles.pickerItemSubtext}>{item.sublabel}</Text> : null}
                 </View>
                 {selectedId === item.id && <Feather name="check" size={iconSizes.lg} color={colors.primary} />}
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </ScrollView>
         </TouchableOpacity>
@@ -1112,9 +1070,9 @@ export default function RebatesScreen() {
             <Text style={styles.modalTitle}>
               {editingRebate ? 'Edit Rebate' : 'Add Rebate'}
             </Text>
-            <TouchableOpacity onPress={() => setFormModalVisible(false)}>
+            <PressableRow onPress={() => setFormModalVisible(false)}>
               <Feather name="x" size={iconSizes['2xl']} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
             <Text style={[styles.modalLabel, { marginTop: 0 }]}>Rebate Name</Text>
@@ -1130,17 +1088,13 @@ export default function RebatesScreen() {
             {REBATE_TYPE_OPTIONS.map((opt) => {
               const selected = formType === opt.value;
               return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[styles.modalOptionRow, selected && styles.modalOptionRowSelected]}
-                  onPress={() => setFormType(opt.value)}
-                >
+                <PressableRow key={opt.value} style={[styles.modalOptionRow, selected && styles.modalOptionRowSelected]} onPress={() => setFormType(opt.value)} >
                   <Feather name={opt.icon} size={iconSizes.lg} color={selected ? colors.primary : colors.mutedForeground} />
                   <Text style={[styles.modalOptionText, selected && styles.modalOptionTextSelected]}>
                     {opt.label}
                   </Text>
                   {selected && <Feather name="check" size={iconSizes.lg} color={colors.primary} />}
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
 
@@ -1180,28 +1134,28 @@ export default function RebatesScreen() {
             />
 
             <Text style={styles.modalLabel}>Client (Optional)</Text>
-            <TouchableOpacity style={styles.selectButton} onPress={() => setClientPickerVisible(true)}>
+            <PressableRow style={styles.selectButton} onPress={() => setClientPickerVisible(true)}>
               <Text style={formClientId ? styles.selectButtonText : styles.selectButtonPlaceholder}>
                 {formClientId ? clientMap.get(formClientId) || 'Select client' : 'Select client'}
               </Text>
               <Feather name="chevron-down" size={iconSizes.lg} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
 
             <Text style={styles.modalLabel}>Job (Optional)</Text>
-            <TouchableOpacity style={styles.selectButton} onPress={() => setJobPickerVisible(true)}>
+            <PressableRow style={styles.selectButton} onPress={() => setJobPickerVisible(true)}>
               <Text style={formJobId ? styles.selectButtonText : styles.selectButtonPlaceholder}>
                 {formJobId ? jobMap.get(formJobId) || 'Select job' : 'Select job'}
               </Text>
               <Feather name="chevron-down" size={iconSizes.lg} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
 
             <Text style={styles.modalLabel}>Invoice (Optional)</Text>
-            <TouchableOpacity style={styles.selectButton} onPress={() => setInvoicePickerVisible(true)}>
+            <PressableRow style={styles.selectButton} onPress={() => setInvoicePickerVisible(true)}>
               <Text style={formInvoiceId ? styles.selectButtonText : styles.selectButtonPlaceholder}>
                 {formInvoiceId ? invoiceMap.get(formInvoiceId) || 'Select invoice' : 'Select invoice'}
               </Text>
               <Feather name="chevron-down" size={iconSizes.lg} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
 
             <Text style={styles.modalLabel}>Notes</Text>
             <TextInput
@@ -1214,12 +1168,7 @@ export default function RebatesScreen() {
               numberOfLines={2}
             />
 
-            <TouchableOpacity
-              style={styles.modalSaveButton}
-              onPress={handleSave}
-              disabled={formSaving}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.modalSaveButton} onPress={handleSave} disabled={formSaving} >
               {formSaving ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
@@ -1230,15 +1179,11 @@ export default function RebatesScreen() {
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
 
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              onPress={() => setFormModalVisible(false)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.modalCancelButton} onPress={() => setFormModalVisible(false)} >
               <Text style={styles.modalCancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+            </PressableRow>
 
             <View style={{ height: spacing.xl }} />
           </ScrollView>
@@ -1260,9 +1205,9 @@ export default function RebatesScreen() {
         <View style={styles.errorContainer}>
           <Feather name="alert-circle" size={iconSizes['4xl']} color={colors.destructive} />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <PressableRow style={styles.retryButton} onPress={fetchData}>
             <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       ) : (
         <>
@@ -1285,19 +1230,19 @@ export default function RebatesScreen() {
                 <Text style={styles.emptySubtitle}>
                   Track manufacturer rebates and government incentives by adding your first rebate.
                 </Text>
-                <TouchableOpacity style={styles.emptyButton} onPress={openCreate} activeOpacity={0.7}>
+                <PressableRow style={styles.emptyButton} onPress={openCreate} >
                   <Feather name="plus" size={iconSizes.lg} color={colors.primaryForeground} />
                   <Text style={styles.emptyButtonText}>Add Rebate</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             ) : (
               filteredRebates.map(renderRebateCard)
             )}
           </ScrollView>
 
-          <TouchableOpacity style={styles.fab} onPress={openCreate} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <PressableRow style={styles.fab} onPress={openCreate} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Feather name="plus" size={iconSizes['2xl']} color={colors.primaryForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         </>
       )}
 

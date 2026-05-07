@@ -11,6 +11,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -563,21 +564,12 @@ export default function PaymentHubScreen() {
         </View>
         <View style={styles.stripeCardActions}>
           {isConnected ? (
-            <TouchableOpacity 
-              style={styles.stripeButton}
-              onPress={handleOpenStripeDashboard}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.stripeButton} onPress={handleOpenStripeDashboard} >
               <Feather name="external-link" size={iconSizes.sm} color={colors.primary} />
               <Text style={styles.stripeButtonText}>Dashboard</Text>
-            </TouchableOpacity>
+            </PressableRow>
           ) : (
-            <TouchableOpacity 
-              style={[styles.stripeButton, styles.stripeButtonPrimary]}
-              onPress={handleConnectStripe}
-              activeOpacity={0.7}
-              disabled={isConnecting}
-            >
+            <PressableRow style={[styles.stripeButton, styles.stripeButtonPrimary]} onPress={handleConnectStripe} disabled={isConnecting} >
               {isConnecting ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
@@ -588,7 +580,7 @@ export default function PaymentHubScreen() {
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
       </View>
@@ -612,12 +604,7 @@ export default function PaymentHubScreen() {
     const statusColor = statusColors[status] || colors.mutedForeground;
 
     return (
-      <TouchableOpacity 
-        key={invoice.id}
-        style={styles.documentRow}
-        onPress={() => router.push(`/more/invoice/${invoice.id}`)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={invoice.id} style={styles.documentRow} onPress={() => router.push(`/more/invoice/${invoice.id}`)} >
         <View style={[styles.documentIcon, { backgroundColor: `${colors.primary}15` }]}>
           <Feather name="file-text" size={iconSizes.md} color={colors.primary} />
         </View>
@@ -645,24 +632,16 @@ export default function PaymentHubScreen() {
           )}
         </View>
         {invoice.status !== 'paid' && invoice.status !== 'draft' && stripeStatus?.connected && stripeStatus?.chargesEnabled && (
-          <TouchableOpacity
-            style={[styles.paymentLinkButton, creatingPaymentLink === invoice.id && { opacity: 0.5 }]}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              handleCreatePaymentLink(invoice.id);
-            }}
-            activeOpacity={0.7}
-            disabled={creatingPaymentLink === invoice.id}
-          >
+          <PressableRow style={[styles.paymentLinkButton, creatingPaymentLink === invoice.id && { opacity: 0.5 }]} onPress={(e) => { e.stopPropagation?.(); handleCreatePaymentLink(invoice.id); }} disabled={creatingPaymentLink === invoice.id} >
             {creatingPaymentLink === invoice.id ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Feather name="link" size={iconSizes.sm} color={colors.primary} />
             )}
-          </TouchableOpacity>
+          </PressableRow>
         )}
         <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -679,12 +658,7 @@ export default function PaymentHubScreen() {
     const statusColor = statusColors[quote.status] || colors.mutedForeground;
 
     return (
-      <TouchableOpacity 
-        key={quote.id}
-        style={styles.documentRow}
-        onPress={() => router.push(`/more/quote/${quote.id}`)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={quote.id} style={styles.documentRow} onPress={() => router.push(`/more/quote/${quote.id}`)} >
         <View style={[styles.documentIcon, { backgroundColor: `${colors.scheduled}15` }]}>
           <Feather name="file" size={iconSizes.md} color={colors.scheduled} />
         </View>
@@ -712,18 +686,14 @@ export default function PaymentHubScreen() {
           )}
         </View>
         <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
   const renderTab = (tab: TabType, label: string, count?: number) => {
     const isActive = activeTab === tab;
     return (
-      <TouchableOpacity
-        style={[styles.tab, isActive && styles.tabActive]}
-        onPress={() => setActiveTab(tab)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={[styles.tab, isActive && styles.tabActive]} onPress={() => setActiveTab(tab)} >
         <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{label}</Text>
         {count !== undefined && count > 0 && (
           <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
@@ -732,7 +702,7 @@ export default function PaymentHubScreen() {
             </Text>
           </View>
         )}
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -852,16 +822,11 @@ export default function PaymentHubScreen() {
   ) => {
     const isActive = currentValue === value;
     return (
-      <TouchableOpacity
-        key={value}
-        style={[styles.filterChip, isActive && styles.filterChipActive]}
-        onPress={() => onPress(value)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={value} style={[styles.filterChip, isActive && styles.filterChipActive]} onPress={() => onPress(value)} >
         <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
           {label}
         </Text>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -943,12 +908,9 @@ export default function PaymentHubScreen() {
             <Feather name="file-text" size={48} color={colors.mutedForeground} />
             <Text style={styles.emptyText}>No invoices found</Text>
             {invoiceFilter === 'all' && (
-              <TouchableOpacity 
-                style={styles.createButton}
-                onPress={() => router.push('/more/invoice/new')}
-              >
+              <PressableRow style={styles.createButton} onPress={() => router.push('/more/invoice/new')} >
                 <Text style={styles.createButtonText}>Create Invoice</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
           </View>
         )}
@@ -965,12 +927,9 @@ export default function PaymentHubScreen() {
         <View style={styles.emptyState}>
           <Feather name="file" size={48} color={colors.mutedForeground} />
           <Text style={styles.emptyText}>No quotes yet</Text>
-          <TouchableOpacity 
-            style={styles.createButton}
-            onPress={() => router.push('/more/quote/new')}
-          >
+          <PressableRow style={styles.createButton} onPress={() => router.push('/more/quote/new')} >
             <Text style={styles.createButtonText}>Create Quote</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       )}
     </View>
@@ -1057,12 +1016,7 @@ export default function PaymentHubScreen() {
                 <Text style={{ fontSize: 11, color: colors.mutedForeground }}>Smart recommendations for overdue invoices</Text>
               </View>
             </View>
-            <TouchableOpacity
-              style={[styles.stripeButton, styles.stripeButtonPrimary, { opacity: aiLoading || (summary?.totalOverdueCount || 0) === 0 ? 0.5 : 1 }]}
-              onPress={handleGetAiInsights}
-              disabled={aiLoading || (summary?.totalOverdueCount || 0) === 0}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.stripeButton, styles.stripeButtonPrimary, { opacity: aiLoading || (summary?.totalOverdueCount || 0) === 0 ? 0.5 : 1 }]} onPress={handleGetAiInsights} disabled={aiLoading || (summary?.totalOverdueCount || 0) === 0} >
               {aiLoading ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
@@ -1071,7 +1025,7 @@ export default function PaymentHubScreen() {
               <Text style={styles.stripeButtonTextPrimary}>
                 {aiLoading ? 'Analysing...' : 'Get AI Advice'}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           {aiInsights && (
             <View style={{ marginTop: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: `${colors.primary}08`, borderWidth: 1, borderColor: `${colors.primary}15` }}>
@@ -1159,18 +1113,7 @@ export default function PaymentHubScreen() {
                       <>
                         <Text style={{ fontSize: 11, color: colors.mutedForeground, marginRight: spacing.xs }}>Tone:</Text>
                         {(['friendly', 'professional', 'firm'] as const).map(tone => (
-                          <TouchableOpacity
-                            key={tone}
-                            style={[
-                              styles.chaserActionBtn,
-                              tone === item.recommendedTone
-                                ? { backgroundColor: colors.primary, borderColor: colors.primary }
-                                : { backgroundColor: colors.card, borderColor: colors.border },
-                            ]}
-                            onPress={() => handlePreviewReminder(item.invoiceId, tone, item.clientName, item.invoiceNumber, item.outstanding)}
-                            disabled={isSending}
-                            activeOpacity={0.7}
-                          >
+                          <PressableRow key={tone} style={[ styles.chaserActionBtn, tone === item.recommendedTone ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.card, borderColor: colors.border }, ]} onPress={() => handlePreviewReminder(item.invoiceId, tone, item.clientName, item.invoiceNumber, item.outstanding)} disabled={isSending} >
                             {isSending ? (
                               <ActivityIndicator size="small" color={tone === item.recommendedTone ? colors.primaryForeground : colors.primary} />
                             ) : (
@@ -1178,41 +1121,25 @@ export default function PaymentHubScreen() {
                                 {tone.charAt(0).toUpperCase() + tone.slice(1)}
                               </Text>
                             )}
-                          </TouchableOpacity>
+                          </PressableRow>
                         ))}
-                        <TouchableOpacity
-                          style={[styles.chaserActionBtn, { backgroundColor: colors.muted, borderColor: colors.muted }]}
-                          onPress={() => setToneSelector(null)}
-                          activeOpacity={0.7}
-                        >
+                        <PressableRow style={[styles.chaserActionBtn, { backgroundColor: colors.muted, borderColor: colors.muted }]} onPress={() => setToneSelector(null)} >
                           <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Cancel</Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       </>
                     ) : (
                       <>
-                        <TouchableOpacity
-                          style={[styles.chaserActionBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                          onPress={() => setToneSelector(item.invoiceId)}
-                          activeOpacity={0.7}
-                        >
+                        <PressableRow style={[styles.chaserActionBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]} onPress={() => setToneSelector(item.invoiceId)} >
                           <Feather name="send" size={12} color={colors.primaryForeground} />
                           <Text style={{ fontSize: 12, fontWeight: '500', color: colors.primaryForeground }}>Chase</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                          onPress={() => router.push(`/more/invoice/${item.invoiceId}`)}
-                          activeOpacity={0.7}
-                        >
+                        </PressableRow>
+                        <PressableRow style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push(`/more/invoice/${item.invoiceId}`)} >
                           <Feather name="eye" size={12} color={colors.foreground} />
-                        </TouchableOpacity>
+                        </PressableRow>
                         {item.clientPhone && (
-                          <TouchableOpacity
-                            style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-                            onPress={() => Linking.openURL(`tel:${item.clientPhone}`)}
-                            activeOpacity={0.7}
-                          >
+                          <PressableRow style={[styles.chaserActionBtn, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => Linking.openURL(`tel:${item.clientPhone}`)} >
                             <Feather name="phone" size={12} color={colors.foreground} />
-                          </TouchableOpacity>
+                          </PressableRow>
                         )}
                       </>
                     )}
@@ -1287,13 +1214,9 @@ export default function PaymentHubScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={styles.backButton} onPress={() => router.back()} >
           <Feather name="arrow-left" size={24} color={colors.foreground} />
-        </TouchableOpacity>
+        </PressableRow>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Payment Hub</Text>
           <Text style={styles.headerSubtitle}>Track invoices, payments & quotes</Text>
@@ -1386,9 +1309,9 @@ export default function PaymentHubScreen() {
                   {previewModal.tone.charAt(0).toUpperCase() + previewModal.tone.slice(1)} tone to {previewModal.clientName}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))} style={{ padding: spacing.xs }}>
+              <PressableRow onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))} style={{ padding: spacing.xs }}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <ScrollView style={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
@@ -1406,12 +1329,7 @@ export default function PaymentHubScreen() {
             </ScrollView>
 
             <View style={{ padding: spacing.lg, paddingBottom: spacing['2xl'], gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
-              <TouchableOpacity
-                style={{ backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: radius.lg, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, opacity: previewModal.loading ? 0.6 : 1 }}
-                onPress={handleConfirmSendReminder}
-                disabled={previewModal.loading}
-                activeOpacity={0.8}
-              >
+              <PressableRow style={{ backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: radius.lg, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, opacity: previewModal.loading ? 0.6 : 1 }} onPress={handleConfirmSendReminder} disabled={previewModal.loading} >
                 {previewModal.loading ? (
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
@@ -1420,14 +1338,10 @@ export default function PaymentHubScreen() {
                     <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primaryForeground }}>Send Reminder</Text>
                   </>
                 )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ paddingVertical: spacing.sm, alignItems: 'center' }}
-                onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))}
-                activeOpacity={0.7}
-              >
+              </PressableRow>
+              <PressableRow style={{ paddingVertical: spacing.sm, alignItems: 'center' }} onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))} >
                 <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
         </View>

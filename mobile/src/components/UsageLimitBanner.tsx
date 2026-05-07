@@ -5,6 +5,7 @@ import { useTheme, ThemeColors } from '../lib/theme';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { spacing, radius, typography } from '../lib/design-tokens';
+import { PressableRow } from './ui/PressableRow';
 
 interface UsageInfo {
   jobs: { used: number; limit: number; remaining: number };
@@ -83,14 +84,10 @@ export default function UsageLimitBanner({ variant = 'compact' }: UsageLimitBann
           </Text>
         </View>
       </View>
-      <TouchableOpacity 
-        style={[styles.upgradeButton, hasExceeded ? styles.upgradeButtonExceeded : styles.upgradeButtonWarning]}
-        onPress={() => router.push('/more/subscription')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={[styles.upgradeButton, hasExceeded ? styles.upgradeButtonExceeded : styles.upgradeButtonWarning]} onPress={() => router.push('/more/subscription')} >
         <Text style={styles.upgradeButtonText}>View Plan</Text>
         <Feather name="arrow-right" size={12} color={colors.white} />
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 }

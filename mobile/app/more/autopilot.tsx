@@ -7,6 +7,7 @@ import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 
 interface AutomationTrigger {
   type: string;
@@ -961,9 +962,9 @@ export default function AutopilotScreen() {
                 <Text style={[styles.modalTitle, { color: colors.foreground }]}>
                   {editingId ? 'Edit Automation' : 'Create Automation'}
                 </Text>
-                <TouchableOpacity onPress={closeEditor} activeOpacity={0.7}>
+                <PressableRow onPress={closeEditor} >
                   <Feather name="x" size={22} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               <View style={styles.stepIndicator}>
@@ -1022,18 +1023,7 @@ export default function AutopilotScreen() {
                     {TRIGGER_TYPES.map((t) => {
                       const selected = formData.trigger.type === t.value;
                       return (
-                        <TouchableOpacity
-                          key={t.value}
-                          style={[
-                            styles.optionCard,
-                            {
-                              borderColor: selected ? colors.primary : colors.border,
-                              backgroundColor: selected ? colors.primary + '08' : 'transparent',
-                            },
-                          ]}
-                          onPress={() => updateFormTrigger({ type: t.value })}
-                          activeOpacity={0.7}
-                        >
+                        <PressableRow key={t.value} style={[ styles.optionCard, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primary + '08' : 'transparent', }, ]} onPress={() => updateFormTrigger({ type: t.value })} >
                           <View style={[styles.optionIconContainer, { backgroundColor: selected ? colors.primary + '18' : colors.border + '40' }]}>
                             <Feather name={t.icon as any} size={iconSizes.xl} color={selected ? colors.primary : colors.mutedForeground} />
                           </View>
@@ -1042,7 +1032,7 @@ export default function AutopilotScreen() {
                             <Text style={[styles.optionDescription, { color: colors.mutedForeground }]}>{t.description}</Text>
                           </View>
                           {selected && <Feather name="check-circle" size={iconSizes.xl} color={colors.primary} />}
-                        </TouchableOpacity>
+                        </PressableRow>
                       );
                     })}
 
@@ -1051,24 +1041,10 @@ export default function AutopilotScreen() {
                       {ENTITY_TYPES.map((e) => {
                         const selected = formData.trigger.entityType === e.value;
                         return (
-                          <TouchableOpacity
-                            key={e.value}
-                            style={[
-                              styles.optionCard,
-                              {
-                                borderColor: selected ? colors.primary : colors.border,
-                                backgroundColor: selected ? colors.primary + '08' : 'transparent',
-                                flex: 0,
-                                paddingHorizontal: spacing.md,
-                                marginBottom: 0,
-                              },
-                            ]}
-                            onPress={() => updateFormTrigger({ entityType: e.value })}
-                            activeOpacity={0.7}
-                          >
+                          <PressableRow key={e.value} style={[ styles.optionCard, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primary + '08' : 'transparent', flex: 0, paddingHorizontal: spacing.md, marginBottom: 0, }, ]} onPress={() => updateFormTrigger({ entityType: e.value })} >
                             <Feather name={e.icon as any} size={iconSizes.md} color={selected ? colors.primary : colors.mutedForeground} />
                             <Text style={[styles.optionTitle, { color: selected ? colors.primary : colors.foreground, fontSize: 14 }]}>{e.label}</Text>
-                          </TouchableOpacity>
+                          </PressableRow>
                         );
                       })}
                     </View>
@@ -1081,16 +1057,11 @@ export default function AutopilotScreen() {
                             {(STATUS_OPTIONS[formData.trigger.entityType] || []).map(s => {
                               const selected = formData.trigger.fromStatus === s;
                               return (
-                                <TouchableOpacity
-                                  key={s}
-                                  onPress={() => updateFormTrigger({ fromStatus: selected ? undefined : s })}
-                                  style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}
-                                  activeOpacity={0.7}
-                                >
+                                <PressableRow key={s} onPress={() => updateFormTrigger({ fromStatus: selected ? undefined : s })} style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]} >
                                   <Text style={[styles.statusBadgeText, { color: selected ? colors.primary : colors.mutedForeground }]}>
                                     {s.replace(/_/g, ' ')}
                                   </Text>
-                                </TouchableOpacity>
+                                </PressableRow>
                               );
                             })}
                           </View>
@@ -1102,16 +1073,11 @@ export default function AutopilotScreen() {
                             {(STATUS_OPTIONS[formData.trigger.entityType] || []).map(s => {
                               const selected = formData.trigger.toStatus === s;
                               return (
-                                <TouchableOpacity
-                                  key={s}
-                                  onPress={() => updateFormTrigger({ toStatus: selected ? undefined : s })}
-                                  style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}
-                                  activeOpacity={0.7}
-                                >
+                                <PressableRow key={s} onPress={() => updateFormTrigger({ toStatus: selected ? undefined : s })} style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]} >
                                   <Text style={[styles.statusBadgeText, { color: selected ? colors.primary : colors.mutedForeground }]}>
                                     {s.replace(/_/g, ' ')}
                                   </Text>
-                                </TouchableOpacity>
+                                </PressableRow>
                               );
                             })}
                           </View>
@@ -1147,26 +1113,15 @@ export default function AutopilotScreen() {
                             Action {formData.actions.length > 1 ? `${idx + 1}` : ''}
                           </Text>
                           {formData.actions.length > 1 && (
-                            <TouchableOpacity onPress={() => removeAction(idx)} activeOpacity={0.7}>
+                            <PressableRow onPress={() => removeAction(idx)} >
                               <Feather name="trash-2" size={iconSizes.md} color={colors.destructive || '#ef4444'} />
-                            </TouchableOpacity>
+                            </PressableRow>
                           )}
                         </View>
                         {ACTION_TYPES.map((a) => {
                           const selected = action.type === a.value;
                           return (
-                            <TouchableOpacity
-                              key={a.value}
-                              style={[
-                                styles.optionCard,
-                                {
-                                  borderColor: selected ? colors.primary : colors.border,
-                                  backgroundColor: selected ? colors.primary + '08' : 'transparent',
-                                },
-                              ]}
-                              onPress={() => updateFormAction(idx, { type: a.value })}
-                              activeOpacity={0.7}
-                            >
+                            <PressableRow key={a.value} style={[ styles.optionCard, { borderColor: selected ? colors.primary : colors.border, backgroundColor: selected ? colors.primary + '08' : 'transparent', }, ]} onPress={() => updateFormAction(idx, { type: a.value })} >
                               <View style={[styles.optionIconContainer, { backgroundColor: selected ? colors.primary + '18' : colors.border + '40' }]}>
                                 <Feather name={a.icon as any} size={iconSizes.xl} color={selected ? colors.primary : colors.mutedForeground} />
                               </View>
@@ -1175,7 +1130,7 @@ export default function AutopilotScreen() {
                                 <Text style={[styles.optionDescription, { color: colors.mutedForeground }]}>{a.description}</Text>
                               </View>
                               {selected && <Feather name="check-circle" size={iconSizes.xl} color={colors.primary} />}
-                            </TouchableOpacity>
+                            </PressableRow>
                           );
                         })}
 
@@ -1187,16 +1142,11 @@ export default function AutopilotScreen() {
                                 {(STATUS_OPTIONS[formData.trigger.entityType] || []).map(s => {
                                   const selected = action.newStatus === s;
                                   return (
-                                    <TouchableOpacity
-                                      key={s}
-                                      onPress={() => updateFormAction(idx, { newStatus: s })}
-                                      style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]}
-                                      activeOpacity={0.7}
-                                    >
+                                    <PressableRow key={s} onPress={() => updateFormAction(idx, { newStatus: s })} style={[styles.statusBadge, { backgroundColor: selected ? colors.primary + '18' : colors.border + '30', paddingHorizontal: spacing.md, paddingVertical: spacing.xs }]} >
                                       <Text style={[styles.statusBadgeText, { color: selected ? colors.primary : colors.mutedForeground }]}>
                                         {s.replace(/_/g, ' ')}
                                       </Text>
-                                    </TouchableOpacity>
+                                    </PressableRow>
                                   );
                                 })}
                               </View>
@@ -1220,14 +1170,10 @@ export default function AutopilotScreen() {
                       </View>
                     ))}
 
-                    <TouchableOpacity
-                      style={[styles.deleteButton, { borderColor: colors.primary }]}
-                      onPress={addAction}
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow style={[styles.deleteButton, { borderColor: colors.primary }]} onPress={addAction} >
                       <Feather name="plus" size={iconSizes.md} color={colors.primary} />
                       <Text style={[styles.footerButtonText, { color: colors.primary }]}>Add Another Action</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   </>
                 )}
 
@@ -1266,31 +1212,18 @@ export default function AutopilotScreen() {
 
               <View style={[styles.modalFooter, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
                 {currentStepIndex > 0 ? (
-                  <TouchableOpacity
-                    style={[styles.footerButton, { backgroundColor: colors.border + '40' }]}
-                    onPress={goBack}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={[styles.footerButton, { backgroundColor: colors.border + '40' }]} onPress={goBack} >
                     <Feather name="arrow-left" size={iconSizes.md} color={colors.foreground} />
                     <Text style={[styles.footerButtonText, { color: colors.foreground }]}>Back</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ) : (
-                  <TouchableOpacity
-                    style={[styles.footerButton, { backgroundColor: colors.border + '40' }]}
-                    onPress={closeEditor}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={[styles.footerButton, { backgroundColor: colors.border + '40' }]} onPress={closeEditor} >
                     <Text style={[styles.footerButtonText, { color: colors.foreground }]}>Cancel</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
 
                 {editorStep === 'review' ? (
-                  <TouchableOpacity
-                    style={[styles.footerButton, { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 }]}
-                    onPress={handleSaveAutomation}
-                    disabled={isSaving}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={[styles.footerButton, { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 }]} onPress={handleSaveAutomation} disabled={isSaving} >
                     {isSaving ? (
                       <ActivityIndicator size="small" color={colors.primaryForeground || colors.white} />
                     ) : (
@@ -1301,17 +1234,12 @@ export default function AutopilotScreen() {
                         </Text>
                       </>
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 ) : (
-                  <TouchableOpacity
-                    style={[styles.footerButton, { backgroundColor: canGoNext ? colors.primary : colors.border, opacity: canGoNext ? 1 : 0.5 }]}
-                    onPress={goNext}
-                    disabled={!canGoNext}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={[styles.footerButton, { backgroundColor: canGoNext ? colors.primary : colors.border, opacity: canGoNext ? 1 : 0.5 }]} onPress={goNext} disabled={!canGoNext} >
                     <Text style={[styles.footerButtonText, { color: canGoNext ? (colors.primaryForeground || colors.white) : colors.mutedForeground }]}>Next</Text>
                     <Feather name="arrow-right" size={iconSizes.md} color={canGoNext ? (colors.primaryForeground || colors.white) : colors.mutedForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </View>
             </View>
@@ -1389,20 +1317,12 @@ export default function AutopilotScreen() {
             </Text>
           </View>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <TouchableOpacity
-              onPress={() => openEditEditor(automation)}
-              activeOpacity={0.7}
-              style={{ padding: spacing.xs }}
-            >
+            <PressableRow onPress={() => openEditEditor(automation)} style={{ padding: spacing.xs }} >
               <Feather name="edit-2" size={iconSizes.lg} color={colors.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => handleDeleteAutomation(automation)}
-              activeOpacity={0.7}
-              style={{ padding: spacing.xs }}
-            >
+            </PressableRow>
+            <PressableRow onPress={() => handleDeleteAutomation(automation)} style={{ padding: spacing.xs }} >
               <Feather name="trash-2" size={iconSizes.lg} color={colors.destructive || '#ef4444'} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </View>
@@ -1446,12 +1366,7 @@ export default function AutopilotScreen() {
           </View>
         ) : null}
 
-        <TouchableOpacity
-          style={styles.enableButton}
-          onPress={() => handleEnableTemplate(template)}
-          disabled={isEnabling}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={styles.enableButton} onPress={() => handleEnableTemplate(template)} disabled={isEnabling} >
           {isEnabling ? (
             <ActivityIndicator size="small" color={colors.primaryForeground || colors.white} />
           ) : (
@@ -1460,7 +1375,7 @@ export default function AutopilotScreen() {
               <Text style={styles.enableButtonText}>Enable</Text>
             </>
           )}
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     );
   };
@@ -1480,22 +1395,14 @@ export default function AutopilotScreen() {
       </Text>
       {type === 'automations' && (
         <View style={{ gap: spacing.xs, alignItems: 'center' }}>
-          <TouchableOpacity
-            style={styles.emptyCta}
-            onPress={openCreateEditor}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.emptyCta} onPress={openCreateEditor} >
             <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground || colors.white} />
             <Text style={styles.emptyCtaText}>Create Automation</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setActiveTab('templates')}
-            activeOpacity={0.7}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs }}
-          >
+          </PressableRow>
+          <PressableRow onPress={() => setActiveTab('templates')} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.xs }} >
             <Feather name="copy" size={iconSizes.sm} color={colors.primary} />
             <Text style={[styles.emptyCtaText, { color: colors.primary, fontSize: 13 }]}>Browse Templates</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       )}
     </View>
@@ -1528,11 +1435,7 @@ export default function AutopilotScreen() {
           {!isLoading && renderStatsRow()}
 
           <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'automations' && styles.activeTab]}
-              onPress={() => setActiveTab('automations')}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.tab, activeTab === 'automations' && styles.activeTab]} onPress={() => setActiveTab('automations')} >
               <Feather
                 name="zap"
                 size={14}
@@ -1544,13 +1447,9 @@ export default function AutopilotScreen() {
               <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
                 <Text style={styles.tabBadgeText}>{automations.length}</Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
 
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'templates' && styles.activeTab]}
-              onPress={() => setActiveTab('templates')}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.tab, activeTab === 'templates' && styles.activeTab]} onPress={() => setActiveTab('templates')} >
               <Feather
                 name="copy"
                 size={14}
@@ -1562,13 +1461,9 @@ export default function AutopilotScreen() {
               <View style={[styles.tabBadge, { backgroundColor: '#6b7280' }]}>
                 <Text style={styles.tabBadgeText}>{templates.length}</Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
 
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'activity' && styles.activeTab]}
-              onPress={() => setActiveTab('activity')}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.tab, activeTab === 'activity' && styles.activeTab]} onPress={() => setActiveTab('activity')} >
               <Feather
                 name="activity"
                 size={14}
@@ -1582,21 +1477,17 @@ export default function AutopilotScreen() {
                   <Text style={styles.tabBadgeText}>{activityLogs.length}</Text>
                 </View>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           {error && automations.length === 0 && (
             <View style={styles.errorContainer}>
               <Feather name="alert-circle" size={28} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => { setIsLoading(true); fetchData(); }}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.retryButton} onPress={() => { setIsLoading(true); fetchData(); }} >
                 <Feather name="refresh-cw" size={iconSizes.sm} color={colors.primaryForeground || colors.white} />
                 <Text style={styles.retryButtonText}>Try Again</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
 
@@ -1717,12 +1608,7 @@ export default function AutopilotScreen() {
                   const isFailed = entry.status === 'failed' || entry.status === 'error';
                   const isExpanded = expandedLogId === entry.id;
                   return (
-                    <TouchableOpacity
-                      key={entry.id}
-                      style={styles.card}
-                      onPress={() => setExpandedLogId(isExpanded ? null : entry.id)}
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow key={entry.id} style={styles.card} onPress={() => setExpandedLogId(isExpanded ? null : entry.id)} >
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
                         <View style={[styles.automationIconContainer, { backgroundColor: isFailed ? 'rgba(239,68,68,0.1)' : (typeInfo.color + '18') }]}>
                           {isFailed ? (
@@ -1786,7 +1672,7 @@ export default function AutopilotScreen() {
                           )}
                         </View>
                       )}
-                    </TouchableOpacity>
+                    </PressableRow>
                   );
                 })
               )}

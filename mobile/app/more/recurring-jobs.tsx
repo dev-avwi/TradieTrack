@@ -14,6 +14,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -1007,12 +1008,7 @@ export default function RecurringJobsScreen() {
           const isActive = activeFilter === filter;
           const config = filter === 'all' ? null : getStatusConfig(filter as RecurringJobStatus, colors);
           return (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterChip, isActive && styles.activeFilterChip]}
-              onPress={() => setActiveFilter(filter)}
-              activeOpacity={0.7}
-            >
+            <PressableRow key={filter} style={[styles.filterChip, isActive && styles.activeFilterChip]} onPress={() => setActiveFilter(filter)} >
               {config && (
                 <Feather
                   name={config.icon}
@@ -1028,7 +1024,7 @@ export default function RecurringJobsScreen() {
                   {filterCounts[filter]}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           );
         })}
       </View>
@@ -1133,24 +1129,14 @@ export default function RecurringJobsScreen() {
 
         <View style={styles.cardActions}>
           {(isActiveJob || isPaused) && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonPrimary]}
-              onPress={() => handleEditRecurrence(job)}
-              activeOpacity={0.7}
-              disabled={isJobLoading}
-            >
+            <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleEditRecurrence(job)} disabled={isJobLoading} >
               <Feather name="edit-2" size={iconSizes.sm} color={colors.primary} />
               <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>Edit</Text>
-            </TouchableOpacity>
+            </PressableRow>
           )}
 
           {(isActiveJob || isPaused) && (
-            <TouchableOpacity
-              style={[styles.actionButton, isPaused && styles.actionButtonPrimary]}
-              onPress={() => handlePauseResume(job)}
-              activeOpacity={0.7}
-              disabled={isJobLoading}
-            >
+            <PressableRow style={[styles.actionButton, isPaused && styles.actionButtonPrimary]} onPress={() => handlePauseResume(job)} disabled={isJobLoading} >
               {isJobLoading ? (
                 <ActivityIndicator size="small" color={colors.foreground} />
               ) : (
@@ -1165,16 +1151,11 @@ export default function RecurringJobsScreen() {
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           )}
 
           {isActiveJob && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonPrimary]}
-              onPress={() => handleGenerateNow(job)}
-              activeOpacity={0.7}
-              disabled={isJobLoading}
-            >
+            <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => handleGenerateNow(job)} disabled={isJobLoading} >
               {isJobLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
@@ -1183,19 +1164,14 @@ export default function RecurringJobsScreen() {
                   <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>Generate</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           )}
 
           {(isActiveJob || isPaused) && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonDestructive]}
-              onPress={() => handleDelete(job)}
-              activeOpacity={0.7}
-              disabled={isJobLoading}
-            >
+            <PressableRow style={[styles.actionButton, styles.actionButtonDestructive]} onPress={() => handleDelete(job)} disabled={isJobLoading} >
               <Feather name="trash-2" size={iconSizes.sm} color={colors.destructive} />
               <Text style={[styles.actionButtonText, styles.actionButtonTextDestructive]}>Delete</Text>
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
       </View>
@@ -1215,22 +1191,14 @@ export default function RecurringJobsScreen() {
       </Text>
       {activeFilter === 'all' && (
         <>
-          <TouchableOpacity
-            style={styles.emptyButton}
-            onPress={handleCreateRecurringJob}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.emptyButton} onPress={handleCreateRecurringJob} >
             <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
             <Text style={styles.emptyButtonText}>Create Recurring Job</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.emptyButtonSecondary}
-            onPress={handleOpenJobPicker}
-            activeOpacity={0.7}
-          >
+          </PressableRow>
+          <PressableRow style={styles.emptyButtonSecondary} onPress={handleOpenJobPicker} >
             <Feather name="refresh-cw" size={iconSizes.md} color={colors.foreground} />
             <Text style={styles.emptyButtonSecondaryText}>Convert Existing Job</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </>
       )}
     </View>
@@ -1240,9 +1208,9 @@ export default function RecurringJobsScreen() {
     <View style={styles.errorContainer}>
       <Feather name="alert-circle" size={40} color={colors.destructive} />
       <Text style={styles.errorText}>{error}</Text>
-      <TouchableOpacity style={styles.retryButton} onPress={handleRefresh} activeOpacity={0.7}>
+      <PressableRow style={styles.retryButton} onPress={handleRefresh} >
         <Text style={styles.retryButtonText}>Try Again</Text>
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 
@@ -1264,23 +1232,15 @@ export default function RecurringJobsScreen() {
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Recurrence</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)} activeOpacity={0.7}>
+              <PressableRow onPress={() => setEditModalVisible(false)} >
                 <Feather name="x" size={iconSizes['2xl']} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <Text style={[styles.modalLabel, { marginTop: 0 }]}>Frequency</Text>
               {RECURRENCE_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.modalOptionRow,
-                    editPattern === opt.value && styles.modalOptionRowSelected,
-                  ]}
-                  onPress={() => setEditPattern(opt.value)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={opt.value} style={[ styles.modalOptionRow, editPattern === opt.value && styles.modalOptionRowSelected, ]} onPress={() => setEditPattern(opt.value)} >
                   <Text
                     style={[
                       styles.modalOptionText,
@@ -1292,7 +1252,7 @@ export default function RecurringJobsScreen() {
                   {editPattern === opt.value && (
                     <Feather name="check" size={iconSizes.lg} color={colors.primary} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               ))}
 
               <Text style={styles.modalLabel}>Interval</Text>
@@ -1330,11 +1290,7 @@ export default function RecurringJobsScreen() {
               />
 
               <Text style={styles.modalLabel}>Status</Text>
-              <TouchableOpacity
-                style={styles.pauseToggleRow}
-                onPress={() => setEditPaused(!editPaused)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.pauseToggleRow} onPress={() => setEditPaused(!editPaused)} >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.pauseToggleLabel}>
                     {editPaused ? 'Paused' : 'Active'}
@@ -1358,14 +1314,9 @@ export default function RecurringJobsScreen() {
                     ]}
                   />
                 </View>
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity
-                style={styles.modalSaveButton}
-                onPress={handleSaveEdit}
-                activeOpacity={0.7}
-                disabled={editSaving}
-              >
+              <PressableRow style={styles.modalSaveButton} onPress={handleSaveEdit} disabled={editSaving} >
                 {editSaving ? (
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
@@ -1374,15 +1325,11 @@ export default function RecurringJobsScreen() {
                     <Text style={styles.modalSaveButtonText}>Save Changes</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setEditModalVisible(false)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.modalCancelButton} onPress={() => setEditModalVisible(false)} >
                 <Text style={styles.modalCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
 
               <View style={{ height: spacing.xl }} />
             </ScrollView>
@@ -1410,9 +1357,9 @@ export default function RecurringJobsScreen() {
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Convert Existing Job</Text>
-              <TouchableOpacity onPress={() => setJobPickerVisible(false)} activeOpacity={0.7}>
+              <PressableRow onPress={() => setJobPickerVisible(false)} >
                 <Feather name="x" size={iconSizes['2xl']} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <TextInput
@@ -1436,12 +1383,7 @@ export default function RecurringJobsScreen() {
                 data={filteredPickerJobs}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.jobPickerItem}
-                    onPress={() => handleConvertJob(item)}
-                    activeOpacity={0.7}
-                    disabled={convertingJobId === item.id}
-                  >
+                  <PressableRow style={styles.jobPickerItem} onPress={() => handleConvertJob(item)} disabled={convertingJobId === item.id} >
                     <View style={styles.jobPickerItemInfo}>
                       <Text style={styles.jobPickerItemTitle} numberOfLines={1}>
                         {item.title}
@@ -1457,7 +1399,7 @@ export default function RecurringJobsScreen() {
                     ) : (
                       <Feather name="refresh-cw" size={iconSizes.lg} color={colors.primary} />
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
                 showsVerticalScrollIndicator={false}
               />
@@ -1473,13 +1415,13 @@ export default function RecurringJobsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+        <PressableRow onPress={() => router.back()} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
           <Feather name="arrow-left" size={iconSizes.lg} color={colors.foreground} />
-        </TouchableOpacity>
+        </PressableRow>
         <Text style={styles.headerTitle}>Recurring Jobs</Text>
-        <TouchableOpacity onPress={handleCreateRecurringJob} activeOpacity={0.7}>
+        <PressableRow onPress={handleCreateRecurringJob} >
           <Feather name="plus" size={iconSizes['2xl']} color={colors.primary} />
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       <ScrollView
@@ -1512,45 +1454,26 @@ export default function RecurringJobsScreen() {
           onPress={() => setFabMenuVisible(false)}
         >
           <View style={styles.fabMenuContainer}>
-            <TouchableOpacity
-              style={styles.fabMenuItem}
-              onPress={() => {
-                setFabMenuVisible(false);
-                handleCreateRecurringJob();
-              }}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.fabMenuItem} onPress={() => { setFabMenuVisible(false); handleCreateRecurringJob(); }} >
               <Text style={styles.fabMenuItemText}>Create Recurring Job</Text>
               <View style={[styles.fabMenuItemIcon, { backgroundColor: colors.primaryLight }]}>
                 <Feather name="plus" size={iconSizes.lg} color={colors.primary} />
               </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.fabMenuItem}
-              onPress={() => {
-                setFabMenuVisible(false);
-                handleOpenJobPicker();
-              }}
-              activeOpacity={0.7}
-            >
+            </PressableRow>
+            <PressableRow style={styles.fabMenuItem} onPress={() => { setFabMenuVisible(false); handleOpenJobPicker(); }} >
               <Text style={styles.fabMenuItemText}>Convert Existing Job</Text>
               <View style={[styles.fabMenuItemIcon, { backgroundColor: colors.warningLight }]}>
                 <Feather name="refresh-cw" size={iconSizes.lg} color={colors.warning} />
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </TouchableOpacity>
       )}
 
       {!isLoading && !error && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => setFabMenuVisible(!fabMenuVisible)}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
+        <PressableRow style={styles.fab} onPress={() => setFabMenuVisible(!fabMenuVisible)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} >
           <Feather name={fabMenuVisible ? 'x' : 'plus'} size={iconSizes['2xl']} color={colors.primaryForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
 
       {renderEditModal()}

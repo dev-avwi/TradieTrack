@@ -4,6 +4,7 @@ import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme, ThemeColors } from '../../lib/theme';
 import { spacing, radius } from '../../lib/design-tokens';
+import { PressableRow } from './PressableRow';
 
 const STORAGE_KEY = 'jobrunner-banner-dismissed';
 
@@ -37,14 +38,9 @@ export function TrustBanner({ businessName }: TrustBannerProps) {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.dismissButton}
-        onPress={handleDismiss}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        testID="button-dismiss-banner"
-      >
+      <PressableRow style={styles.dismissButton} onPress={handleDismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} testID="button-dismiss-banner" >
         <Feather name="x" size={16} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
       
       <View style={styles.header}>
         <View style={styles.logoContainer}>

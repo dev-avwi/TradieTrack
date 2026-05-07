@@ -8,6 +8,7 @@ import {
   Alert,
   Linking,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
@@ -335,15 +336,7 @@ function MenuItem({
   };
   
   return (
-    <TouchableOpacity
-      onPress={handlePress}
-      activeOpacity={0.7}
-      style={[
-        styles.menuItem,
-        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-        locked && { opacity: 0.6 }
-      ]}
-    >
+    <PressableRow onPress={handlePress} style={[ styles.menuItem, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }, locked && { opacity: 0.6 } ]} >
       <View style={[styles.menuItemIcon, { backgroundColor: effectiveIconBg }]}>
         <Feather name={locked ? 'lock' : icon} size={iconSizes.lg} color={effectiveIconColor} />
       </View>
@@ -370,7 +363,7 @@ function MenuItem({
         size={iconSizes.lg} 
         color={locked ? colors.warning : (destructive ? colors.destructive : colors.mutedForeground)} 
       />
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -623,11 +616,7 @@ export default function MoreScreen() {
       contentContainerStyle={responsiveContentStyle}
       showsVerticalScrollIndicator={false}
     >
-      <TouchableOpacity 
-        style={styles.profileHeader}
-        activeOpacity={0.8}
-        onPress={() => router.push('/more/profile-edit')}
-      >
+      <PressableRow style={styles.profileHeader} onPress={() => router.push('/more/profile-edit')} >
         <TeamAvatar
           firstName={user?.firstName || undefined}
           lastName={user?.lastName || undefined}
@@ -665,24 +654,10 @@ export default function MoreScreen() {
           )}
         </View>
         <Feather name="chevron-right" size={iconSizes.xl} color={colors.mutedForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
       {(multiBusinessCount > 1 || pendingInviteCount > 0) && (
-        <TouchableOpacity
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: pendingInviteCount > 0 ? colors.warningLight : colors.primaryLight,
-            borderRadius: radius.xl,
-            padding: spacing.lg,
-            marginBottom: spacing.lg,
-            borderWidth: 1,
-            borderColor: pendingInviteCount > 0 ? colors.warning : colors.primary,
-            gap: spacing.md,
-          }}
-          activeOpacity={0.7}
-          onPress={() => setShowWorkspaceSwitcher(true)}
-        >
+        <PressableRow style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: pendingInviteCount> 0 ? colors.warningLight : colors.primaryLight, borderRadius: radius.xl, padding: spacing.lg, marginBottom: spacing.lg, borderWidth: 1, borderColor: pendingInviteCount > 0 ? colors.warning : colors.primary, gap: spacing.md, }} onPress={() => setShowWorkspaceSwitcher(true)} >
           <View style={{
             width: 40,
             height: 40,
@@ -704,7 +679,7 @@ export default function MoreScreen() {
             </Text>
           </View>
           <Feather name="chevron-right" size={iconSizes.lg} color={pendingInviteCount > 0 ? colors.warning : colors.primary} />
-        </TouchableOpacity>
+        </PressableRow>
       )}
 
       <WorkspaceSwitcher
@@ -732,17 +707,12 @@ export default function MoreScreen() {
           <Text style={styles.quickActionsLabel}>Quick Actions</Text>
           <View style={styles.quickActionsRow}>
             {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.route}
-                style={styles.quickActionBtn}
-                activeOpacity={0.7}
-                onPress={() => router.push(action.route as any)}
-              >
+              <PressableRow key={action.route} style={styles.quickActionBtn} onPress={() => router.push(action.route as any)} >
                 <View style={[styles.quickActionIcon, { backgroundColor: action.bg }]}>
                   <Feather name={action.icon} size={18} color={action.fg} />
                 </View>
                 <Text style={styles.quickActionText}>{action.label}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ))}
           </View>
         </View>
@@ -755,30 +725,18 @@ export default function MoreScreen() {
           style={styles.categoryTabsScroll}
         >
           <View style={styles.categoryTabsRow}>
-            <TouchableOpacity
-              style={[styles.categoryTab, activeCategory === 'all' && styles.categoryTabActive]}
-              activeOpacity={0.7}
-              onPress={() => setActiveCategory('all')}
-            >
+            <PressableRow style={[styles.categoryTab, activeCategory === 'all' && styles.categoryTabActive]} onPress={() => setActiveCategory('all')} >
               <Text style={[styles.categoryTabText, activeCategory === 'all' && styles.categoryTabTextActive]}>
                 All
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
             {visibleCategories.map(catKey => {
               const meta = categoryMeta[catKey];
               if (!meta) return null;
               const isActive = activeCategory === catKey;
               const catColorVals = getColorValues(meta.colorKey, colors);
               return (
-                <TouchableOpacity
-                  key={catKey}
-                  style={[
-                    styles.categoryTab, 
-                    isActive && { backgroundColor: catColorVals.fg },
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => setActiveCategory(catKey)}
-                >
+                <PressableRow key={catKey} style={[ styles.categoryTab, isActive && { backgroundColor: catColorVals.fg }, ]} onPress={() => setActiveCategory(catKey)} >
                   <Feather 
                     name={meta.icon} 
                     size={14} 
@@ -790,7 +748,7 @@ export default function MoreScreen() {
                   ]}>
                     {meta.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
           </View>

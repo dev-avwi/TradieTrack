@@ -9,6 +9,7 @@ import {
   Alert,
   StyleSheet 
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/lib/store';
@@ -333,15 +334,7 @@ export default function DeleteAccountScreen() {
             testID="input-confirm-delete"
           />
           
-          <TouchableOpacity
-            style={[
-              styles.deleteButton,
-              (!isConfirmed || isDeleting) && styles.deleteButtonDisabled
-            ]}
-            onPress={handleDeleteAccount}
-            disabled={!isConfirmed || isDeleting}
-            testID="button-delete-account"
-          >
+          <PressableRow style={[ styles.deleteButton, (!isConfirmed || isDeleting) && styles.deleteButtonDisabled ]} onPress={handleDeleteAccount} disabled={!isConfirmed || isDeleting} testID="button-delete-account" >
             {isDeleting ? (
               <ActivityIndicator color={colors.white} size="small" />
             ) : (
@@ -352,16 +345,11 @@ export default function DeleteAccountScreen() {
                 Delete My Account Permanently
               </Text>
             )}
-          </TouchableOpacity>
+          </PressableRow>
           
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={handleCancel}
-            disabled={isDeleting}
-            testID="button-cancel-delete"
-          >
+          <PressableRow style={styles.cancelButton} onPress={handleCancel} disabled={isDeleting} testID="button-cancel-delete" >
             <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
         
         <Text style={styles.legalNote}>

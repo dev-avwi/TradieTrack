@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
+import { PressableRow } from './ui/PressableRow';
 
 type EmptyStateType = 
   | 'jobs' 
@@ -181,16 +182,12 @@ export function EmptyState({
       </Text>
       
       {displayActionLabel && onAction && (
-        <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: colors.primary }]}
-          onPress={onAction}
-          activeOpacity={0.8}
-        >
+        <PressableRow style={[styles.actionButton, { backgroundColor: colors.primary }]} onPress={onAction} >
           <Feather name="plus" size={18} color={colors.primaryForeground} />
           <Text style={[styles.actionText, { color: colors.primaryForeground }]}>
             {displayActionLabel}
           </Text>
-        </TouchableOpacity>
+        </PressableRow>
       )}
     </View>
   );

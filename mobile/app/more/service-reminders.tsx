@@ -13,6 +13,7 @@ import {
   TextInput,
   FlatList,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -838,11 +839,7 @@ export default function ServiceRemindersScreen() {
           {filters.map((f) => {
             const isActive = activeFilter === f.key;
             return (
-              <TouchableOpacity
-                key={f.key}
-                style={[styles.filterChip, isActive && styles.activeFilterChip]}
-                onPress={() => setActiveFilter(f.key)}
-              >
+              <PressableRow key={f.key} style={[styles.filterChip, isActive && styles.activeFilterChip]} onPress={() => setActiveFilter(f.key)} >
                 <Feather
                   name={f.icon}
                   size={iconSizes.sm}
@@ -854,7 +851,7 @@ export default function ServiceRemindersScreen() {
                     {filterCounts[f.key]}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </PressableRow>
             );
           })}
         </View>
@@ -935,11 +932,7 @@ export default function ServiceRemindersScreen() {
 
         <View style={styles.cardActions}>
           {isActive && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.actionButtonPrimary]}
-              onPress={() => openCompleteModal(reminder)}
-              disabled={loading}
-            >
+            <PressableRow style={[styles.actionButton, styles.actionButtonPrimary]} onPress={() => openCompleteModal(reminder)} disabled={loading} >
               {loading ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
@@ -948,20 +941,16 @@ export default function ServiceRemindersScreen() {
                   <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>Complete</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           )}
-          <TouchableOpacity style={styles.actionButton} onPress={() => openEditModal(reminder)} disabled={loading}>
+          <PressableRow style={styles.actionButton} onPress={() => openEditModal(reminder)} disabled={loading}>
             <Feather name="edit-2" size={iconSizes.sm} color={colors.foreground} />
             <Text style={styles.actionButtonText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonDestructive]}
-            onPress={() => handleDelete(reminder)}
-            disabled={loading}
-          >
+          </PressableRow>
+          <PressableRow style={[styles.actionButton, styles.actionButtonDestructive]} onPress={() => handleDelete(reminder)} disabled={loading} >
             <Feather name="trash-2" size={iconSizes.sm} color={colors.destructive} />
             <Text style={[styles.actionButtonText, styles.actionButtonTextDestructive]}>Delete</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </View>
     );
@@ -982,9 +971,9 @@ export default function ServiceRemindersScreen() {
         <View style={styles.errorContainer}>
           <Feather name="alert-circle" size={iconSizes['3xl']} color={colors.destructive} />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <PressableRow style={styles.retryButton} onPress={fetchData}>
             <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       );
     }
@@ -1004,10 +993,10 @@ export default function ServiceRemindersScreen() {
               : 'Create your first service reminder to track recurring maintenance'}
           </Text>
           {activeFilter !== 'completed' && (
-            <TouchableOpacity style={styles.emptyButton} onPress={openCreateModal}>
+            <PressableRow style={styles.emptyButton} onPress={openCreateModal}>
               <Feather name="plus" size={iconSizes.md} color={colors.primaryForeground} />
               <Text style={styles.emptyButtonText}>New Reminder</Text>
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
       );
@@ -1036,9 +1025,9 @@ export default function ServiceRemindersScreen() {
         {renderContent()}
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={openCreateModal} activeOpacity={0.8} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <PressableRow style={styles.fab} onPress={openCreateModal} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Feather name="plus" size={iconSizes['2xl']} color={colors.primaryForeground} />
-      </TouchableOpacity>
+      </PressableRow>
 
       <AppBottomSheet
         visible={formModalVisible}
@@ -1052,22 +1041,19 @@ export default function ServiceRemindersScreen() {
               <Text style={styles.modalTitle}>
                 {editingReminder ? 'Edit Service Reminder' : 'New Service Reminder'}
               </Text>
-              <TouchableOpacity onPress={() => setFormModalVisible(false)}>
+              <PressableRow onPress={() => setFormModalVisible(false)}>
                 <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <Text style={styles.modalLabel}>SERVICE TYPE</Text>
-              <TouchableOpacity
-                style={styles.modalOptionRow}
-                onPress={() => setServiceTypePickerVisible(true)}
-              >
+              <PressableRow style={styles.modalOptionRow} onPress={() => setServiceTypePickerVisible(true)} >
                 <Text style={[styles.modalOptionText, !formServiceType && { color: colors.mutedForeground }]}>
                   {formServiceType || 'Select a service type'}
                 </Text>
                 <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
               <Text style={[styles.modalLabel, { marginTop: spacing.sm }]}>OR CUSTOM TYPE</Text>
               <TextInput
@@ -1082,40 +1068,28 @@ export default function ServiceRemindersScreen() {
               />
 
               <Text style={styles.modalLabel}>CLIENT</Text>
-              <TouchableOpacity
-                style={styles.modalOptionRow}
-                onPress={() => {
-                  setClientSearch('');
-                  setClientPickerVisible(true);
-                }}
-              >
+              <PressableRow style={styles.modalOptionRow} onPress={() => { setClientSearch(''); setClientPickerVisible(true); }} >
                 <Text style={[styles.modalOptionText, !formClientId && { color: colors.mutedForeground }]}>
                   {formClientId ? clientMap.get(formClientId) || 'Selected' : 'Select a client'}
                 </Text>
                 <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
               <Text style={styles.modalLabel}>REPEAT INTERVAL</Text>
-              <TouchableOpacity
-                style={styles.modalOptionRow}
-                onPress={() => setIntervalPickerVisible(true)}
-              >
+              <PressableRow style={styles.modalOptionRow} onPress={() => setIntervalPickerVisible(true)} >
                 <Text style={styles.modalOptionText}>
                   {INTERVAL_LABELS[formIntervalMonths] || `${formIntervalMonths} months`}
                 </Text>
                 <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
               <Text style={styles.modalLabel}>REMIND BEFORE</Text>
-              <TouchableOpacity
-                style={styles.modalOptionRow}
-                onPress={() => setReminderDaysPickerVisible(true)}
-              >
+              <PressableRow style={styles.modalOptionRow} onPress={() => setReminderDaysPickerVisible(true)} >
                 <Text style={styles.modalOptionText}>
                   {REMINDER_DAYS_OPTIONS.find((o) => o.value === formReminderDays)?.label || `${formReminderDays} days`}
                 </Text>
                 <Feather name="chevron-right" size={iconSizes.md} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
               <Text style={styles.modalLabel}>NOTES</Text>
               <TextInput
@@ -1127,11 +1101,7 @@ export default function ServiceRemindersScreen() {
                 multiline
               />
 
-              <TouchableOpacity
-                style={[styles.modalSaveButton, !canSave && styles.modalSaveButtonDisabled]}
-                onPress={handleSave}
-                disabled={!canSave || formSaving}
-              >
+              <PressableRow style={[styles.modalSaveButton, !canSave && styles.modalSaveButtonDisabled]} onPress={handleSave} disabled={!canSave || formSaving} >
                 {formSaving ? (
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
@@ -1142,14 +1112,11 @@ export default function ServiceRemindersScreen() {
                     </Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setFormModalVisible(false)}
-              >
+              <PressableRow style={styles.modalCancelButton} onPress={() => setFormModalVisible(false)} >
                 <Text style={styles.modalCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
 
               <View style={{ height: 40 }} />
             </ScrollView>
@@ -1166,9 +1133,9 @@ export default function ServiceRemindersScreen() {
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Service Type</Text>
-              <TouchableOpacity onPress={() => setServiceTypePickerVisible(false)}>
+              <PressableRow onPress={() => setServiceTypePickerVisible(false)}>
                 <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <FlatList
               data={COMMON_SERVICE_TYPES}
@@ -1176,17 +1143,10 @@ export default function ServiceRemindersScreen() {
               renderItem={({ item }) => {
                 const selected = formServiceType === item;
                 return (
-                  <TouchableOpacity
-                    style={[styles.clientPickerItem]}
-                    onPress={() => {
-                      setFormServiceType(item);
-                      setFormCustomServiceType('');
-                      setServiceTypePickerVisible(false);
-                    }}
-                  >
+                  <PressableRow style={[styles.clientPickerItem]} onPress={() => { setFormServiceType(item); setFormCustomServiceType(''); setServiceTypePickerVisible(false); }} >
                     <Text style={styles.clientPickerItemTitle}>{item}</Text>
                     {selected && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               }}
             />
@@ -1203,9 +1163,9 @@ export default function ServiceRemindersScreen() {
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Client</Text>
-              <TouchableOpacity onPress={() => setClientPickerVisible(false)}>
+              <PressableRow onPress={() => setClientPickerVisible(false)}>
                 <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <TextInput
               style={styles.searchInput}
@@ -1221,18 +1181,12 @@ export default function ServiceRemindersScreen() {
               renderItem={({ item }) => {
                 const selected = formClientId === item.id;
                 return (
-                  <TouchableOpacity
-                    style={styles.clientPickerItem}
-                    onPress={() => {
-                      setFormClientId(item.id);
-                      setClientPickerVisible(false);
-                    }}
-                  >
+                  <PressableRow style={styles.clientPickerItem} onPress={() => { setFormClientId(item.id); setClientPickerVisible(false); }} >
                     <View style={styles.clientPickerItemInfo}>
                       <Text style={styles.clientPickerItemTitle}>{item.name}</Text>
                     </View>
                     {selected && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               }}
             />
@@ -1249,9 +1203,9 @@ export default function ServiceRemindersScreen() {
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Repeat Interval</Text>
-              <TouchableOpacity onPress={() => setIntervalPickerVisible(false)}>
+              <PressableRow onPress={() => setIntervalPickerVisible(false)}>
                 <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <FlatList
               data={INTERVAL_OPTIONS}
@@ -1259,16 +1213,10 @@ export default function ServiceRemindersScreen() {
               renderItem={({ item }) => {
                 const selected = formIntervalMonths === item.value;
                 return (
-                  <TouchableOpacity
-                    style={[styles.clientPickerItem]}
-                    onPress={() => {
-                      setFormIntervalMonths(item.value);
-                      setIntervalPickerVisible(false);
-                    }}
-                  >
+                  <PressableRow style={[styles.clientPickerItem]} onPress={() => { setFormIntervalMonths(item.value); setIntervalPickerVisible(false); }} >
                     <Text style={styles.clientPickerItemTitle}>{item.label}</Text>
                     {selected && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               }}
             />
@@ -1285,9 +1233,9 @@ export default function ServiceRemindersScreen() {
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Remind Before</Text>
-              <TouchableOpacity onPress={() => setReminderDaysPickerVisible(false)}>
+              <PressableRow onPress={() => setReminderDaysPickerVisible(false)}>
                 <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <FlatList
               data={REMINDER_DAYS_OPTIONS}
@@ -1295,16 +1243,10 @@ export default function ServiceRemindersScreen() {
               renderItem={({ item }) => {
                 const selected = formReminderDays === item.value;
                 return (
-                  <TouchableOpacity
-                    style={[styles.clientPickerItem]}
-                    onPress={() => {
-                      setFormReminderDays(item.value);
-                      setReminderDaysPickerVisible(false);
-                    }}
-                  >
+                  <PressableRow style={[styles.clientPickerItem]} onPress={() => { setFormReminderDays(item.value); setReminderDaysPickerVisible(false); }} >
                     <Text style={styles.clientPickerItemTitle}>{item.label}</Text>
                     {selected && <Feather name="check" size={iconSizes.md} color={colors.primary} />}
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               }}
             />
@@ -1321,9 +1263,9 @@ export default function ServiceRemindersScreen() {
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Complete Service</Text>
-              <TouchableOpacity onPress={() => setCompleteModalVisible(false)}>
+              <PressableRow onPress={() => setCompleteModalVisible(false)}>
                 <Feather name="x" size={iconSizes.xl} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <View style={styles.completeModalBody}>
               <Text style={styles.completeModalDescription}>
@@ -1340,30 +1282,22 @@ export default function ServiceRemindersScreen() {
                 </View>
               )}
 
-              <TouchableOpacity
-                style={styles.completeButton}
-                onPress={() => handleComplete(false)}
-                disabled={!!actionLoading}
-              >
+              <PressableRow style={styles.completeButton} onPress={() => handleComplete(false)} disabled={!!actionLoading} >
                 {actionLoading ? (
                   <ActivityIndicator size="small" color={colors.foreground} />
                 ) : (
                   <Text style={styles.completeButtonText}>Complete Only</Text>
                 )}
-              </TouchableOpacity>
+              </PressableRow>
 
               {completingReminder?.intervalMonths && (
-                <TouchableOpacity
-                  style={styles.completeAndScheduleButton}
-                  onPress={() => handleComplete(true)}
-                  disabled={!!actionLoading}
-                >
+                <PressableRow style={styles.completeAndScheduleButton} onPress={() => handleComplete(true)} disabled={!!actionLoading} >
                   {actionLoading ? (
                     <ActivityIndicator size="small" color={colors.primaryForeground} />
                   ) : (
                     <Text style={styles.completeAndScheduleButtonText}>Complete & Schedule Next</Text>
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
         </View>

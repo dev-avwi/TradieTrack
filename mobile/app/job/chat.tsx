@@ -15,6 +15,7 @@ import {
   Linking,
   Image,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -1122,12 +1123,7 @@ export default function JobChatScreen() {
     const hasLink = msg.attachmentUrl;
     
     return (
-      <TouchableOpacity 
-        style={styles.attachmentDoc}
-        onPress={() => handleAttachmentTap(msg)}
-        disabled={!hasLink}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.attachmentDoc} onPress={() => handleAttachmentTap(msg)} disabled={!hasLink} >
         <Feather 
           name={docType === 'quote' ? 'file-text' : docType === 'invoice' ? 'dollar-sign' : docType === 'photo' ? 'image' : 'file'} 
           size={14} 
@@ -1143,7 +1139,7 @@ export default function JobChatScreen() {
             color={isOwn ? colors.primaryForeground : colors.mutedForeground} 
           />
         )}
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -1159,14 +1155,10 @@ export default function JobChatScreen() {
             Add internal notes about this job — only your team can see these
           </Text>
           {client?.phone && (
-            <TouchableOpacity
-              style={[styles.contactClientBtn, { marginTop: 12 }]}
-              onPress={handleContactClient}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.contactClientBtn, { marginTop: 12 }]} onPress={handleContactClient} >
               <Feather name="smartphone" size={14} color={colors.primaryForeground} />
               <Text style={[styles.contactClientBtnText, { fontSize: 13 }]}>Text Client Instead</Text>
-            </TouchableOpacity>
+            </PressableRow>
           )}
           <View style={styles.emptyHint}>
             <Feather name="arrow-down" size={14} color={colors.mutedForeground} />
@@ -1261,17 +1253,13 @@ export default function JobChatScreen() {
               {msg.mediaUrls && msg.mediaUrls.length > 0 && (
                 <View style={{ marginBottom: msg.message ? 6 : 0 }}>
                   {msg.mediaUrls.map((url: string, i: number) => (
-                    <TouchableOpacity 
-                      key={`media-${i}`} 
-                      onPress={() => Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open image'))}
-                      activeOpacity={0.8}
-                    >
+                    <PressableRow key={`media-${i}`} onPress={() => Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open image'))} >
                       <Image
                         source={{ uri: url }}
                         style={{ width: 200, height: 200, borderRadius: 8, marginBottom: i < msg.mediaUrls.length - 1 ? 4 : 0 }}
                         resizeMode="cover"
                       />
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               )}
@@ -1302,18 +1290,11 @@ export default function JobChatScreen() {
                 )}
               </View>
               {(msg as any).sendStatus === 'failed' && (
-                <TouchableOpacity
-                  onPress={async () => {
-                    const { offlineStorage } = await import('@/lib/offline-storage');
-                    const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id);
-                    if (ok) fetchChat();
-                  }}
-                  style={{ marginTop: 4 }}
-                >
+                <PressableRow onPress={async () => { const { offlineStorage } = await import('@/lib/offline-storage'); const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id); if (ok) fetchChat(); }} style={{ marginTop: 4 }} >
                   <Text style={{ color: colors.destructive, fontSize: 11, fontWeight: '600' }}>
                     Failed to send · tap to retry
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
           </View>
@@ -1345,12 +1326,9 @@ export default function JobChatScreen() {
       >
         <View style={styles.headerCard}>
           {!isIOS && (
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={() => router.back()}
-            >
+            <PressableRow style={styles.backButton} onPress={() => router.back()} >
               <Feather name="chevron-left" size={20} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           )}
           <View style={styles.headerIconContainer}>
             <Feather name="lock" size={16} color={colors.primary} />
@@ -1366,9 +1344,9 @@ export default function JobChatScreen() {
               </Text>
             </View>
             {client && (
-              <TouchableOpacity style={styles.headerActionBtn} onPress={handleContactClient}>
+              <PressableRow style={styles.headerActionBtn} onPress={handleContactClient}>
                 <Feather name="phone" size={15} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             )}
           </View>
         </View>
@@ -1381,14 +1359,10 @@ export default function JobChatScreen() {
             Internal notes — only your team sees these
           </Text>
           {client?.phone && (
-            <TouchableOpacity
-              style={styles.textClientBannerBtn}
-              onPress={handleContactClient}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.textClientBannerBtn} onPress={handleContactClient} >
               <Feather name="smartphone" size={10} color={colors.primary} />
               <Text style={styles.textClientBannerBtnText}>Text Client</Text>
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
 
@@ -1410,13 +1384,9 @@ export default function JobChatScreen() {
 
         <View style={[styles.composerContainer, { paddingBottom: spacing.lg }]}>
           <View style={styles.composerRow}>
-            <TouchableOpacity 
-              style={styles.attachButton} 
-              onPress={() => setShowAttachModal(true)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.attachButton} onPress={() => setShowAttachModal(true)} >
               <Feather name="plus" size={20} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
             <View style={styles.composerInputWrapper}>
               <TextInput
                 style={styles.composerInput}
@@ -1428,18 +1398,13 @@ export default function JobChatScreen() {
                 maxLength={1000}
               />
             </View>
-            <TouchableOpacity
-              style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]}
-              onPress={handleSend}
-              disabled={!messageText.trim() || isSending}
-              activeOpacity={0.8}
-            >
+            <PressableRow style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]} onPress={handleSend} disabled={!messageText.trim() || isSending} >
               {isSending ? (
                 <ActivityIndicator size={16} color={colors.primaryForeground} />
               ) : (
                 <Feather name="send" size={16} color={colors.primaryForeground} />
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -1458,53 +1423,47 @@ export default function JobChatScreen() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Share</Text>
-              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowAttachModal(false)}>
+              <PressableRow style={styles.modalCloseBtn} onPress={() => setShowAttachModal(false)}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <View style={styles.attachmentGrid}>
-              <TouchableOpacity style={styles.attachmentOption} onPress={handleTakePhoto}>
+              <PressableRow style={styles.attachmentOption} onPress={handleTakePhoto}>
                 <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.primaryLight }]}>
                   <Feather name="camera" size={24} color={colors.primary} />
                 </View>
                 <Text style={styles.attachmentOptionText}>Camera</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentOption} onPress={handleAttachPhoto}>
+              </PressableRow>
+              <PressableRow style={styles.attachmentOption} onPress={handleAttachPhoto}>
                 <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.successLight }]}>
                   <Feather name="image" size={24} color={colors.success} />
                 </View>
                 <Text style={styles.attachmentOptionText}>Gallery</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentOption} onPress={() => handleShareDocument('photos')}>
+              </PressableRow>
+              <PressableRow style={styles.attachmentOption} onPress={() => handleShareDocument('photos')}>
                 <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.warningLight }]}>
                   <Feather name="folder" size={24} color={colors.warning} />
                 </View>
                 <Text style={styles.attachmentOptionText}>Job Photos</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentOption} onPress={() => handleShareDocument('quotes')}>
+              </PressableRow>
+              <PressableRow style={styles.attachmentOption} onPress={() => handleShareDocument('quotes')}>
                 <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.infoLight }]}>
                   <Feather name="file-text" size={24} color={colors.info} />
                 </View>
                 <Text style={styles.attachmentOptionText}>Quotes</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentOption} onPress={() => handleShareDocument('invoices')}>
+              </PressableRow>
+              <PressableRow style={styles.attachmentOption} onPress={() => handleShareDocument('invoices')}>
                 <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.destructiveLight }]}>
                   <Feather name="dollar-sign" size={24} color={colors.destructive} />
                 </View>
                 <Text style={styles.attachmentOptionText}>Invoices</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.attachmentOption} 
-                onPress={() => {
-                  setShowAttachModal(false);
-                  router.push(`/job/${jobId}` as any);
-                }}
-              >
+              </PressableRow>
+              <PressableRow style={styles.attachmentOption} onPress={() => { setShowAttachModal(false); router.push(`/job/${jobId}` as any); }} >
                 <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.muted }]}>
                   <Feather name="briefcase" size={24} color={colors.mutedForeground} />
                 </View>
                 <Text style={styles.attachmentOptionText}>Job Details</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
         </TouchableOpacity>
@@ -1527,17 +1486,13 @@ export default function JobChatScreen() {
                 {documentType === 'photos' ? 'Select Photo' : 
                  documentType === 'quotes' ? 'Select Quote' : 'Select Invoice'}
               </Text>
-              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowDocumentsModal(false)}>
+              <PressableRow style={styles.modalCloseBtn} onPress={() => setShowDocumentsModal(false)}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <ScrollView style={styles.documentsList}>
               {documentType === 'photos' && jobPhotos.map((photo) => (
-                <TouchableOpacity 
-                  key={photo.id} 
-                  style={styles.documentItem}
-                  onPress={() => handleSelectDocument('Photo', photo.id, photo.caption || 'Job Photo')}
-                >
+                <PressableRow key={photo.id} style={styles.documentItem} onPress={() => handleSelectDocument('Photo', photo.id, photo.caption || 'Job Photo')} >
                   <Image source={{ uri: photo.url }} style={{ width: 44, height: 44, borderRadius: radius.lg }} />
                   <View style={styles.documentInfo}>
                     <Text style={styles.documentTitle}>{photo.caption || 'Job Photo'}</Text>
@@ -1545,16 +1500,12 @@ export default function JobChatScreen() {
                   <View style={styles.documentSendBtn}>
                     <Feather name="send" size={16} color={colors.primary} />
                   </View>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
               {documentType === 'quotes' && jobQuotes.map((quote) => {
                 const statusColors = getDocStatusColors(quote.status, colors);
                 return (
-                  <TouchableOpacity 
-                    key={quote.id} 
-                    style={styles.documentItem}
-                    onPress={() => handleSelectDocument('Quote', quote.id, quote.number || `Q-${quote.id.slice(0,6)}`)}
-                  >
+                  <PressableRow key={quote.id} style={styles.documentItem} onPress={() => handleSelectDocument('Quote', quote.id, quote.number || `Q-${quote.id.slice(0,6)}`)} >
                     <View style={[styles.documentIcon, { backgroundColor: colors.infoLight }]}>
                       <Feather name="file-text" size={20} color={colors.info} />
                     </View>
@@ -1570,17 +1521,13 @@ export default function JobChatScreen() {
                     <View style={styles.documentSendBtn}>
                       <Feather name="send" size={14} color={colors.primary} />
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               })}
               {documentType === 'invoices' && jobInvoices.map((invoice) => {
                 const statusColors = getDocStatusColors(invoice.status, colors);
                 return (
-                  <TouchableOpacity 
-                    key={invoice.id} 
-                    style={styles.documentItem}
-                    onPress={() => handleSelectDocument('Invoice', invoice.id, invoice.number || `INV-${invoice.id.slice(0,6)}`)}
-                  >
+                  <PressableRow key={invoice.id} style={styles.documentItem} onPress={() => handleSelectDocument('Invoice', invoice.id, invoice.number || `INV-${invoice.id.slice(0,6)}`)} >
                     <View style={[styles.documentIcon, { backgroundColor: colors.warningLight }]}>
                       <Feather name="dollar-sign" size={20} color={colors.warning} />
                     </View>
@@ -1596,7 +1543,7 @@ export default function JobChatScreen() {
                     <View style={styles.documentSendBtn}>
                       <Feather name="send" size={14} color={colors.primary} />
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               })}
               {((documentType === 'photos' && jobPhotos.length === 0) ||

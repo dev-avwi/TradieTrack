@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
+import { PressableRow } from '../../../src/components/ui/PressableRow';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -248,21 +249,17 @@ export default function NewClientScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <PressableRow style={styles.backButton} onPress={() => router.back()}>
             <Feather name="chevron-left" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
           <Text style={styles.headerTitle}>{isEditMode ? 'Edit Client' : 'New Client'}</Text>
-          <TouchableOpacity
-            style={styles.saveHeaderButton}
-            onPress={handleSave}
-            disabled={isLoading || isLoadingClient}
-          >
+          <PressableRow style={styles.saveHeaderButton} onPress={handleSave} disabled={isLoading || isLoadingClient} >
             {isLoading || isLoadingClient ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Feather name="check" size={20} color={colors.primary} />
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         <ScrollView 
@@ -343,21 +340,14 @@ export default function NewClientScreen() {
             </View>
             <View style={styles.pickerRow}>
               {CLIENT_TYPES.map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.pickerOption,
-                    form.clientType === type && styles.pickerOptionActive,
-                  ]}
-                  onPress={() => setForm({ ...form, clientType: form.clientType === type ? '' : type })}
-                >
+                <PressableRow key={type} style={[ styles.pickerOption, form.clientType === type && styles.pickerOptionActive, ]} onPress={() => setForm({ ...form, clientType: form.clientType === type ? '' : type })} >
                   <Text style={[
                     styles.pickerOptionText,
                     form.clientType === type && styles.pickerOptionTextActive,
                   ]}>
                     {type}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </View>
@@ -411,11 +401,7 @@ export default function NewClientScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={isLoading}
-          >
+          <PressableRow style={[styles.saveButton, isLoading && styles.saveButtonDisabled]} onPress={handleSave} disabled={isLoading} >
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
@@ -424,7 +410,7 @@ export default function NewClientScreen() {
                 <Text style={styles.saveButtonText}>{isEditMode ? 'Update Client' : 'Create Client'}</Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </ScrollView>
       </View>
     </>

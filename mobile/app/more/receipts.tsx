@@ -9,6 +9,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -83,19 +84,7 @@ function KPICard({
   colors: ThemeColors;
 }) {
   return (
-    <TouchableOpacity 
-      style={{
-        flex: 1,
-        backgroundColor: colors.card,
-        borderRadius: radius.lg,
-        padding: spacing.md,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
-        minWidth: '45%',
-      }}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <PressableRow style={{ flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.cardBorder, minWidth: '45%', }} onPress={onPress} >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
         <Feather name={icon as any} size={16} color={colors.success} />
         <Text style={{ fontSize: 12, color: colors.mutedForeground, fontWeight: '500' }}>{title}</Text>
@@ -103,7 +92,7 @@ function KPICard({
       <Text style={{ fontSize: isAmount ? 20 : 24, fontWeight: '700', color: colors.success }}>
         {isAmount ? formatCurrency(value) : value}
       </Text>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -294,13 +283,9 @@ export default function ReceiptsScreen() {
               <Text style={styles.pageTitle}>Receipts</Text>
               <Text style={styles.pageSubtitle}>{receipts.length} total</Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.backButton}
-              onPress={() => router.push('/more/documents')}
-            >
+            <PressableRow style={styles.backButton} onPress={() => router.push('/more/documents')} >
               <Feather name="arrow-left" size={iconSizes.lg} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <View style={styles.searchBar}>
@@ -313,9 +298,9 @@ export default function ReceiptsScreen() {
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <PressableRow onPress={() => setSearchQuery('')}>
                 <Feather name="x" size={16} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             )}
           </View>
 
@@ -330,15 +315,7 @@ export default function ReceiptsScreen() {
               const isActive = activeFilter === filter.key;
               
               return (
-                <TouchableOpacity
-                  key={filter.key}
-                  onPress={() => setActiveFilter(filter.key)}
-                  activeOpacity={0.7}
-                  style={[
-                    styles.filterPill,
-                    isActive && styles.filterPillActive
-                  ]}
-                >
+                <PressableRow key={filter.key} onPress={() => setActiveFilter(filter.key)} style={[ styles.filterPill, isActive && styles.filterPillActive ]} >
                   <Feather 
                     name={filter.icon as any} 
                     size={12} 
@@ -361,7 +338,7 @@ export default function ReceiptsScreen() {
                       {count}
                     </Text>
                   </View>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
           </ScrollView>

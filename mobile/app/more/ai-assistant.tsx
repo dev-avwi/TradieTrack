@@ -13,6 +13,7 @@ import {
   Alert,
   Animated
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -182,22 +183,7 @@ function EntityLink({
   };
 
   return (
-    <TouchableOpacity
-      onPress={handlePress}
-      activeOpacity={0.7}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.primaryLight,
-        borderWidth: 1,
-        borderColor: `${colors.primary}30`,
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 8,
-        marginRight: 8,
-        marginBottom: 8,
-      }}
-    >
+    <PressableRow onPress={handlePress} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: `${colors.primary}30`, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, marginRight: 8, marginBottom: 8, }} >
       <Feather name={getIcon()} size={14} color={colors.primary} style={{ marginRight: 6 }} />
       <Text style={{ fontSize: 13, fontWeight: '500', color: colors.primary }}>
         {item.label}
@@ -221,7 +207,7 @@ function EntityLink({
         </Text>
       )}
       <Feather name="chevron-right" size={14} color={colors.primary} style={{ marginLeft: 4, opacity: 0.6 }} />
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -251,20 +237,7 @@ function ActionConfirmation({
         {action.message || 'Confirm this action?'}
       </Text>
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <TouchableOpacity
-          onPress={onConfirm}
-          disabled={isPending}
-          activeOpacity={0.7}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.success,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            borderRadius: 8,
-            opacity: isPending ? 0.7 : 1,
-          }}
-        >
+        <PressableRow onPress={onConfirm} disabled={isPending} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.success, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, opacity: isPending ? 0.7 : 1, }} >
           {isPending ? (
             <ActivityIndicator size="small" color={colors.successForeground} style={{ marginRight: 6 }} />
           ) : (
@@ -273,26 +246,13 @@ function ActionConfirmation({
           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.successForeground }}>
             Yes, do it
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onCancel}
-          disabled={isPending}
-          activeOpacity={0.7}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.muted,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            borderRadius: 8,
-            opacity: isPending ? 0.7 : 1,
-          }}
-        >
+        </PressableRow>
+        <PressableRow onPress={onCancel} disabled={isPending} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.muted, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8, opacity: isPending ? 0.7 : 1, }} >
           <Feather name="x" size={14} color={colors.foreground} style={{ marginRight: 6 }} />
           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
             Cancel
           </Text>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
     </View>
   );
@@ -312,23 +272,9 @@ function SuggestedFollowups({
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
       {followups.map((followup, index) => (
-        <TouchableOpacity
-          key={index}
-          onPress={() => onPress(followup)}
-          activeOpacity={0.7}
-          style={{
-            backgroundColor: colors.muted,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: 16,
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            marginRight: 8,
-            marginBottom: 8,
-          }}
-        >
+        <PressableRow key={index} onPress={() => onPress(followup)} style={{ backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, marginBottom: 8, }} >
           <Text style={{ fontSize: 12, color: colors.foreground }}>{followup}</Text>
-        </TouchableOpacity>
+        </PressableRow>
       ))}
     </View>
   );
@@ -347,16 +293,9 @@ function SuggestionCard({
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={[
-        styles.suggestionCard,
-        isAISuggestion && styles.aiSuggestionCard
-      ]}
-    >
+    <PressableRow onPress={onPress} style={[ styles.suggestionCard, isAISuggestion && styles.aiSuggestionCard ]} >
       <Text style={styles.suggestionText}>{text}</Text>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -448,11 +387,7 @@ function NotificationCard({
   };
 
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
-      style={[styles.notificationCard, { borderLeftColor: getPriorityColor() }]}
-    >
+    <PressableRow onPress={onPress} style={[styles.notificationCard, { borderLeftColor: getPriorityColor() }]} >
       <View style={styles.notificationHeader}>
         <View style={[styles.notificationIconContainer, { backgroundColor: `${getPriorityColor()}20` }]}>
           <Feather name={getIcon() as any} size={16} color={getPriorityColor()} />
@@ -461,11 +396,11 @@ function NotificationCard({
           <Text style={styles.notificationTitle}>{notification.title}</Text>
           <Text style={styles.notificationMessage}>{notification.message}</Text>
         </View>
-        <TouchableOpacity onPress={onDismiss} style={styles.dismissButton}>
+        <PressableRow onPress={onDismiss} style={styles.dismissButton}>
           <Feather name="x" size={16} color={colors.mutedForeground} />
-        </TouchableOpacity>
+        </PressableRow>
       </View>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -674,9 +609,9 @@ export default function AIAssistantScreen() {
         options={{ 
           title: 'AI Assistant',
           headerRight: () => chatHistory.length > 0 ? (
-            <TouchableOpacity onPress={handleClearChat} style={styles.headerButton}>
+            <PressableRow onPress={handleClearChat} style={styles.headerButton}>
               <Feather name="refresh-cw" size={20} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           ) : null
         }} 
       />
@@ -704,17 +639,12 @@ export default function AIAssistantScreen() {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickActionsRow}>
               {QUICK_ACTIONS.map((action, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.quickActionChip}
-                  onPress={() => handleSuggestionPress(action.prompt)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={index} style={styles.quickActionChip} onPress={() => handleSuggestionPress(action.prompt)} >
                   <View style={[styles.quickActionIcon, { backgroundColor: `${colors.primary}12` }]}>
                     <Feather name={action.icon} size={14} color={colors.primary} />
                   </View>
                   <Text style={styles.quickActionLabel}>{action.label}</Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </ScrollView>
 
@@ -839,20 +769,13 @@ export default function AIAssistantScreen() {
             onSubmitEditing={handleSendMessage}
             returnKeyType="send"
           />
-          <TouchableOpacity
-            onPress={handleSendMessage}
-            disabled={!chatMessage.trim() || isSending}
-            style={[
-              styles.sendButton,
-              (!chatMessage.trim() || isSending) && styles.sendButtonDisabled
-            ]}
-          >
+          <PressableRow onPress={handleSendMessage} disabled={!chatMessage.trim() || isSending} style={[ styles.sendButton, (!chatMessage.trim() || isSending) && styles.sendButtonDisabled ]} >
             {isSending ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Feather name="send" size={20} color={colors.white} />
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </KeyboardAvoidingView>
     </>

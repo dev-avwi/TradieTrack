@@ -12,6 +12,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 let MapView: any;
 let Marker: any;
 let Callout: any;
@@ -461,14 +462,7 @@ export default function DispatchBoardScreen() {
     const assignedMember = job.assignedTo ? teamMembers.find(m => m.userId === job.assignedTo) : null;
 
     return (
-      <TouchableOpacity
-        key={job.id}
-        style={styles.jobCard}
-        onPress={() => router.push(`/job/${job.id}`)}
-        onLongPress={() => showMoveMenu(job)}
-        delayLongPress={400}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={job.id} style={styles.jobCard} onPress={() => router.push(`/job/${job.id}`)} onLongPress={() => showMoveMenu(job)} delayLongPress={400} >
         <View style={[styles.jobCardStatusStrip, { backgroundColor: statusColor }]} />
         <View style={styles.jobCardContent}>
         <View style={styles.jobCardHeader}>
@@ -500,11 +494,7 @@ export default function DispatchBoardScreen() {
         )}
         <View style={styles.jobCardActions}>
           {assignedMember ? (
-            <TouchableOpacity
-              style={styles.assignedBadge}
-              onPress={() => openAssignModal(job)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.assignedBadge} onPress={() => openAssignModal(job)} >
               <TeamAvatar
                 firstName={assignedMember.firstName}
                 lastName={assignedMember.lastName}
@@ -514,38 +504,34 @@ export default function DispatchBoardScreen() {
               />
               <Text style={styles.assignedName}>{getMemberName(assignedMember)}</Text>
               <Feather name="repeat" size={12} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           ) : showAssignAction ? (
-            <TouchableOpacity
-              style={styles.assignButton}
-              onPress={() => openAssignModal(job)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.assignButton} onPress={() => openAssignModal(job)} >
               <Feather name="user-plus" size={14} color={colors.primary} />
               <Text style={[styles.assignButtonText, { color: colors.primary }]}>Assign</Text>
-            </TouchableOpacity>
+            </PressableRow>
           ) : null}
         </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
   const renderScheduleView = () => (
     <View>
       <View style={styles.dateNav}>
-        <TouchableOpacity onPress={() => navigateDateBy(-1)} style={styles.dateNavButton} activeOpacity={0.7}>
+        <PressableRow onPress={() => navigateDateBy(-1)} style={styles.dateNavButton} >
           <Feather name="chevron-left" size={20} color={colors.foreground} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setSelectedDate(new Date())} activeOpacity={0.7}>
+        </PressableRow>
+        <PressableRow onPress={() => setSelectedDate(new Date())} >
           <Text style={styles.dateNavTitle}>{format(selectedDate, 'EEEE, d MMMM yyyy')}</Text>
           {isToday(selectedDate) && (
             <Text style={styles.dateNavToday}>Today</Text>
           )}
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigateDateBy(1)} style={styles.dateNavButton} activeOpacity={0.7}>
+        </PressableRow>
+        <PressableRow onPress={() => navigateDateBy(1)} style={styles.dateNavButton} >
           <Feather name="chevron-right" size={20} color={colors.foreground} />
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       {scheduleData.unassignedJobs.length > 0 && (
@@ -664,13 +650,7 @@ export default function DispatchBoardScreen() {
     const hasNext = !!getAdjacentStatus(columnKey, 'next');
 
     const cardContent = (
-      <TouchableOpacity
-        style={styles.kanbanJobCard}
-        onPress={() => router.push(`/job/${job.id}`)}
-        onLongPress={() => showMoveMenu(job)}
-        delayLongPress={400}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.kanbanJobCard} onPress={() => router.push(`/job/${job.id}`)} onLongPress={() => showMoveMenu(job)} delayLongPress={400} >
         <View style={[styles.kanbanJobStrip, { backgroundColor: statusColor }]} />
         <View style={styles.kanbanJobBody}>
           <Text style={styles.kanbanJobTitle} numberOfLines={2}>{job.title}</Text>
@@ -688,11 +668,7 @@ export default function DispatchBoardScreen() {
           )}
           <View style={styles.kanbanCardActions}>
             {assignedMember ? (
-              <TouchableOpacity
-                style={styles.kanbanAssignedRow}
-                onPress={() => openAssignModal(job)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.kanbanAssignedRow} onPress={() => openAssignModal(job)} >
                 <TeamAvatar
                   firstName={assignedMember.firstName}
                   lastName={assignedMember.lastName}
@@ -701,28 +677,19 @@ export default function DispatchBoardScreen() {
                   size={20}
                 />
                 <Text style={styles.kanbanAssignedName} numberOfLines={1}>{getMemberName(assignedMember).split(' ')[0]}</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ) : showAssignAction ? (
-              <TouchableOpacity
-                style={styles.kanbanAssignBtn}
-                onPress={() => openAssignModal(job)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.kanbanAssignBtn} onPress={() => openAssignModal(job)} >
                 <Feather name="user-plus" size={12} color={colors.primary} />
                 <Text style={styles.kanbanAssignBtnText}>Assign</Text>
-              </TouchableOpacity>
+              </PressableRow>
             ) : <View />}
-            <TouchableOpacity
-              style={styles.kanbanMoveBtn}
-              onPress={() => showMoveMenu(job)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
+            <PressableRow style={styles.kanbanMoveBtn} onPress={() => showMoveMenu(job)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} >
               <Feather name="move" size={12} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
 
     if (!hasPrev && !hasNext) {
@@ -909,18 +876,14 @@ export default function DispatchBoardScreen() {
 
         {selectedMapJob && (
           <View style={styles.mapJobDetail}>
-            <TouchableOpacity
-              style={styles.mapJobDetailCard}
-              onPress={() => router.push(`/job/${selectedMapJob.id}`)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.mapJobDetailCard} onPress={() => router.push(`/job/${selectedMapJob.id}`)} >
               <View style={[styles.mapJobDetailStrip, { backgroundColor: getMarkerColor(selectedMapJob.status) }]} />
               <View style={styles.mapJobDetailContent}>
                 <View style={styles.mapJobDetailHeader}>
                   <Text style={styles.mapJobDetailTitle} numberOfLines={1}>{selectedMapJob.title}</Text>
-                  <TouchableOpacity onPress={() => setSelectedMapJob(null)} activeOpacity={0.7}>
+                  <PressableRow onPress={() => setSelectedMapJob(null)} >
                     <Feather name="x" size={18} color={colors.mutedForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
                 <View style={[styles.calloutStatusBadge, { backgroundColor: `${getMarkerColor(selectedMapJob.status)}25`, alignSelf: 'flex-start' }]}>
                   <Text style={[styles.calloutStatusText, { color: getMarkerColor(selectedMapJob.status) }]}>{getStatusLabel(selectedMapJob.status)}</Text>
@@ -944,27 +907,19 @@ export default function DispatchBoardScreen() {
                   </View>
                 )}
                 <View style={styles.mapJobDetailActions}>
-                  <TouchableOpacity
-                    style={[styles.mapJobDetailBtn, { backgroundColor: colors.primary }]}
-                    onPress={() => router.push(`/job/${selectedMapJob.id}`)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={[styles.mapJobDetailBtn, { backgroundColor: colors.primary }]} onPress={() => router.push(`/job/${selectedMapJob.id}`)} >
                     <Feather name="eye" size={14} color={colors.primaryForeground || colors.white} />
                     <Text style={[styles.mapJobDetailBtnText, { color: colors.primaryForeground || colors.white }]}>View Job</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.mapJobDetailBtn, { backgroundColor: colors.muted }]}
-                    onPress={() => openAssignModal(selectedMapJob)}
-                    activeOpacity={0.7}
-                  >
+                  </PressableRow>
+                  <PressableRow style={[styles.mapJobDetailBtn, { backgroundColor: colors.muted }]} onPress={() => openAssignModal(selectedMapJob)} >
                     <Feather name="user-plus" size={14} color={colors.foreground} />
                     <Text style={[styles.mapJobDetailBtnText, { color: colors.foreground }]}>
                       {selectedMapJob.assignedTo ? 'Reassign' : 'Assign'}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         )}
       </View>
@@ -981,9 +936,9 @@ export default function DispatchBoardScreen() {
             <Text style={styles.modalTitle}>
               {assigningJob?.assignedTo ? 'Reassign Job' : 'Assign Job'}
             </Text>
-            <TouchableOpacity onPress={() => { setShowAssignModal(false); setAssigningJob(null); }} activeOpacity={0.7}>
+            <PressableRow onPress={() => { setShowAssignModal(false); setAssigningJob(null); }} >
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           {assigningJob && (
             <View style={styles.modalJobInfo}>
@@ -995,27 +950,17 @@ export default function DispatchBoardScreen() {
           )}
           <ScrollView style={styles.modalList}>
             {assigningJob?.assignedTo && (
-              <TouchableOpacity
-                style={styles.modalMemberItem}
-                onPress={() => handleUnassign(assigningJob)}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.modalMemberItem} onPress={() => handleUnassign(assigningJob)} >
                 <View style={[styles.modalMemberAvatar, { backgroundColor: colors.destructive }]}>
                   <Feather name="user-x" size={16} color={colors.destructiveForeground || colors.white} />
                 </View>
                 <Text style={[styles.modalMemberName, { color: colors.destructive }]}>Unassign</Text>
-              </TouchableOpacity>
+              </PressableRow>
             )}
             {teamMembers.map(member => {
               const isCurrentlyAssigned = assigningJob?.assignedTo === member.userId;
               return (
-                <TouchableOpacity
-                  key={member.id}
-                  style={[styles.modalMemberItem, isCurrentlyAssigned && styles.modalMemberItemActive]}
-                  onPress={() => handleAssign(member.userId)}
-                  disabled={isAssigning || isCurrentlyAssigned}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={member.id} style={[styles.modalMemberItem, isCurrentlyAssigned && styles.modalMemberItemActive]} onPress={() => handleAssign(member.userId)} disabled={isAssigning || isCurrentlyAssigned} >
                   <TeamAvatar
                     firstName={member.firstName}
                     lastName={member.lastName}
@@ -1030,7 +975,7 @@ export default function DispatchBoardScreen() {
                   {isCurrentlyAssigned && (
                     <Feather name="check" size={18} color={colors.primary} />
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
           </ScrollView>
@@ -1058,45 +1003,33 @@ export default function DispatchBoardScreen() {
           }
         >
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton} activeOpacity={0.7}>
+            <PressableRow onPress={() => router.back()} style={styles.backButton} >
               <Feather name="chevron-left" size={22} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <View style={styles.headerLeft}>
               <Text style={styles.pageTitle}>Dispatch Board</Text>
               <Text style={styles.pageSubtitle}>Manage job assignments and scheduling</Text>
             </View>
-            <TouchableOpacity onPress={onRefresh} style={styles.refreshBtn} activeOpacity={0.7}>
+            <PressableRow onPress={onRefresh} style={styles.refreshBtn} >
               <Feather name="refresh-cw" size={18} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           {renderOpsHealth()}
 
           <View style={styles.viewToggle}>
-            <TouchableOpacity
-              style={[styles.viewToggleButton, viewMode === 'schedule' && styles.viewToggleButtonActive]}
-              onPress={() => setViewMode('schedule')}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.viewToggleButton, viewMode === 'schedule' && styles.viewToggleButtonActive]} onPress={() => setViewMode('schedule')} >
               <Feather name="list" size={16} color={viewMode === 'schedule' ? colors.primaryForeground : colors.mutedForeground} />
               <Text style={[styles.viewToggleText, viewMode === 'schedule' && styles.viewToggleTextActive]}>Schedule</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewToggleButton, viewMode === 'kanban' && styles.viewToggleButtonActive]}
-              onPress={() => setViewMode('kanban')}
-              activeOpacity={0.7}
-            >
+            </PressableRow>
+            <PressableRow style={[styles.viewToggleButton, viewMode === 'kanban' && styles.viewToggleButtonActive]} onPress={() => setViewMode('kanban')} >
               <Feather name="columns" size={16} color={viewMode === 'kanban' ? colors.primaryForeground : colors.mutedForeground} />
               <Text style={[styles.viewToggleText, viewMode === 'kanban' && styles.viewToggleTextActive]}>Kanban</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.viewToggleButton, viewMode === 'map' && styles.viewToggleButtonActive]}
-              onPress={() => setViewMode('map')}
-              activeOpacity={0.7}
-            >
+            </PressableRow>
+            <PressableRow style={[styles.viewToggleButton, viewMode === 'map' && styles.viewToggleButtonActive]} onPress={() => setViewMode('map')} >
               <Feather name="map" size={16} color={viewMode === 'map' ? colors.primaryForeground : colors.mutedForeground} />
               <Text style={[styles.viewToggleText, viewMode === 'map' && styles.viewToggleTextActive]}>Map</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           {viewMode === 'schedule' && renderScheduleView()}

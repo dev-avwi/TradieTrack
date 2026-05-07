@@ -10,6 +10,7 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors } from '../lib/theme';
@@ -115,28 +116,14 @@ export function QuickActionSheet({
               <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
             ) : null}
           </View>
-          <TouchableOpacity
-            onPress={close}
-            style={styles.closeButton}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
+          <PressableRow onPress={close} style={styles.closeButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} >
             <Feather name="x" size={20} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         <View style={styles.actions}>
           {actions.map((action, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.actionRow,
-                action.primary && styles.actionRowPrimary,
-                action.destructive && styles.actionRowDestructive,
-                index < actions.length - 1 && styles.actionRowBorder,
-              ]}
-              onPress={() => handleAction(action)}
-              activeOpacity={0.65}
-            >
+            <PressableRow key={index} style={[ styles.actionRow, action.primary && styles.actionRowPrimary, action.destructive && styles.actionRowDestructive, index < actions.length - 1 && styles.actionRowBorder, ]} onPress={() => handleAction(action)} >
               <View style={[
                 styles.actionIcon,
                 action.primary && { backgroundColor: `${colors.primary}18` },
@@ -162,17 +149,13 @@ export function QuickActionSheet({
                 {action.label}
               </Text>
               <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
 
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={close}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={styles.cancelButton} onPress={close} >
           <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+        </PressableRow>
 
         {Platform.OS === 'ios' && <View style={styles.safeAreaBottom} />}
       </Animated.View>

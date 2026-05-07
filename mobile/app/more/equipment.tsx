@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -403,12 +404,7 @@ export default function EquipmentScreen() {
           const isActive = activeFilter === filter;
           const config = filter === 'all' ? null : getStatusConfig(filter as EquipmentStatus);
           return (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterChip, isActive && styles.activeFilterChip]}
-              onPress={() => setActiveFilter(filter)}
-              activeOpacity={0.7}
-            >
+            <PressableRow key={filter} style={[styles.filterChip, isActive && styles.activeFilterChip]} onPress={() => setActiveFilter(filter)} >
               {config && (
                 <Feather
                   name={config.icon}
@@ -424,7 +420,7 @@ export default function EquipmentScreen() {
                   {filterCounts[filter]}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </PressableRow>
           );
         })}
       </View>
@@ -462,12 +458,7 @@ export default function EquipmentScreen() {
     const categoryName = getCategoryName(item.categoryId);
 
     return (
-      <TouchableOpacity
-        key={item.id}
-        style={styles.card}
-        onPress={() => openDetail(item)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={item.id} style={styles.card} onPress={() => openDetail(item)} >
         <View style={styles.cardTopRow}>
           <View style={styles.cardNameRow}>
             <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
@@ -513,7 +504,7 @@ export default function EquipmentScreen() {
             <Text style={[styles.statusBadgeText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
           </View>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -529,10 +520,10 @@ export default function EquipmentScreen() {
           : 'Add your first piece of equipment to start tracking your tools and assets.'}
       </Text>
       {activeFilter === 'all' && (
-        <TouchableOpacity style={styles.emptyButton} onPress={openCreate} activeOpacity={0.7}>
+        <PressableRow style={styles.emptyButton} onPress={openCreate} >
           <Feather name="plus" size={iconSizes.md} color={colors.white} />
           <Text style={styles.emptyButtonText}>Add Equipment</Text>
-        </TouchableOpacity>
+        </PressableRow>
       )}
     </View>
   );
@@ -541,9 +532,9 @@ export default function EquipmentScreen() {
     <View style={styles.errorContainer}>
       <Feather name="alert-circle" size={40} color="#ef4444" />
       <Text style={styles.errorText}>{error}</Text>
-      <TouchableOpacity style={styles.retryButton} onPress={handleRefresh} activeOpacity={0.7}>
+      <PressableRow style={styles.retryButton} onPress={handleRefresh} >
         <Text style={styles.retryButtonText}>Try Again</Text>
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 
@@ -560,23 +551,18 @@ export default function EquipmentScreen() {
         <View style={styles.pickerContainer}>
           <Text style={styles.pickerTitle}>{title}</Text>
           {options.map((opt) => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[styles.pickerOption, selectedValue === opt.value && styles.pickerOptionActive]}
-              onPress={() => { onSelect(opt.value); onClose(); }}
-              activeOpacity={0.7}
-            >
+            <PressableRow key={opt.value} style={[styles.pickerOption, selectedValue === opt.value && styles.pickerOptionActive]} onPress={() => { onSelect(opt.value); onClose(); }} >
               <Text style={[styles.pickerOptionText, selectedValue === opt.value && styles.pickerOptionTextActive]}>
                 {opt.label}
               </Text>
               {selectedValue === opt.value && (
                 <Feather name="check" size={18} color={colors.primary} />
               )}
-            </TouchableOpacity>
+            </PressableRow>
           ))}
-          <TouchableOpacity style={styles.pickerCancel} onPress={onClose} activeOpacity={0.7}>
+          <PressableRow style={styles.pickerCancel} onPress={onClose} >
             <Text style={styles.pickerCancelText}>Cancel</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </TouchableOpacity>
     </Modal>
@@ -589,17 +575,17 @@ export default function EquipmentScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={() => setShowFormModal(false)} activeOpacity={0.7}>
+          <PressableRow onPress={() => setShowFormModal(false)} >
             <Feather name="x" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
           <Text style={styles.modalTitle}>{editingItem ? 'Edit Equipment' : 'Add Equipment'}</Text>
-          <TouchableOpacity onPress={handleSubmit} disabled={isSaving} activeOpacity={0.7}>
+          <PressableRow onPress={handleSubmit} disabled={isSaving} >
             {isSaving ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Text style={styles.modalSaveText}>Save</Text>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
         <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.fieldLabel}>Name *</Text>
@@ -613,19 +599,15 @@ export default function EquipmentScreen() {
 
           <Text style={styles.fieldLabel}>Category</Text>
           <View style={styles.categoryRow}>
-            <TouchableOpacity
-              style={[styles.textInput, styles.pickerTrigger]}
-              onPress={() => setShowCategoryPicker(true)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.textInput, styles.pickerTrigger]} onPress={() => setShowCategoryPicker(true)} >
               <Text style={formData.categoryId ? styles.pickerTriggerText : styles.pickerPlaceholder}>
                 {formData.categoryId ? (getCategoryName(formData.categoryId) || 'Select category') : 'Select category'}
               </Text>
               <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.addCategoryBtn} onPress={() => setShowCategoryModal(true)} activeOpacity={0.7}>
+            </PressableRow>
+            <PressableRow style={styles.addCategoryBtn} onPress={() => setShowCategoryModal(true)} >
               <Feather name="plus" size={18} color={colors.primary} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           <View style={styles.fieldRow}>
@@ -682,16 +664,12 @@ export default function EquipmentScreen() {
           </View>
 
           <Text style={styles.fieldLabel}>Status</Text>
-          <TouchableOpacity
-            style={[styles.textInput, styles.pickerTrigger]}
-            onPress={() => setShowStatusPicker(true)}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={[styles.textInput, styles.pickerTrigger]} onPress={() => setShowStatusPicker(true)} >
             <Text style={styles.pickerTriggerText}>
               {statusOptions.find(o => o.value === formData.status)?.label || 'Available'}
             </Text>
             <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
 
           <Text style={styles.fieldLabel}>Location</Text>
           <TextInput
@@ -748,13 +726,13 @@ export default function EquipmentScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowDetailModal(false)} activeOpacity={0.7}>
+            <PressableRow onPress={() => setShowDetailModal(false)} >
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <Text style={styles.modalTitle} numberOfLines={1}>{selectedItem.name}</Text>
-            <TouchableOpacity onPress={() => openEdit(selectedItem)} activeOpacity={0.7}>
+            <PressableRow onPress={() => openEdit(selectedItem)} >
               <Feather name="edit-2" size={20} color={colors.primary} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
             <View style={styles.detailStatusRow}>
@@ -828,30 +806,23 @@ export default function EquipmentScreen() {
             </View>
 
             <View style={styles.detailActions}>
-              <TouchableOpacity style={styles.editButton} onPress={() => openEdit(selectedItem)} activeOpacity={0.7}>
+              <PressableRow style={styles.editButton} onPress={() => openEdit(selectedItem)} >
                 <Feather name="edit-2" size={16} color={colors.primary} />
                 <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(selectedItem)} activeOpacity={0.7}>
+              </PressableRow>
+              <PressableRow style={styles.deleteButton} onPress={() => handleDelete(selectedItem)} >
                 <Feather name="trash-2" size={16} color="#ef4444" />
                 <Text style={[styles.editButtonText, { color: '#ef4444' }]}>Delete</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             <View style={styles.detailSection}>
               <View style={styles.maintenanceHeader}>
                 <Text style={styles.detailSectionTitle}>MAINTENANCE HISTORY</Text>
-                <TouchableOpacity
-                  style={styles.addMaintenanceBtn}
-                  onPress={() => {
-                    setMaintenanceForm(defaultMaintenanceForm);
-                    setShowMaintenanceModal(true);
-                  }}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.addMaintenanceBtn} onPress={() => { setMaintenanceForm(defaultMaintenanceForm); setShowMaintenanceModal(true); }} >
                   <Feather name="plus" size={14} color={colors.white} />
                   <Text style={styles.addMaintenanceBtnText}>Add</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               {isLoadingMaintenance ? (
@@ -916,17 +887,17 @@ export default function EquipmentScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={() => setShowMaintenanceModal(false)} activeOpacity={0.7}>
+          <PressableRow onPress={() => setShowMaintenanceModal(false)} >
             <Feather name="x" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
           <Text style={styles.modalTitle}>Add Maintenance Record</Text>
-          <TouchableOpacity onPress={handleMaintenanceSubmit} disabled={isSavingMaintenance} activeOpacity={0.7}>
+          <PressableRow onPress={handleMaintenanceSubmit} disabled={isSavingMaintenance} >
             {isSavingMaintenance ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Text style={styles.modalSaveText}>Save</Text>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         </View>
         <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.fieldLabel}>Title *</Text>
@@ -939,16 +910,12 @@ export default function EquipmentScreen() {
           />
 
           <Text style={styles.fieldLabel}>Type</Text>
-          <TouchableOpacity
-            style={[styles.textInput, styles.pickerTrigger]}
-            onPress={() => setShowTypePicker(true)}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={[styles.textInput, styles.pickerTrigger]} onPress={() => setShowTypePicker(true)} >
             <Text style={styles.pickerTriggerText}>
               {maintenanceTypeOptions.find(o => o.value === maintenanceForm.type)?.label || 'Service'}
             </Text>
             <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
 
           <Text style={styles.fieldLabel}>Description</Text>
           <TextInput
@@ -1020,25 +987,16 @@ export default function EquipmentScreen() {
             autoFocus
           />
           <View style={styles.categoryModalActions}>
-            <TouchableOpacity
-              style={styles.categoryModalCancel}
-              onPress={() => setShowCategoryModal(false)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.categoryModalCancel} onPress={() => setShowCategoryModal(false)} >
               <Text style={styles.pickerCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.categoryModalSave, (!newCategoryName.trim() || isCreatingCategory) && { opacity: 0.5 }]}
-              onPress={handleCreateCategory}
-              disabled={!newCategoryName.trim() || isCreatingCategory}
-              activeOpacity={0.7}
-            >
+            </PressableRow>
+            <PressableRow style={[styles.categoryModalSave, (!newCategoryName.trim() || isCreatingCategory) && { opacity: 0.5 }]} onPress={handleCreateCategory} disabled={!newCategoryName.trim() || isCreatingCategory} >
               {isCreatingCategory ? (
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={styles.categoryModalSaveText}>Create</Text>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </TouchableOpacity>
@@ -1072,10 +1030,10 @@ export default function EquipmentScreen() {
                 <Text style={styles.pageTitle}>Equipment</Text>
                 <Text style={styles.pageSubtitle}>{equipment.length} total items</Text>
               </View>
-              <TouchableOpacity style={styles.addButton} onPress={openCreate} activeOpacity={0.7}>
+              <PressableRow style={styles.addButton} onPress={openCreate} >
                 <Feather name="plus" size={18} color={colors.white} />
                 <Text style={styles.addButtonText}>Add</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
 
             {renderFilterChips()}

@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -482,13 +483,9 @@ export default function NewSmsConversation() {
           style={styles.composeContainer}
         >
           <View style={styles.composeHeader}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleBack}
-              disabled={isSending}
-            >
+            <PressableRow style={styles.backButton} onPress={handleBack} disabled={isSending} >
               <Feather name="chevron-left" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <View style={styles.composeHeaderContent}>
               <Text style={styles.composeHeaderTitle}>
                 {selectedClient.firstName} {selectedClient.lastName}
@@ -501,15 +498,7 @@ export default function NewSmsConversation() {
             <Text style={styles.templatesLabel}>Quick Templates</Text>
             <View style={styles.templatesContainer}>
               {SMS_TEMPLATES.map((template, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.templateChip,
-                    message === template && styles.templateChipActive
-                  ]}
-                  onPress={() => handleUseTemplate(template)}
-                  disabled={isSending}
-                >
+                <PressableRow key={index} style={[ styles.templateChip, message === template && styles.templateChipActive ]} onPress={() => handleUseTemplate(template)} disabled={isSending} >
                   <Text
                     style={[
                       styles.templateChipText,
@@ -518,7 +507,7 @@ export default function NewSmsConversation() {
                   >
                     {template}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
 
@@ -540,12 +529,7 @@ export default function NewSmsConversation() {
           </ScrollView>
 
           <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.sendButton]}
-              onPress={handleSendSMS}
-              disabled={isSending || !message.trim() || isOverLimit}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.actionButton, styles.sendButton]} onPress={handleSendSMS} disabled={isSending || !message.trim() || isOverLimit} >
               {isSending ? (
                 <ActivityIndicator color={colors.white} size="small" />
               ) : (
@@ -554,7 +538,7 @@ export default function NewSmsConversation() {
                   <Text style={styles.sendButtonText}>Send SMS</Text>
                 </>
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </KeyboardAvoidingView>
       </>
@@ -625,12 +609,7 @@ export default function NewSmsConversation() {
               const avatarFg = getAvatarColorFg(getClientKey(client));
               
               return (
-                <TouchableOpacity
-                  key={client.id}
-                  style={styles.clientCard}
-                  onPress={() => handleClientSelect(client)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={client.id} style={styles.clientCard} onPress={() => handleClientSelect(client)} >
                   <TeamAvatar
                     firstName={client.firstName}
                     lastName={client.lastName}
@@ -657,7 +636,7 @@ export default function NewSmsConversation() {
                       color={client.phone ? colors.primary : colors.mutedForeground} 
                     />
                   </View>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })
           )}

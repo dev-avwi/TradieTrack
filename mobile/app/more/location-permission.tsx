@@ -9,6 +9,7 @@ import {
   Image,
   Platform
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -387,37 +388,21 @@ export default function LocationPermissionScreen() {
         </View>
         
         <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleEnableLocation}
-            disabled={isRequesting}
-            activeOpacity={0.8}
-            testID="button-enable-location"
-          >
+          <PressableRow style={styles.primaryButton} onPress={handleEnableLocation} disabled={isRequesting} testID="button-enable-location" >
             {isRequesting ? (
               <ActivityIndicator color={colors.primaryForeground} size="small" />
             ) : (
               <Text style={styles.primaryButtonText}>Enable Location</Text>
             )}
-          </TouchableOpacity>
+          </PressableRow>
           
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={handleMaybeLater}
-            disabled={isRequesting}
-            testID="button-maybe-later"
-          >
+          <PressableRow style={styles.secondaryButton} onPress={handleMaybeLater} disabled={isRequesting} testID="button-maybe-later" >
             <Text style={styles.secondaryButtonText}>Maybe Later</Text>
-          </TouchableOpacity>
+          </PressableRow>
           
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={handleSkip}
-            disabled={isRequesting}
-            testID="button-skip-location"
-          >
+          <PressableRow style={styles.skipButton} onPress={handleSkip} disabled={isRequesting} testID="button-skip-location" >
             <Text style={styles.skipButtonText}>Skip for Now</Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
       </ScrollView>
     </>

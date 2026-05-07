@@ -14,6 +14,7 @@ import {
   Linking,
   Image,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -299,9 +300,9 @@ export function MobileSendModal({
         style={styles.container}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <PressableRow onPress={onClose} style={styles.closeButton}>
             <Feather name="x" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Send {typeLabel}</Text>
             <Text style={styles.headerSubtitle}>
@@ -312,11 +313,7 @@ export function MobileSendModal({
         </View>
 
         <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'email' && styles.tabActive, !hasEmail && styles.tabDisabled]}
-            onPress={() => hasEmail && setActiveTab('email')}
-            disabled={!hasEmail}
-          >
+          <PressableRow style={[styles.tab, activeTab === 'email' && styles.tabActive, !hasEmail && styles.tabDisabled]} onPress={() => hasEmail && setActiveTab('email')} disabled={!hasEmail} >
             <Feather
               name="mail"
               size={16}
@@ -329,13 +326,9 @@ export function MobileSendModal({
             ]}>
               Email{!hasEmail ? ' (no email)' : ''}
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
 
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'sms' && styles.tabActive, !hasPhone && styles.tabDisabled]}
-            onPress={() => hasPhone && setActiveTab('sms')}
-            disabled={!hasPhone}
-          >
+          <PressableRow style={[styles.tab, activeTab === 'sms' && styles.tabActive, !hasPhone && styles.tabDisabled]} onPress={() => hasPhone && setActiveTab('sms')} disabled={!hasPhone} >
             <Feather
               name="message-square"
               size={16}
@@ -348,7 +341,7 @@ export function MobileSendModal({
             ]}>
               SMS{!hasPhone ? ' (no phone)' : ''}
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         <ScrollView
@@ -399,11 +392,7 @@ export function MobileSendModal({
                 </Text>
               </View>
 
-              <TouchableOpacity
-                style={[styles.sendButton, styles.emailSendButton, (isSendingEmail || !emailSubject.trim() || !emailBody.trim()) && styles.sendButtonDisabled]}
-                onPress={handleSendEmail}
-                disabled={isSendingEmail || !emailSubject.trim() || !emailBody.trim()}
-              >
+              <PressableRow style={[styles.sendButton, styles.emailSendButton, (isSendingEmail || !emailSubject.trim() || !emailBody.trim()) && styles.sendButtonDisabled]} onPress={handleSendEmail} disabled={isSendingEmail || !emailSubject.trim() || !emailBody.trim()} >
                 {isSendingEmail ? (
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
@@ -412,7 +401,7 @@ export function MobileSendModal({
                 <Text style={styles.sendButtonText}>
                   {isSendingEmail ? 'Sending...' : 'Send Email'}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
 
@@ -430,21 +419,14 @@ export function MobileSendModal({
                 <Text style={styles.fieldLabel}>Quick Templates</Text>
                 <View style={styles.chipContainer}>
                   {(SMS_TEMPLATES[documentType] || []).map((template) => (
-                    <TouchableOpacity
-                      key={template.id}
-                      style={[
-                        styles.chip,
-                        smsMessage === template.message && styles.chipActive,
-                      ]}
-                      onPress={() => applyTemplate(template.message)}
-                    >
+                    <PressableRow key={template.id} style={[ styles.chip, smsMessage === template.message && styles.chipActive, ]} onPress={() => applyTemplate(template.message)} >
                       <Text style={[
                         styles.chipText,
                         smsMessage === template.message && styles.chipTextActive,
                       ]}>
                         {template.label}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               </View>
@@ -474,30 +456,26 @@ export function MobileSendModal({
                       <Text style={[styles.chipText, { color: colors.foreground }]} numberOfLines={1}>
                         {attachedPhoto.fileName}
                       </Text>
-                      <TouchableOpacity onPress={() => setAttachedPhoto(null)} style={{ marginTop: spacing.xs }}>
+                      <PressableRow onPress={() => setAttachedPhoto(null)} style={{ marginTop: spacing.xs }}>
                         <Text style={[styles.chipText, { color: colors.destructive || '#ef4444' }]}>Remove</Text>
-                      </TouchableOpacity>
+                      </PressableRow>
                     </View>
                   </View>
                 ) : (
                   <View style={styles.photoButtonsRow}>
-                    <TouchableOpacity style={styles.photoAttachButton} onPress={handlePickPhoto}>
+                    <PressableRow style={styles.photoAttachButton} onPress={handlePickPhoto}>
                       <Feather name="image" size={18} color={colors.primary} />
                       <Text style={[styles.chipText, { color: colors.primary }]}>Gallery</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.photoAttachButton} onPress={handleTakePhoto}>
+                    </PressableRow>
+                    <PressableRow style={styles.photoAttachButton} onPress={handleTakePhoto}>
                       <Feather name="camera" size={18} color={colors.primary} />
                       <Text style={[styles.chipText, { color: colors.primary }]}>Camera</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   </View>
                 )}
               </View>
 
-              <TouchableOpacity
-                style={[styles.sendButton, styles.smsSendButton, (isSendingSms || isUploadingPhoto || !smsMessage.trim()) && styles.sendButtonDisabled]}
-                onPress={handleSendSms}
-                disabled={isSendingSms || isUploadingPhoto || !smsMessage.trim()}
-              >
+              <PressableRow style={[styles.sendButton, styles.smsSendButton, (isSendingSms || isUploadingPhoto || !smsMessage.trim()) && styles.sendButtonDisabled]} onPress={handleSendSms} disabled={isSendingSms || isUploadingPhoto || !smsMessage.trim()} >
                 {(isSendingSms || isUploadingPhoto) ? (
                   <ActivityIndicator size="small" color={colors.white} />
                 ) : (
@@ -506,7 +484,7 @@ export function MobileSendModal({
                 <Text style={[styles.sendButtonText, { color: colors.white }]}>
                   {isUploadingPhoto ? 'Uploading photo...' : isSendingSms ? 'Sending...' : attachedPhoto ? 'Send MMS' : 'Send SMS'}
                 </Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
         </ScrollView>

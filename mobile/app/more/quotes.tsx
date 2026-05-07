@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useQuotesStore, useClientsStore, useAuthStore } from '../../src/lib/store';
@@ -50,25 +51,13 @@ function KPICard({
   colors: ThemeColors;
 }) {
   return (
-    <TouchableOpacity 
-      style={{
-        flex: 1,
-        backgroundColor: colors.card,
-        borderRadius: radius.lg,
-        padding: spacing.md,
-        borderWidth: 1,
-        borderColor: colors.cardBorder,
-        minWidth: '45%',
-      }}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <PressableRow style={{ flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.cardBorder, minWidth: '45%', }} onPress={onPress} >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm }}>
         <Feather name={icon as any} size={16} color={colors.primary} />
         <Text style={{ fontSize: 12, color: colors.mutedForeground, fontWeight: '500' }}>{title}</Text>
       </View>
       <Text style={{ fontSize: 24, fontWeight: '700', color: colors.foreground }}>{value}</Text>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -120,11 +109,7 @@ function QuoteCard({
   const quickAction = getQuickAction();
 
   return (
-    <TouchableOpacity 
-      style={[styles.quoteCard, quote.isXeroImport && { overflow: 'visible' }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <PressableRow style={[styles.quoteCard, quote.isXeroImport && { overflow: 'visible' }]} onPress={onPress} >
       {quote.isXeroImport && <XeroBadge size="sm" />}
       <View style={styles.quoteCardContent}>
         {/* Main row: Left info + Right amount/actions */}
@@ -158,20 +143,7 @@ function QuoteCard({
             
             <View style={styles.cardActionsRow}>
               {quickAction && (
-                <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    quickAction.variant === 'primary' 
-                      ? styles.actionButtonPrimary 
-                      : styles.actionButtonOutline
-                  ]}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    quickAction.action?.();
-                  }}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
+                <PressableRow style={[ styles.actionButton, quickAction.variant === 'primary' ? styles.actionButtonPrimary : styles.actionButtonOutline ]} onPress={(e) => { e.stopPropagation(); quickAction.action?.(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} >
                   <Feather 
                     name={quickAction.icon} 
                     size={14} 
@@ -181,20 +153,12 @@ function QuoteCard({
                     styles.actionButtonText,
                     quickAction.variant === 'outline' && { color: colors.foreground }
                   ]}>{quickAction.label}</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
               {onDelete && (
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={{ padding: 4 }}
-                >
+                <PressableRow onPress={(e) => { e.stopPropagation(); onDelete(); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ padding: 4 }} >
                   <Feather name="trash-2" size={16} color={colors.destructive} />
-                </TouchableOpacity>
+                </PressableRow>
               )}
               <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
             </View>
@@ -229,7 +193,7 @@ function QuoteCard({
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 
@@ -431,14 +395,10 @@ export default function QuotesScreen() {
                   <Text style={styles.pageTitle}>Quotes</Text>
                   <Text style={styles.pageSubtitle}>{quotes.length} total</Text>
                 </View>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.newButton}
-                  onPress={navigateToCreateQuote}
-                >
+                <PressableRow style={styles.newButton} onPress={navigateToCreateQuote} >
                   <Feather name="plus" size={iconSizes.lg} color={colors.white} />
                   <Text style={styles.newButtonText}>New Quote</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               <View style={styles.searchBar}>
@@ -451,9 +411,9 @@ export default function QuotesScreen() {
                   onChangeText={setSearchQuery}
                 />
                 {searchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <PressableRow onPress={() => setSearchQuery('')}>
                     <Feather name="x" size={16} color={colors.mutedForeground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </View>
 
@@ -468,15 +428,7 @@ export default function QuotesScreen() {
                   const isActive = activeFilter === filter.key;
                   
                   return (
-                    <TouchableOpacity
-                      key={filter.key}
-                      onPress={() => setActiveFilter(filter.key)}
-                      activeOpacity={0.7}
-                      style={[
-                        styles.filterPill,
-                        isActive && styles.filterPillActive
-                      ]}
-                    >
+                    <PressableRow key={filter.key} onPress={() => setActiveFilter(filter.key)} style={[ styles.filterPill, isActive && styles.filterPillActive ]} >
                       <Feather 
                         name={filter.icon as any} 
                         size={12} 
@@ -499,7 +451,7 @@ export default function QuotesScreen() {
                           {count}
                         </Text>
                       </View>
-                    </TouchableOpacity>
+                    </PressableRow>
                   );
                 })}
               </ScrollView>
@@ -574,13 +526,10 @@ export default function QuotesScreen() {
                 </Text>
                 {!searchQuery && activeFilter === 'all' && (
                   <>
-                    <TouchableOpacity 
-                      style={styles.emptyStateButton}
-                      onPress={navigateToCreateQuote}
-                    >
+                    <PressableRow style={styles.emptyStateButton} onPress={navigateToCreateQuote} >
                       <Feather name="plus" size={16} color={colors.white} />
                       <Text style={styles.emptyStateButtonText}>Create Your First Quote</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                     <Text style={styles.emptyStateTip}>
                       Tip: Accepted quotes can be converted to invoices with one tap
                     </Text>

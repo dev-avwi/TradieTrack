@@ -13,6 +13,7 @@ import {
   TextInput,
   Linking,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import MapView, { Marker, Region, PROVIDER_DEFAULT, MapStyleElement } from 'react-native-maps';
@@ -513,15 +514,10 @@ export default function TeamOperationsScreen() {
       ].map(tab => {
         const isActive = activeTab === tab.key;
         return (
-          <TouchableOpacity
-            key={tab.key}
-            style={[styles.tabButton, isActive && styles.tabButtonActive]}
-            onPress={() => setActiveTab(tab.key)}
-            activeOpacity={0.7}
-          >
+          <PressableRow key={tab.key} style={[styles.tabButton, isActive && styles.tabButtonActive]} onPress={() => setActiveTab(tab.key)} >
             <Feather name={tab.icon} size={tabIconSize} color={isActive ? colors.white : colors.mutedForeground} />
             <Text style={[styles.tabButtonText, isActive && styles.tabButtonTextActive]}>{tab.label}</Text>
-          </TouchableOpacity>
+          </PressableRow>
         );
       })}
     </ScrollView>
@@ -529,30 +525,18 @@ export default function TeamOperationsScreen() {
 
   const renderLiveViewToggle = () => (
     <View style={styles.liveViewToggle}>
-      <TouchableOpacity
-        style={[styles.liveViewButton, liveViewMode === 'status' && styles.liveViewButtonActive]}
-        onPress={() => setLiveViewMode('status')}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={[styles.liveViewButton, liveViewMode === 'status' && styles.liveViewButtonActive]} onPress={() => setLiveViewMode('status')} >
         <Feather name="users" size={14} color={liveViewMode === 'status' ? colors.primary : colors.mutedForeground} />
         <Text style={[styles.liveViewText, liveViewMode === 'status' && styles.liveViewTextActive]}>Status</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.liveViewButton, liveViewMode === 'activity' && styles.liveViewButtonActive]}
-        onPress={() => setLiveViewMode('activity')}
-        activeOpacity={0.7}
-      >
+      </PressableRow>
+      <PressableRow style={[styles.liveViewButton, liveViewMode === 'activity' && styles.liveViewButtonActive]} onPress={() => setLiveViewMode('activity')} >
         <Feather name="clock" size={14} color={liveViewMode === 'activity' ? colors.primary : colors.mutedForeground} />
         <Text style={[styles.liveViewText, liveViewMode === 'activity' && styles.liveViewTextActive]}>Activity</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.liveViewButton, liveViewMode === 'map' && styles.liveViewButtonActive]}
-        onPress={() => setLiveViewMode('map')}
-        activeOpacity={0.7}
-      >
+      </PressableRow>
+      <PressableRow style={[styles.liveViewButton, liveViewMode === 'map' && styles.liveViewButtonActive]} onPress={() => setLiveViewMode('map')} >
         <Feather name="map" size={14} color={liveViewMode === 'map' ? colors.primary : colors.mutedForeground} />
         <Text style={[styles.liveViewText, liveViewMode === 'map' && styles.liveViewTextActive]}>Map</Text>
-      </TouchableOpacity>
+      </PressableRow>
     </View>
   );
 
@@ -564,12 +548,7 @@ export default function TeamOperationsScreen() {
     const presenceConfig = STATUS_CONFIG[presenceStatus] || STATUS_CONFIG.offline;
 
     return (
-      <TouchableOpacity
-        key={member.id}
-        style={styles.memberCard}
-        onPress={() => router.push(`/more/team-management?memberId=${member.id}`)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={member.id} style={styles.memberCard} onPress={() => router.push(`/more/team-management?memberId=${member.id}`)} >
         <View style={styles.avatarContainer}>
           <TeamAvatar
             firstName={member.firstName}
@@ -601,23 +580,15 @@ export default function TeamOperationsScreen() {
         </View>
         <View style={styles.memberCardActions}>
           {isOwnerOrManager && unassignedJobs.length > 0 && (
-            <TouchableOpacity
-              style={styles.assignButton}
-              onPress={() => { setAssigningToMember(member); setShowAssignModal(true); }}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.assignButton} onPress={() => { setAssigningToMember(member); setShowAssignModal(true); }} >
               <Feather name="plus-circle" size={16} color={colors.primary} />
-            </TouchableOpacity>
+            </PressableRow>
           )}
-          <TouchableOpacity
-            style={styles.messageButton}
-            onPress={() => router.push(`/more/direct-messages?userId=${member.userId}`)}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.messageButton} onPress={() => router.push(`/more/direct-messages?userId=${member.userId}`)} >
             <Feather name="message-circle" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -638,12 +609,7 @@ export default function TeamOperationsScreen() {
     const subbieStatus = getSubbieStatus(member);
 
     return (
-      <TouchableOpacity
-        key={member.id}
-        style={styles.memberCard}
-        onPress={() => router.push(`/more/team-management?memberId=${member.id}`)}
-        activeOpacity={0.7}
-      >
+      <PressableRow key={member.id} style={styles.memberCard} onPress={() => router.push(`/more/team-management?memberId=${member.id}`)} >
         <View style={styles.avatarContainer}>
           <TeamAvatar
             firstName={member.firstName}
@@ -671,15 +637,11 @@ export default function TeamOperationsScreen() {
           </View>
         </View>
         <View style={styles.memberCardActions}>
-          <TouchableOpacity
-            style={styles.messageButton}
-            onPress={() => router.push(`/more/direct-messages?userId=${member.userId}`)}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.messageButton} onPress={() => router.push(`/more/direct-messages?userId=${member.userId}`)} >
             <Feather name="message-circle" size={18} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 
@@ -908,24 +870,15 @@ export default function TeamOperationsScreen() {
       </View>
 
       <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => router.push('/more/team-management')}
-          activeOpacity={0.7}
-        >
+        <PressableRow style={styles.actionButton} onPress={() => router.push('/more/team-management')} >
           <Feather name="user-plus" size={20} color={colors.primary} />
           <Text style={styles.actionButtonText}>Manage Team</Text>
-        </TouchableOpacity>
+        </PressableRow>
       </View>
 
       <Text style={styles.sectionTitle}>Team Members</Text>
       {acceptedMembers.map(member => (
-        <TouchableOpacity
-          key={member.id}
-          style={styles.memberCard}
-          onPress={() => router.push(`/more/team-management?memberId=${member.id}`)}
-          activeOpacity={0.7}
-        >
+        <PressableRow key={member.id} style={styles.memberCard} onPress={() => router.push(`/more/team-management?memberId=${member.id}`)} >
           <TeamAvatar
             firstName={member.firstName}
             lastName={member.lastName}
@@ -942,7 +895,7 @@ export default function TeamOperationsScreen() {
           <View style={styles.roleBadge}>
             <Text style={styles.roleBadgeText}>{member.roleName || member.role}</Text>
           </View>
-        </TouchableOpacity>
+        </PressableRow>
       ))}
     </ScrollView>
   );
@@ -962,16 +915,11 @@ export default function TeamOperationsScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.memberChips}>
               {acceptedMembers.map(member => (
-                <TouchableOpacity
-                  key={member.id}
-                  style={[styles.memberChip, selectedMemberId === member.id && styles.memberChipActive]}
-                  onPress={() => setSelectedMemberId(member.id)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={member.id} style={[styles.memberChip, selectedMemberId === member.id && styles.memberChipActive]} onPress={() => setSelectedMemberId(member.id)} >
                   <Text style={[styles.memberChipText, selectedMemberId === member.id && styles.memberChipTextActive]}>
                     {member.firstName} {member.lastName}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           </ScrollView>
@@ -992,12 +940,7 @@ export default function TeamOperationsScreen() {
               const endTime = dayAvailability?.endTime || '17:00';
 
               return (
-                <TouchableOpacity
-                  key={day}
-                  style={styles.availabilityRow}
-                  onPress={() => handleUpdateAvailability(index, !isAvailable, startTime, endTime)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={day} style={styles.availabilityRow} onPress={() => handleUpdateAvailability(index, !isAvailable, startTime, endTime)} >
                   <View style={styles.availabilityLeft}>
                     <View style={[styles.availabilityDot, { backgroundColor: isAvailable ? '#22c55e' : colors.muted }]} />
                     <Text style={[styles.availabilityDay, !isAvailable && { color: colors.mutedForeground }]}>{day}</Text>
@@ -1005,7 +948,7 @@ export default function TeamOperationsScreen() {
                   <Text style={styles.availabilityTime}>
                     {isAvailable ? `${startTime} - ${endTime}` : 'Not available'}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               );
             })}
           </View>
@@ -1024,13 +967,9 @@ export default function TeamOperationsScreen() {
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>Time Off Requests</Text>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowTimeOffModal(true)}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.addButton} onPress={() => setShowTimeOffModal(true)} >
             <Feather name="plus" size={18} color={colors.primaryForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         {pendingTimeOff.length > 0 ? (
@@ -1050,20 +989,12 @@ export default function TeamOperationsScreen() {
                 <Text style={styles.timeOffReason}>{typeof request.reason === 'string' ? request.reason.replace(/_/g, ' ') : '-'}</Text>
                 {isOwnerOrManager && (
                   <View style={styles.timeOffActions}>
-                    <TouchableOpacity
-                      style={[styles.timeOffButton, { backgroundColor: colors.success }]}
-                      onPress={() => handleApproveTimeOff(request.id, 'approved')}
-                      activeOpacity={0.7}
-                    >
+                    <PressableRow style={[styles.timeOffButton, { backgroundColor: colors.success }]} onPress={() => handleApproveTimeOff(request.id, 'approved')} >
                       <Text style={styles.timeOffButtonText}>Approve</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.timeOffButton, { backgroundColor: colors.destructive }]}
-                      onPress={() => handleApproveTimeOff(request.id, 'rejected')}
-                      activeOpacity={0.7}
-                    >
+                    </PressableRow>
+                    <PressableRow style={[styles.timeOffButton, { backgroundColor: colors.destructive }]} onPress={() => handleApproveTimeOff(request.id, 'rejected')} >
                       <Text style={styles.timeOffButtonText}>Reject</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   </View>
                 )}
               </View>
@@ -1191,11 +1122,7 @@ export default function TeamOperationsScreen() {
         
         {/* Upgrade banner for non-team subscribers */}
         {needsUpgrade && (
-          <TouchableOpacity 
-            style={[styles.upgradeBanner, { backgroundColor: colors.primary + '15' }]}
-            onPress={() => router.push('/more/subscription')}
-            activeOpacity={0.8}
-          >
+          <PressableRow style={[styles.upgradeBanner, { backgroundColor: colors.primary + '15' }]} onPress={() => router.push('/more/subscription')} >
             <Feather name="star" size={18} color={colors.primary} />
             <View style={styles.upgradeBannerContent}>
               <Text style={[styles.upgradeBannerTitle, { color: colors.foreground }]}>
@@ -1206,7 +1133,7 @@ export default function TeamOperationsScreen() {
               </Text>
             </View>
             <Feather name="chevron-right" size={20} color={colors.primary} />
-          </TouchableOpacity>
+          </PressableRow>
         )}
         
         {renderTabs()}
@@ -1225,25 +1152,20 @@ export default function TeamOperationsScreen() {
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Request Time Off</Text>
-            <TouchableOpacity onPress={() => setShowTimeOffModal(false)}>
+            <PressableRow onPress={() => setShowTimeOffModal(false)}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <ScrollView style={styles.modalContent}>
             <Text style={styles.inputLabel}>Team Member</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
               <View style={styles.memberChips}>
                 {acceptedMembers.map(member => (
-                  <TouchableOpacity
-                    key={member.id}
-                    style={[styles.memberChip, selectedMemberId === member.id && styles.memberChipActive]}
-                    onPress={() => setSelectedMemberId(member.id)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={member.id} style={[styles.memberChip, selectedMemberId === member.id && styles.memberChipActive]} onPress={() => setSelectedMemberId(member.id)} >
                     <Text style={[styles.memberChipText, selectedMemberId === member.id && styles.memberChipTextActive]}>
                       {member.firstName} {member.lastName}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
             </ScrollView>
@@ -1269,16 +1191,11 @@ export default function TeamOperationsScreen() {
             <Text style={styles.inputLabel}>Reason</Text>
             <View style={styles.reasonChips}>
               {['annual_leave', 'sick_leave', 'personal', 'other'].map(reason => (
-                <TouchableOpacity
-                  key={reason}
-                  style={[styles.reasonChip, timeOffReason === reason && styles.reasonChipActive]}
-                  onPress={() => setTimeOffReason(reason)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={reason} style={[styles.reasonChip, timeOffReason === reason && styles.reasonChipActive]} onPress={() => setTimeOffReason(reason)} >
                   <Text style={[styles.reasonChipText, timeOffReason === reason && styles.reasonChipTextActive]}>
                     {reason.replace(/_/g, ' ')}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
 
@@ -1292,13 +1209,9 @@ export default function TeamOperationsScreen() {
               multiline
             />
 
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleRequestTimeOff}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.submitButton} onPress={handleRequestTimeOff} >
               <Text style={styles.submitButtonText}>Submit Request</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </ScrollView>
         </View>
       </Modal>
@@ -1322,9 +1235,9 @@ export default function TeamOperationsScreen() {
                   </Text>
                 )}
               </View>
-              <TouchableOpacity onPress={() => { setShowAssignModal(false); setAssigningToMember(null); }}>
+              <PressableRow onPress={() => { setShowAssignModal(false); setAssigningToMember(null); }}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <ScrollView style={styles.assignJobList} showsVerticalScrollIndicator={false}>
               {unassignedJobs.length === 0 ? (
@@ -1335,13 +1248,7 @@ export default function TeamOperationsScreen() {
                 </View>
               ) : (
                 unassignedJobs.map((job: JobData) => (
-                  <TouchableOpacity
-                    key={job.id}
-                    style={styles.assignJobRow}
-                    onPress={() => handleAssignJob(job)}
-                    disabled={isAssigningJob}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={job.id} style={styles.assignJobRow} onPress={() => handleAssignJob(job)} disabled={isAssigningJob} >
                     <View style={styles.assignJobInfo}>
                       <Text style={styles.assignJobTitle} numberOfLines={1}>{job.title}</Text>
                       {job.clientName && (
@@ -1363,7 +1270,7 @@ export default function TeamOperationsScreen() {
                     ) : (
                       <Feather name="chevron-right" size={18} color={colors.mutedForeground} style={{ marginLeft: 8 }} />
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))
               )}
             </ScrollView>

@@ -14,6 +14,7 @@ import {
   Platform,
   Linking,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -281,44 +282,15 @@ export default function SubcontractorsScreen() {
       </View>
       <View style={styles.subActions}>
         {sub.contactPhone && (
-          <TouchableOpacity
-            style={styles.iconAction}
-            onPress={async () => {
-              const tel = `tel:${(sub.contactPhone || '').replace(/[^\d+]/g, '')}`;
-              try {
-                const ok = await Linking.canOpenURL(tel);
-                if (ok) {
-                  Linking.openURL(tel);
-                } else {
-                  Alert.alert('Can\'t make calls', sub.contactPhone || '');
-                }
-              } catch {
-                Alert.alert('Can\'t make calls', sub.contactPhone || '');
-              }
-            }}
-            accessibilityLabel={`Call ${sub.name}`}
-            accessibilityRole="button"
-            testID={`button-call-sub-${sub.id}`}
-          >
+          <PressableRow style={styles.iconAction} onPress={async () => { const tel = `tel:${(sub.contactPhone || '').replace(/[^\d+]/g, '')}`; try { const ok = await Linking.canOpenURL(tel); if (ok) { Linking.openURL(tel); } else { Alert.alert('Can\'t make calls', sub.contactPhone || ''); } } catch { Alert.alert('Can\'t make calls', sub.contactPhone || ''); } }} accessibilityLabel={`Call ${sub.name}`} accessibilityRole="button" testID={`button-call-sub-${sub.id}`} >
             <Feather name="phone" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
         )}
         {sub.kind === 'magic_link' && (
-          <TouchableOpacity
-            style={[styles.upgradeButton, !hasTeamPlan && styles.upgradeButtonDisabled]}
-            onPress={() => openUpgrade(sub)}
-            accessibilityLabel={`Upgrade ${sub.name} to a full account`}
-            accessibilityRole="button"
-            accessibilityHint={
-              hasTeamPlan
-                ? 'Sends them an invite to create their own login.'
-                : 'Requires a Team plan.'
-            }
-            testID={`button-upgrade-sub-${sub.id}`}
-          >
+          <PressableRow style={[styles.upgradeButton, !hasTeamPlan && styles.upgradeButtonDisabled]} onPress={() => openUpgrade(sub)} accessibilityLabel={`Upgrade ${sub.name} to a full account`} accessibilityRole="button" accessibilityHint={ hasTeamPlan ? 'Sends them an invite to create their own login.' : 'Requires a Team plan.' } testID={`button-upgrade-sub-${sub.id}`} >
             <Feather name="arrow-up-circle" size={14} color={colors.white} />
             <Text style={styles.upgradeButtonText}>Upgrade</Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
       </View>
     </View>
@@ -329,15 +301,9 @@ export default function SubcontractorsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            testID="button-subs-back"
-          >
+          <PressableRow onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Go back" accessibilityRole="button" testID="button-subs-back" >
             <Feather name="arrow-left" size={24} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>Subcontractors</Text>
             <Text style={styles.headerSubtitle}>
@@ -353,9 +319,9 @@ export default function SubcontractorsScreen() {
             <Text style={styles.gateBannerText}>
               Team plan required to upgrade subs to full accounts.
             </Text>
-            <TouchableOpacity onPress={() => router.push('/more/subscription')}>
+            <PressableRow onPress={() => router.push('/more/subscription')}>
               <Text style={styles.gateBannerCta}>View plans</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         )}
 
@@ -372,9 +338,9 @@ export default function SubcontractorsScreen() {
             testID="input-search-subs"
           />
           {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
+            <PressableRow onPress={() => setSearch('')}>
               <Feather name="x-circle" size={16} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           )}
         </View>
 
@@ -411,19 +377,10 @@ export default function SubcontractorsScreen() {
               </View>
               <Text style={styles.emptyTitle}>Couldn't load subs</Text>
               <Text style={styles.emptyDesc}>{fetchError}</Text>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => {
-                  setIsLoading(true);
-                  fetchSubs();
-                }}
-                accessibilityLabel="Retry loading subcontractors"
-                accessibilityRole="button"
-                testID="button-subs-retry"
-              >
+              <PressableRow style={styles.retryButton} onPress={() => { setIsLoading(true); fetchSubs(); }} accessibilityLabel="Retry loading subcontractors" accessibilityRole="button" testID="button-subs-retry" >
                 <Feather name="refresh-cw" size={14} color={colors.white} />
                 <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           ) : filteredSubs.length === 0 ? (
             <View style={styles.emptyWrap}>
@@ -439,16 +396,10 @@ export default function SubcontractorsScreen() {
                   : 'Open any job and tap Add Sub to send a magic-link invite. They\'ll show up here once they accept.'}
               </Text>
               {!search && (
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={() => router.push('/(tabs)/jobs' as any)}
-                  accessibilityLabel="Go to jobs"
-                  accessibilityRole="button"
-                  testID="button-go-to-jobs"
-                >
+                <PressableRow style={styles.retryButton} onPress={() => router.push('/(tabs)/jobs' as any)} accessibilityLabel="Go to jobs" accessibilityRole="button" testID="button-go-to-jobs" >
                   <Feather name="briefcase" size={14} color={colors.white} />
                   <Text style={styles.retryButtonText}>Open Jobs</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
           ) : (
@@ -470,9 +421,9 @@ export default function SubcontractorsScreen() {
               <View style={styles.modalHandle} />
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Upgrade to full account</Text>
-                <TouchableOpacity onPress={() => setUpgradeOpen(false)}>
+                <PressableRow onPress={() => setUpgradeOpen(false)}>
                   <Feather name="x" size={22} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
               <Text style={styles.modalDesc}>
                 Convert this magic-link sub into a full team member with their own login,
@@ -566,23 +517,10 @@ export default function SubcontractorsScreen() {
               </ScrollView>
 
               <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.modalBtn, styles.modalBtnGhost]}
-                  onPress={() => setUpgradeOpen(false)}
-                  testID="button-upgrade-cancel"
-                >
+                <PressableRow style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setUpgradeOpen(false)} testID="button-upgrade-cancel" >
                   <Text style={styles.modalBtnGhostText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.modalBtn,
-                    styles.modalBtnPrimary,
-                    isUpgrading && styles.modalBtnDisabled,
-                  ]}
-                  disabled={isUpgrading}
-                  onPress={handleUpgrade}
-                  testID="button-upgrade-submit"
-                >
+                </PressableRow>
+                <PressableRow style={[ styles.modalBtn, styles.modalBtnPrimary, isUpgrading && styles.modalBtnDisabled, ]} disabled={isUpgrading} onPress={handleUpgrade} testID="button-upgrade-submit" >
                   {isUpgrading ? (
                     <ActivityIndicator size="small" color={colors.white} />
                   ) : (
@@ -591,7 +529,7 @@ export default function SubcontractorsScreen() {
                       <Text style={styles.modalBtnPrimaryText}>Send invite</Text>
                     </>
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             </View>
           </KeyboardAvoidingView>

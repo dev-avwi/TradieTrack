@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -883,12 +884,7 @@ export default function SubscriptionPage() {
         )}
 
         {hasActiveSubscription && (
-          <TouchableOpacity 
-            style={styles.manageButton}
-            onPress={handleManageBilling}
-            disabled={managingSubscription}
-            activeOpacity={0.8}
-          >
+          <PressableRow style={styles.manageButton} onPress={handleManageBilling} disabled={managingSubscription} >
             {managingSubscription ? (
               <ActivityIndicator color={colors.white} size="small" />
             ) : (
@@ -899,7 +895,7 @@ export default function SubscriptionPage() {
                 </Text>
               </>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         )}
 
         {hasActiveSubscription && (
@@ -939,14 +935,9 @@ export default function SubscriptionPage() {
                     </View>
                   ))}
                 </View>
-                <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#2563EB' }, purchasingTier !== null && { opacity: 0.6 }]}
-                  onPress={() => handleUpgrade('pro')}
-                  activeOpacity={0.8}
-                  disabled={purchasingTier !== null}
-                >
+                <PressableRow style={[styles.upgradePlanButton, { backgroundColor: '#2563EB' }, purchasingTier !== null && { opacity: 0.6 }]} onPress={() => handleUpgrade('pro')} disabled={purchasingTier !== null} >
                   {purchasingTier === 'pro' ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Pro</Text>}
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             )}
 
@@ -970,14 +961,9 @@ export default function SubscriptionPage() {
                     </View>
                   ))}
                 </View>
-                <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#7C3AED' }, purchasingTier !== null && { opacity: 0.6 }]}
-                  onPress={() => handleUpgrade('team')}
-                  activeOpacity={0.8}
-                  disabled={purchasingTier !== null}
-                >
+                <PressableRow style={[styles.upgradePlanButton, { backgroundColor: '#7C3AED' }, purchasingTier !== null && { opacity: 0.6 }]} onPress={() => handleUpgrade('team')} disabled={purchasingTier !== null} >
                   {purchasingTier === 'team' ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Team</Text>}
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             )}
 
@@ -1001,14 +987,9 @@ export default function SubscriptionPage() {
                     </View>
                   ))}
                 </View>
-                <TouchableOpacity 
-                  style={[styles.upgradePlanButton, { backgroundColor: '#059669' }, purchasingTier !== null && { opacity: 0.6 }]}
-                  onPress={() => handleUpgrade('business')}
-                  activeOpacity={0.8}
-                  disabled={purchasingTier !== null}
-                >
+                <PressableRow style={[styles.upgradePlanButton, { backgroundColor: '#059669' }, purchasingTier !== null && { opacity: 0.6 }]} onPress={() => handleUpgrade('business')} disabled={purchasingTier !== null} >
                   {purchasingTier === 'business' ? <ActivityIndicator color={colors.white} size="small" /> : <Text style={styles.upgradePlanButtonText}>Upgrade to Business</Text>}
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             )}
           </View>
@@ -1017,11 +998,7 @@ export default function SubscriptionPage() {
         <View style={styles.addOnSection}>
           <Text style={[styles.infoSectionTitle, { marginBottom: spacing.md }]}>Available Add-Ons</Text>
           
-          <TouchableOpacity 
-            style={styles.addOnCard} 
-            onPress={() => router.push('/more/ai-receptionist')}
-            activeOpacity={0.8}
-          >
+          <PressableRow style={styles.addOnCard} onPress={() => router.push('/more/ai-receptionist')} >
             <View style={styles.addOnHeader}>
               <View style={styles.addOnIconCircle}>
                 <Feather name="phone" size={16} color={colors.primary} />
@@ -1037,13 +1014,9 @@ export default function SubscriptionPage() {
                 ? 'Professional AI phone answering service with a dedicated Australian number. Contact us to set up.'
                 : 'AI-powered phone answering with a dedicated Australian number. Captures leads and transfers calls.'}
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
 
-          <TouchableOpacity 
-            style={styles.addOnCard} 
-            onPress={() => router.push('/more/phone-numbers')}
-            activeOpacity={0.8}
-          >
+          <PressableRow style={styles.addOnCard} onPress={() => router.push('/more/phone-numbers')} >
             <View style={styles.addOnHeader}>
               <View style={styles.addOnIconCircle}>
                 <Feather name="smartphone" size={16} color={colors.primary} />
@@ -1057,41 +1030,30 @@ export default function SubscriptionPage() {
             <Text style={styles.addOnDescription}>
               Your own Australian mobile number for sending SMS and receiving calls. A real telecommunications service.
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
         </View>
 
         {/* Restore Purchases — required by Apple guideline 3.1.1.
             Surfaced on Android too so subscribers who reinstall can recover. */}
         {Platform.OS !== 'web' && (
-          <TouchableOpacity
-            style={styles.restoreButton}
-            onPress={handleRestorePurchases}
-            disabled={restoring}
-            activeOpacity={0.8}
-            testID="button-restore-purchases"
-          >
+          <PressableRow style={styles.restoreButton} onPress={handleRestorePurchases} disabled={restoring} testID="button-restore-purchases" >
             {restoring ? (
               <ActivityIndicator color={colors.primary} size="small" />
             ) : (
               <Text style={styles.restoreButtonText}>Restore Purchases</Text>
             )}
-          </TouchableOpacity>
+          </PressableRow>
         )}
 
         {/* Manage Subscription deep-link — required by Apple guideline 3.1.2.
             Always visible (not just for active subs) so reviewers can verify
             the link works on a fresh account. */}
         {Platform.OS !== 'web' && (
-          <TouchableOpacity
-            style={styles.restoreButton}
-            onPress={openPlatformManageSubscription}
-            activeOpacity={0.8}
-            testID="button-manage-subscription"
-          >
+          <PressableRow style={styles.restoreButton} onPress={openPlatformManageSubscription} testID="button-manage-subscription" >
             <Text style={styles.restoreButtonText}>
               {Platform.OS === 'ios' ? 'Manage Subscription in App Store' : 'Manage Subscription in Play Store'}
             </Text>
-          </TouchableOpacity>
+          </PressableRow>
         )}
 
         {/* Auto-renewal disclosure + Terms / Privacy / EULA links — required by
@@ -1102,13 +1064,13 @@ export default function SubscriptionPage() {
               Subscriptions automatically renew monthly unless cancelled at least 24 hours before the end of the current period. Your {Platform.OS === 'ios' ? 'Apple ID' : 'Google'} account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscriptions in your {Platform.OS === 'ios' ? 'App Store' : 'Play Store'} account settings.
             </Text>
             <View style={styles.legalLinksRow}>
-              <TouchableOpacity onPress={() => Linking.openURL('https://jobrunner.com.au/terms-of-service')} testID="link-terms">
+              <PressableRow onPress={() => Linking.openURL('https://jobrunner.com.au/terms-of-service')} testID="link-terms">
                 <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
-              </TouchableOpacity>
+              </PressableRow>
               <Text style={styles.legalSeparator}>|</Text>
-              <TouchableOpacity onPress={() => Linking.openURL('https://jobrunner.com.au/privacy-policy')} testID="link-privacy">
+              <PressableRow onPress={() => Linking.openURL('https://jobrunner.com.au/privacy-policy')} testID="link-privacy">
                 <Text style={styles.legalLink}>Privacy Policy</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
         )}

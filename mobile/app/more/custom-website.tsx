@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Modal,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -306,9 +307,9 @@ export default function CustomWebsitePage() {
                 </View>
                 <Text style={styles.successTitle}>Request Submitted</Text>
                 <Text style={styles.successDesc}>We'll be in touch within 1-2 business days to discuss your project.</Text>
-                <TouchableOpacity style={styles.successButton} onPress={() => router.back()} activeOpacity={0.7}>
+                <PressableRow style={styles.successButton} onPress={() => router.back()} >
                   <Text style={styles.successButtonText}>Back to More</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             </View>
           ) : (
@@ -328,12 +329,7 @@ export default function CustomWebsitePage() {
 
               <Text style={[styles.sectionLabel, { marginTop: spacing.lg }]}>Choose a Package</Text>
               {PRICING_TIERS.map((tier, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={[styles.tierCard, tier.popular && styles.tierCardPopular]}
-                  onPress={() => selectTierAndStartForm(i)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={i} style={[styles.tierCard, tier.popular && styles.tierCardPopular]} onPress={() => selectTierAndStartForm(i)} >
                   {tier.popular && (
                     <View style={styles.popularBadge}>
                       <Text style={styles.popularBadgeText}>MOST POPULAR</Text>
@@ -366,7 +362,7 @@ export default function CustomWebsitePage() {
                     <Text style={[styles.tierCtaText, tier.popular && { color: colors.white }]}>Get Started</Text>
                     <Feather name="arrow-right" size={14} color={tier.popular ? colors.white : colors.primary} />
                   </View>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           )}
@@ -375,9 +371,9 @@ export default function CustomWebsitePage() {
         <Modal visible={showForm} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowForm(false)}>
           <View style={styles.modalContainer}>
             <View style={[styles.modalHeader, { paddingTop: Math.max(insets.top, spacing.md) }]}>
-              <TouchableOpacity onPress={() => setShowForm(false)}>
+              <PressableRow onPress={() => setShowForm(false)}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
               <Text style={styles.modalTitle}>Your Project Details</Text>
               <View style={{ width: 24 }} />
             </View>
@@ -404,9 +400,9 @@ export default function CustomWebsitePage() {
                 <Text style={styles.fieldLabel}>Website Type</Text>
                 <View style={styles.chipRow}>
                   {WEBSITE_TYPES.map(type => (
-                    <TouchableOpacity key={type} style={[styles.chip, websiteType === type && styles.chipActive]} onPress={() => setWebsiteType(websiteType === type ? '' : type)} activeOpacity={0.7}>
+                    <PressableRow key={type} style={[styles.chip, websiteType === type && styles.chipActive]} onPress={() => setWebsiteType(websiteType === type ? '' : type)} >
                       <Text style={[styles.chipText, websiteType === type && styles.chipTextActive]}>{type}</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
 
@@ -416,10 +412,10 @@ export default function CustomWebsitePage() {
                 <Text style={styles.fieldLabel}>Features</Text>
                 <View style={styles.chipRow}>
                   {FEATURE_OPTIONS.map(feat => (
-                    <TouchableOpacity key={feat} style={[styles.chip, selectedFeatures.includes(feat) && styles.chipActive]} onPress={() => toggleFeature(feat)} activeOpacity={0.7}>
+                    <PressableRow key={feat} style={[styles.chip, selectedFeatures.includes(feat) && styles.chipActive]} onPress={() => toggleFeature(feat)} >
                       {selectedFeatures.includes(feat) && <Feather name="check" size={11} color={colors.white} style={{ marginRight: 3 }} />}
                       <Text style={[styles.chipText, selectedFeatures.includes(feat) && styles.chipTextActive]}>{feat}</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
 
@@ -434,19 +430,19 @@ export default function CustomWebsitePage() {
                 <Text style={styles.fieldLabel}>Timeline</Text>
                 <View style={styles.chipRow}>
                   {TIMELINE_OPTIONS.map(opt => (
-                    <TouchableOpacity key={opt} style={[styles.chip, timeline === opt && styles.chipActive]} onPress={() => setTimeline(timeline === opt ? '' : opt)} activeOpacity={0.7}>
+                    <PressableRow key={opt} style={[styles.chip, timeline === opt && styles.chipActive]} onPress={() => setTimeline(timeline === opt ? '' : opt)} >
                       <Text style={[styles.chipText, timeline === opt && styles.chipTextActive]}>{opt}</Text>
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
 
                 <Text style={styles.fieldLabel}>Notes</Text>
                 <TextInput style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]} value={additionalNotes} onChangeText={setAdditionalNotes} placeholder="Branding, logo, colours, anything else..." placeholderTextColor={colors.mutedForeground} multiline numberOfLines={2} />
 
-                <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={submitting} activeOpacity={0.7}>
+                <PressableRow style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={handleSubmit} disabled={submitting} >
                   {submitting ? <ActivityIndicator size="small" color={colors.white} /> : <Feather name="send" size={16} color={colors.white} />}
                   <Text style={styles.submitBtnText}>{submitting ? 'Submitting...' : 'Submit Request'}</Text>
-                </TouchableOpacity>
+                </PressableRow>
 
                 <View style={{ height: 60 }} />
               </ScrollView>

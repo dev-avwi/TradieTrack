@@ -11,6 +11,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { useNotificationsStore, UnifiedNotification } from '../lib/notifications-store';
@@ -247,17 +248,14 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
             </View>
             <View style={styles.headerActions}>
               {unreadCount > 0 && (
-                <TouchableOpacity 
-                  onPress={storeMarkAllAsRead}
-                  style={styles.markAllButton}
-                >
+                <PressableRow onPress={storeMarkAllAsRead} style={styles.markAllButton} >
                   <Feather name="check-circle" size={16} color={colors.primary} />
                   <Text style={styles.markAllText}>Mark all read</Text>
-                </TouchableOpacity>
+                </PressableRow>
               )}
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <PressableRow onPress={onClose} style={styles.closeButton}>
                 <Feather name="x" size={22} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           </View>
           
@@ -294,15 +292,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
                 const typeBadge = getNotificationTypeBadge(notification);
                 
                 return (
-                  <TouchableOpacity
-                    key={notification.id}
-                    style={[
-                      styles.notificationItem,
-                      !notification.read && styles.notificationUnread,
-                    ]}
-                    onPress={() => handleNotificationPress(notification)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={notification.id} style={[ styles.notificationItem, !notification.read && styles.notificationUnread, ]} onPress={() => handleNotificationPress(notification)} >
                     <View style={[styles.notificationIcon, { backgroundColor: notificationColors.bg }]}>
                       <Feather name={iconName} size={18} color={notificationColors.icon} />
                     </View>
@@ -343,27 +333,15 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
                       {notification.notificationType === 'system' && (
                         <View style={styles.notificationActions}>
                           {!notification.read && (
-                            <TouchableOpacity 
-                              style={styles.actionButton}
-                              onPress={(e) => {
-                                e.stopPropagation?.();
-                                storeMarkAsRead(notification.id, notification.notificationType);
-                              }}
-                            >
+                            <PressableRow style={styles.actionButton} onPress={(e) => { e.stopPropagation?.(); storeMarkAsRead(notification.id, notification.notificationType); }} >
                               <Feather name="check" size={14} color={colors.foreground} />
                               <Text style={styles.actionButtonText}>Mark read</Text>
-                            </TouchableOpacity>
+                            </PressableRow>
                           )}
-                          <TouchableOpacity 
-                            style={[styles.actionButton, styles.dismissButton]}
-                            onPress={(e) => {
-                              e.stopPropagation?.();
-                              storeDismissNotification(notification.id);
-                            }}
-                          >
+                          <PressableRow style={[styles.actionButton, styles.dismissButton]} onPress={(e) => { e.stopPropagation?.(); storeDismissNotification(notification.id); }} >
                             <Feather name="trash-2" size={14} color={colors.mutedForeground} />
                             <Text style={[styles.actionButtonText, styles.dismissText]}>Dismiss</Text>
-                          </TouchableOpacity>
+                          </PressableRow>
                         </View>
                       )}
                     </View>
@@ -371,7 +349,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
                     {notification.relatedType && (
                       <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
                     )}
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               })
             )}
@@ -400,7 +378,7 @@ export function NotificationBell({ onPress }: NotificationBellProps) {
   }, []);
 
   return (
-    <TouchableOpacity onPress={onPress} style={styles.button}>
+    <PressableRow onPress={onPress} style={styles.button}>
       <Feather name="bell" size={22} color={colors.foreground} />
       {unreadCount > 0 && (
         <View style={styles.badge}>
@@ -409,7 +387,7 @@ export function NotificationBell({ onPress }: NotificationBellProps) {
           </Text>
         </View>
       )}
-    </TouchableOpacity>
+    </PressableRow>
   );
 }
 

@@ -14,6 +14,7 @@ import {
   Platform,
   Animated
 } from 'react-native';
+import { PressableRow } from '../../../src/components/ui/PressableRow';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -1316,10 +1317,7 @@ export default function NewInvoiceScreen() {
                   <Feather name="user" size={16} color={colors.primary} />
                   <Text style={styles.cardHeaderText}>Client</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.selectButton}
-                  onPress={() => setShowClientPicker(true)}
-                >
+                <PressableRow style={styles.selectButton} onPress={() => setShowClientPicker(true)} >
                   {form.clientId ? (
                     <View style={styles.selectedClient}>
                       <View style={styles.clientAvatar}>
@@ -1333,7 +1331,7 @@ export default function NewInvoiceScreen() {
                     <Text style={styles.selectPlaceholder}>Tap to select a client...</Text>
                   )}
                   <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               </View>
 
               {/* Invoice Details Card */}
@@ -1385,11 +1383,7 @@ export default function NewInvoiceScreen() {
                   <Text style={styles.cardHeaderText}>Recurring Invoice</Text>
                 </View>
                 
-                <TouchableOpacity 
-                  style={styles.toggleRow}
-                  onPress={() => setIsRecurring(!isRecurring)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow style={styles.toggleRow} onPress={() => setIsRecurring(!isRecurring)} >
                   <View style={styles.toggleInfo}>
                     <Text style={styles.toggleTitle}>Make this recurring</Text>
                     <Text style={styles.toggleDescription}>
@@ -1405,16 +1399,13 @@ export default function NewInvoiceScreen() {
                       isRecurring && styles.toggleThumbActive
                     ]} />
                   </View>
-                </TouchableOpacity>
+                </PressableRow>
 
                 {isRecurring && (
                   <View style={styles.recurringOptions}>
                     <View style={styles.inputGroup}>
                       <Text style={styles.inputLabel}>Frequency</Text>
-                      <TouchableOpacity
-                        style={styles.selectButton}
-                        onPress={() => setShowRecurrenceOptions(true)}
-                      >
+                      <PressableRow style={styles.selectButton} onPress={() => setShowRecurrenceOptions(true)} >
                         <View style={styles.selectedClient}>
                           <Feather name="repeat" size={16} color={colors.primary} />
                           <Text style={styles.selectedClientText}>
@@ -1422,16 +1413,16 @@ export default function NewInvoiceScreen() {
                           </Text>
                         </View>
                         <Feather name="chevron-down" size={20} color={colors.mutedForeground} />
-                      </TouchableOpacity>
+                      </PressableRow>
                     </View>
 
                     <View style={styles.inputGroup}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <Text style={styles.inputLabel}>End Date (optional)</Text>
                         {recurrenceEndDate ? (
-                          <TouchableOpacity onPress={() => setRecurrenceEndDate('')} activeOpacity={0.7}>
+                          <PressableRow onPress={() => setRecurrenceEndDate('')} >
                             <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>Clear</Text>
-                          </TouchableOpacity>
+                          </PressableRow>
                         ) : null}
                       </View>
                       {recurrenceEndDate ? (
@@ -1441,14 +1432,10 @@ export default function NewInvoiceScreen() {
                           minimumDate={new Date(form.dueDate + 'T00:00:00')}
                         />
                       ) : (
-                        <TouchableOpacity
-                          style={[styles.input, { flexDirection: 'row', alignItems: 'center', gap: 8 }]}
-                          onPress={() => setRecurrenceEndDate(formatLocalDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)))}
-                          activeOpacity={0.7}
-                        >
+                        <PressableRow style={[styles.input, { flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setRecurrenceEndDate(formatLocalDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)))} >
                           <Feather name="calendar" size={16} color={colors.mutedForeground} />
                           <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>No end date (runs indefinitely)</Text>
-                        </TouchableOpacity>
+                        </PressableRow>
                       )}
                     </View>
 
@@ -1498,49 +1485,34 @@ export default function NewInvoiceScreen() {
                         {isZeroRate ? '$0.00' : formatCurrency(itemTotal)}
                       </Text>
                       <View style={styles.lineItemActions}>
-                        <TouchableOpacity 
-                          style={styles.iconButton}
-                          onPress={() => handleEditLineItem(index)}
-                        >
+                        <PressableRow style={styles.iconButton} onPress={() => handleEditLineItem(index)} >
                           <Feather name="edit-2" size={14} color={colors.mutedForeground} />
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.iconButton}
-                          onPress={() => removeLineItem(index)}
-                        >
+                        </PressableRow>
+                        <PressableRow style={styles.iconButton} onPress={() => removeLineItem(index)} >
                           <Feather name="trash-2" size={14} color={colors.destructive} />
-                        </TouchableOpacity>
+                        </PressableRow>
                       </View>
                     </View>
                   );
                 })}
 
                 <View style={styles.addButtonsRow}>
-                  <TouchableOpacity
-                    style={styles.addItemButton}
-                    onPress={handleAddLineItem}
-                  >
+                  <PressableRow style={styles.addItemButton} onPress={handleAddLineItem} >
                     <Feather name="plus" size={16} color={colors.foreground} />
                     <Text style={styles.addItemText}>Add Item</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.catalogButton}
-                    onPress={handleOpenCatalog}
-                  >
+                  </PressableRow>
+                  <PressableRow style={styles.catalogButton} onPress={handleOpenCatalog} >
                     <Feather name="book-open" size={16} color={colors.foreground} />
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
 
                 {jobId && jobExpenses.length > 0 && (
-                  <TouchableOpacity
-                    style={[styles.addItemButton, { marginTop: 8, backgroundColor: colors.primaryLight }]}
-                    onPress={handleImportExpenses}
-                  >
+                  <PressableRow style={[styles.addItemButton, { marginTop: 8, backgroundColor: colors.primaryLight }]} onPress={handleImportExpenses} >
                     <Feather name="credit-card" size={16} color={colors.primary} />
                     <Text style={[styles.addItemText, { color: colors.primary }]}>
                       Import {jobExpenses.length} Job Expense{jobExpenses.length !== 1 ? 's' : ''} ({formatCurrency(jobExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0))})
                     </Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 )}
               </View>
 
@@ -1590,22 +1562,7 @@ export default function NewInvoiceScreen() {
               </View>
 
               {/* Submit Button - Uses business primary color */}
-              <TouchableOpacity
-                style={{
-                  backgroundColor: colors.primary,
-                  paddingVertical: 14,
-                  paddingHorizontal: 20,
-                  borderRadius: 10,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  opacity: isLoading ? 0.6 : 1,
-                }}
-                onPress={handleSave}
-                disabled={isLoading}
-                activeOpacity={0.8}
-              >
+              <PressableRow style={{ backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 20, borderRadius: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: isLoading ? 0.6 : 1, }} onPress={handleSave} disabled={isLoading} >
                 {isLoading ? (
                   <ActivityIndicator size="small" color={colors.primaryForeground} />
                 ) : (
@@ -1614,7 +1571,7 @@ export default function NewInvoiceScreen() {
                     <Text style={{ color: colors.primaryForeground, fontSize: 16, fontWeight: '600' }}>{isEditing ? 'Update Invoice' : 'Create Invoice'}</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             </ScrollView>
             )}
           </KeyboardAvoidingView>
@@ -1636,16 +1593,9 @@ export default function NewInvoiceScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{showQuickAddClient ? 'Quick Add Client' : 'Select Client'}</Text>
-            <TouchableOpacity onPress={() => {
-              if (showQuickAddClient) {
-                setShowQuickAddClient(false);
-                setQuickAddForm({ name: '', email: '', phone: '' });
-              } else {
-                setShowClientPicker(false);
-              }
-            }}>
+            <PressableRow onPress={() => { if (showQuickAddClient) { setShowQuickAddClient(false); setQuickAddForm({ name: '', email: '', phone: '' }); } else { setShowClientPicker(false); } }}>
               <Feather name={showQuickAddClient ? 'arrow-left' : 'x'} size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           
           {showQuickAddClient ? (
@@ -1685,34 +1635,19 @@ export default function NewInvoiceScreen() {
                     keyboardType="phone-pad"
                   />
                 </View>
-                <TouchableOpacity
-                  style={[styles.saveItemButton, { opacity: isCreatingClient ? 0.6 : 1 }]}
-                  onPress={handleQuickAddClient}
-                  disabled={isCreatingClient}
-                >
+                <PressableRow style={[styles.saveItemButton, { opacity: isCreatingClient ? 0.6 : 1 }]} onPress={handleQuickAddClient} disabled={isCreatingClient} >
                   {isCreatingClient ? (
                     <ActivityIndicator size="small" color={colors.primaryForeground} />
                   ) : (
                     <Text style={styles.saveItemButtonText}>Add & Select Client</Text>
                   )}
-                </TouchableOpacity>
+                </PressableRow>
               </ScrollView>
             </KeyboardAvoidingView>
           ) : (
             <ScrollView style={styles.modalContent}>
               {/* Quick Add Client Button */}
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: colors.primaryLight,
-                  padding: 14,
-                  borderRadius: 10,
-                  marginBottom: 16,
-                  gap: 10,
-                }}
-                onPress={() => setShowQuickAddClient(true)}
-              >
+              <PressableRow style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryLight, padding: 14, borderRadius: 10, marginBottom: 16, gap: 10, }} onPress={() => setShowQuickAddClient(true)} >
                 <View style={{
                   width: 36,
                   height: 36,
@@ -1728,7 +1663,7 @@ export default function NewInvoiceScreen() {
                   <Text style={{ fontSize: 12, color: colors.mutedForeground }}>Create a new client without leaving this screen</Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.primary} />
-              </TouchableOpacity>
+              </PressableRow>
 
               {clients.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -1740,11 +1675,7 @@ export default function NewInvoiceScreen() {
                 </View>
               ) : (
                 clients.map((client) => (
-                  <TouchableOpacity
-                    key={client.id}
-                    style={styles.clientOption}
-                    onPress={() => handleSelectClient(client)}
-                  >
+                  <PressableRow key={client.id} style={styles.clientOption} onPress={() => handleSelectClient(client)} >
                     <View style={styles.clientOptionAvatar}>
                       <Text style={styles.clientOptionAvatarText}>
                         {client.name.charAt(0).toUpperCase()}
@@ -1756,7 +1687,7 @@ export default function NewInvoiceScreen() {
                         <Text style={styles.clientOptionEmail}>{client.email}</Text>
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))
               )}
             </ScrollView>
@@ -1777,9 +1708,9 @@ export default function NewInvoiceScreen() {
             <Text style={styles.modalTitle}>
               {editingItemIndex === -1 ? 'Add Item' : 'Edit Item'}
             </Text>
-            <TouchableOpacity onPress={() => setShowLineItemEditor(false)}>
+            <PressableRow onPress={() => setShowLineItemEditor(false)}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <View style={styles.modalContent}>
             <View style={styles.inputGroup}>
@@ -1825,14 +1756,11 @@ export default function NewInvoiceScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity
-              style={styles.saveItemButton}
-              onPress={handleSaveLineItem}
-            >
+            <PressableRow style={styles.saveItemButton} onPress={handleSaveLineItem} >
               <Text style={styles.saveItemButtonText}>
                 {editingItemIndex === -1 ? 'Add Item' : 'Save Changes'}
               </Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </AppBottomSheet>
@@ -1848,9 +1776,9 @@ export default function NewInvoiceScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Product Catalog</Text>
-            <TouchableOpacity onPress={() => { setShowCatalog(false); setCatalogSearch(''); }}>
+            <PressableRow onPress={() => { setShowCatalog(false); setCatalogSearch(''); }}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
             <View style={{
@@ -1877,9 +1805,9 @@ export default function NewInvoiceScreen() {
                 autoCorrect={false}
               />
               {catalogSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setCatalogSearch('')}>
+                <PressableRow onPress={() => setCatalogSearch('')}>
                   <Feather name="x-circle" size={16} color={colors.mutedForeground} />
-                </TouchableOpacity>
+                </PressableRow>
               )}
             </View>
           </View>
@@ -1948,11 +1876,7 @@ export default function NewInvoiceScreen() {
                     </View>
                   )}
                   {grouped[category].map((item: any) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      style={styles.clientOption}
-                      onPress={() => { handleAddCatalogItem(item); setCatalogSearch(''); }}
-                    >
+                    <PressableRow key={item.id} style={styles.clientOption} onPress={() => { handleAddCatalogItem(item); setCatalogSearch(''); }} >
                       <View style={[styles.clientOptionAvatar, { backgroundColor: colors.muted }]}>
                         <Feather name="package" size={18} color={colors.foreground} />
                       </View>
@@ -1964,7 +1888,7 @@ export default function NewInvoiceScreen() {
                         </Text>
                       </View>
                       <Feather name="plus" size={20} color={colors.primary} />
-                    </TouchableOpacity>
+                    </PressableRow>
                   ))}
                 </View>
               ));
@@ -1990,17 +1914,7 @@ export default function NewInvoiceScreen() {
             <View style={styles.frequencyModalHandle} />
             <Text style={styles.frequencyModalTitle}>Select Frequency</Text>
             {RECURRENCE_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.frequencyOption,
-                  recurrencePattern === option.value && styles.frequencyOptionSelected
-                ]}
-                onPress={() => {
-                  setRecurrencePattern(option.value);
-                  setShowRecurrenceOptions(false);
-                }}
-              >
+              <PressableRow key={option.value} style={[ styles.frequencyOption, recurrencePattern === option.value && styles.frequencyOptionSelected ]} onPress={() => { setRecurrencePattern(option.value); setShowRecurrenceOptions(false); }} >
                 <View style={styles.frequencyOptionContent}>
                   <Feather 
                     name="repeat" 
@@ -2017,14 +1931,11 @@ export default function NewInvoiceScreen() {
                 {recurrencePattern === option.value && (
                   <Feather name="check" size={20} color={colors.primary} />
                 )}
-              </TouchableOpacity>
+              </PressableRow>
             ))}
-            <TouchableOpacity 
-              style={styles.frequencyModalCancel}
-              onPress={() => setShowRecurrenceOptions(false)}
-            >
+            <PressableRow style={styles.frequencyModalCancel} onPress={() => setShowRecurrenceOptions(false)} >
               <Text style={styles.frequencyModalCancelText}>Cancel</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </TouchableOpacity>
       </AppBottomSheet>

@@ -8,6 +8,7 @@ import {
   Platform,
   UIManager,
 } from 'react-native';
+import { PressableRow } from './PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../lib/theme';
 import { spacing, radius, shadows, iconSizes } from '../../lib/design-tokens';
@@ -47,23 +48,7 @@ export function CollapsibleSection({ summaryItems, children, defaultExpanded = f
 
   return (
     <View>
-      <TouchableOpacity
-        onPress={toggle}
-        activeOpacity={0.7}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          backgroundColor: colors.card,
-          borderRadius: radius.xl,
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.lg,
-          marginBottom: spacing.md,
-          borderWidth: 1,
-          borderColor: colors.cardBorder,
-          ...shadows.sm,
-          gap: spacing.sm,
-        }}
-      >
+      <PressableRow onPress={toggle} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.xl, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.cardBorder, ...shadows.sm, gap: spacing.sm, }} >
         <View style={{
           width: 32,
           height: 32,
@@ -98,7 +83,7 @@ export function CollapsibleSection({ summaryItems, children, defaultExpanded = f
         <Animated.View style={{ transform: [{ rotate: rotation }] }}>
           <Feather name="chevron-down" size={iconSizes.lg} color={colors.mutedForeground} />
         </Animated.View>
-      </TouchableOpacity>
+      </PressableRow>
 
       {expanded && (
         <View>

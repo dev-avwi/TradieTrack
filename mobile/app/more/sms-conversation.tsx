@@ -14,6 +14,7 @@ import {
   Linking,
   Image,
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -503,36 +504,23 @@ export default function SmsConversationScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <PressableRow style={styles.backButton} onPress={() => router.back()}>
             <Feather name="chevron-left" size={22} color={colors.foreground} />
-          </TouchableOpacity>
+          </PressableRow>
 
           <View style={styles.avatar}>
             <Feather name="message-circle" size={18} color={colors.primary} />
           </View>
 
-          <TouchableOpacity 
-            style={styles.headerInfo} 
-            onPress={() => {
-              const jid = jobIdParam || (messages[0] as any)?.jobId;
-              if (jid) {
-                router.push(`/job/${jid}` as any);
-              }
-            }}
-            activeOpacity={jobIdParam ? 0.6 : 1}
-          >
+          <PressableRow style={styles.headerInfo} onPress={() => { const jid = jobIdParam || (messages[0] as any)?.jobId; if (jid) { router.push(`/job/${jid}` as any); } }} >
             <Text style={styles.headerName} numberOfLines={1}>{clientName}</Text>
             <Text style={styles.headerPhone}>{clientPhone}</Text>
-          </TouchableOpacity>
+          </PressableRow>
 
           {clientPhone ? (
-            <TouchableOpacity
-              onPress={() => Linking.openURL(`tel:${clientPhone}`)}
-              style={styles.callButton}
-              activeOpacity={0.7}
-            >
+            <PressableRow onPress={() => Linking.openURL(`tel:${clientPhone}`)} style={styles.callButton} >
               <Feather name="phone" size={16} color={colors.success} />
-            </TouchableOpacity>
+            </PressableRow>
           ) : null}
         </View>
 
@@ -605,17 +593,13 @@ export default function SmsConversationScreen() {
                       {msg.mediaUrls && Array.isArray(msg.mediaUrls) && msg.mediaUrls.length > 0 && (
                         <View style={{ marginBottom: msg.body ? 6 : 0 }}>
                           {msg.mediaUrls.map((url: string, i: number) => (
-                            <TouchableOpacity 
-                              key={`media-${i}`} 
-                              onPress={() => Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open image'))}
-                              activeOpacity={0.8}
-                            >
+                            <PressableRow key={`media-${i}`} onPress={() => Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open image'))} >
                               <Image
                                 source={{ uri: url }}
                                 style={{ width: 200, height: 200, borderRadius: 8, marginBottom: i < msg.mediaUrls.length - 1 ? 4 : 0 }}
                                 resizeMode="cover"
                               />
-                            </TouchableOpacity>
+                            </PressableRow>
                           ))}
                         </View>
                       )}
@@ -653,62 +637,24 @@ export default function SmsConversationScreen() {
             <View style={styles.quickRepliesRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRepliesScroll}>
                 {quickReplies.map((template) => (
-                  <TouchableOpacity
-                    key={template.id}
-                    style={styles.quickChip}
-                    onPress={() => {
-                      setMessageText(template.message);
-                      setShowQuickReplies(false);
-                    }}
-                    onLongPress={() => {
-                      Alert.alert(template.label, template.message, [
-                        { text: 'Edit first', onPress: () => { setMessageText(template.message); setShowQuickReplies(false); }},
-                        { text: 'Send now', onPress: async () => {
-                          setShowQuickReplies(false);
-                          setMessageText(template.message);
-                          setIsSending(true);
-                          try {
-                            await api.post('/api/sms/send', { clientPhone, message: template.message, conversationId: id });
-                            setMessageText('');
-                            await loadMessages();
-                            scrollRef.current?.scrollToEnd({ animated: true });
-                          } catch { Alert.alert('Error', 'Failed to send SMS.'); }
-                          finally { setIsSending(false); }
-                        }},
-                        { text: 'Cancel', style: 'cancel' },
-                      ]);
-                    }}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={template.id} style={styles.quickChip} onPress={() => { setMessageText(template.message); setShowQuickReplies(false); }} onLongPress={() => { Alert.alert(template.label, template.message, [ { text: 'Edit first', onPress: () => { setMessageText(template.message); setShowQuickReplies(false); }}, { text: 'Send now', onPress: async () => { setShowQuickReplies(false); setMessageText(template.message); setIsSending(true); try { await api.post('/api/sms/send', { clientPhone, message: template.message, conversationId: id }); setMessageText(''); await loadMessages(); scrollRef.current?.scrollToEnd({ animated: true }); } catch { Alert.alert('Error', 'Failed to send SMS.'); } finally { setIsSending(false); } }}, { text: 'Cancel', style: 'cancel' }, ]); }} >
                     <Feather name={template.icon} size={12} color={colors.primary} />
                     <Text style={styles.quickChipText}>{template.label}</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </ScrollView>
             </View>
           )}
 
           <View style={styles.composerInner}>
-            <TouchableOpacity
-              style={styles.zapButton}
-              onPress={() => setShowQuickReplies(!showQuickReplies)}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.zapButton} onPress={() => setShowQuickReplies(!showQuickReplies)} >
               <Feather name="zap" size={18} color={showQuickReplies ? colors.primary : colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
 
             {id ? (
-              <TouchableOpacity
-                style={styles.zapButton}
-                onPress={() => {
-                  const jobId = jobIdParam || (messages[0] as any)?.jobId;
-                  if (jobId) router.push(`/job/${jobId}` as any);
-                  else Alert.alert('No Job Linked', 'This conversation is not linked to a specific job.');
-                }}
-                activeOpacity={0.7}
-              >
+              <PressableRow style={styles.zapButton} onPress={() => { const jobId = jobIdParam || (messages[0] as any)?.jobId; if (jobId) router.push(`/job/${jobId}` as any); else Alert.alert('No Job Linked', 'This conversation is not linked to a specific job.'); }} >
                 <Feather name="file-text" size={18} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             ) : null}
 
             <View style={styles.inputWrap}>
@@ -751,18 +697,13 @@ export default function SmsConversationScreen() {
               )}
             </View>
 
-            <TouchableOpacity
-              style={[styles.sendBtn, (!messageText.trim() || isSending) && styles.sendBtnDisabled]}
-              onPress={handleSend}
-              disabled={!messageText.trim() || isSending}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={[styles.sendBtn, (!messageText.trim() || isSending) && styles.sendBtnDisabled]} onPress={handleSend} disabled={!messageText.trim() || isSending} >
               {isSending ? (
                 <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
                 <Feather name="send" size={16} color={messageText.trim() ? colors.primaryForeground : colors.mutedForeground} />
               )}
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       </KeyboardAvoidingView>

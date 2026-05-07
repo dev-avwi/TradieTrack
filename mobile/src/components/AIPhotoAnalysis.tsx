@@ -11,6 +11,7 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import api from '../lib/api';
 import { useTheme, ThemeColors } from '../lib/theme';
@@ -236,9 +237,9 @@ export function AIPhotoAnalysisModal({
                 <Feather name="zap" size={20} color={colors.mutedForeground} />
                 <Text style={[styles.modalTitle, { color: colors.mutedForeground }]}>AI Photo Analysis</Text>
               </View>
-              <TouchableOpacity onPress={onClose}>
+              <PressableRow onPress={onClose}>
                 <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
             <View style={styles.disabledContent}>
               <Feather name="alert-circle" size={48} color={colors.mutedForeground} />
@@ -265,9 +266,9 @@ export function AIPhotoAnalysisModal({
               <Feather name="zap" size={20} color={colors.primary} />
               <Text style={styles.modalTitle}>Analyse with AI</Text>
             </View>
-            <TouchableOpacity onPress={onClose} disabled={isAnalysing}>
+            <PressableRow onPress={onClose} disabled={isAnalysing}>
               <Feather name="x" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
           {!isAnalysing && !analysisText && (
@@ -277,12 +278,12 @@ export function AIPhotoAnalysisModal({
                   Select photos to analyse ({selectedPhotoIds.size}/10)
                 </Text>
                 <View style={styles.selectionActions}>
-                  <TouchableOpacity onPress={selectAll} style={styles.selectionButton}>
+                  <PressableRow onPress={selectAll} style={styles.selectionButton}>
                     <Text style={styles.selectionButtonText}>Select All</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={deselectAll} style={styles.selectionButton}>
+                  </PressableRow>
+                  <PressableRow onPress={deselectAll} style={styles.selectionButton}>
                     <Text style={styles.selectionButtonText}>Clear</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
               
@@ -290,12 +291,7 @@ export function AIPhotoAnalysisModal({
                 {imagePhotos.map((photo) => {
                   const isSelected = selectedPhotoIds.has(photo.id);
                   return (
-                    <TouchableOpacity
-                      key={photo.id}
-                      style={[styles.photoItem, isSelected && styles.photoItemSelected]}
-                      onPress={() => togglePhotoSelection(photo.id)}
-                      activeOpacity={0.8}
-                    >
+                    <PressableRow key={photo.id} style={[styles.photoItem, isSelected && styles.photoItemSelected]} onPress={() => togglePhotoSelection(photo.id)} >
                       <Image
                         source={{ uri: photo.signedUrl || photo.thumbnailUrl || photo.url || '' }}
                         style={styles.photoImage}
@@ -304,23 +300,18 @@ export function AIPhotoAnalysisModal({
                       <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
                         {isSelected && <Feather name="check" size={14} color={colors.white} />}
                       </View>
-                    </TouchableOpacity>
+                    </PressableRow>
                   );
                 })}
               </ScrollView>
 
               <View style={styles.footer}>
-                <TouchableOpacity
-                  style={[styles.analyseButton, selectedPhotoIds.size === 0 && styles.buttonDisabled]}
-                  onPress={startAnalysis}
-                  disabled={selectedPhotoIds.size === 0}
-                  activeOpacity={0.8}
-                >
+                <PressableRow style={[styles.analyseButton, selectedPhotoIds.size === 0 && styles.buttonDisabled]} onPress={startAnalysis} disabled={selectedPhotoIds.size === 0} >
                   <Feather name="zap" size={18} color={colors.primaryForeground} />
                   <Text style={styles.analyseButtonText}>
                     Analyse {selectedPhotoIds.size} Photo{selectedPhotoIds.size !== 1 ? 's' : ''} with AI
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             </>
           )}
@@ -341,10 +332,10 @@ export function AIPhotoAnalysisModal({
               ) : (
                 <Text style={styles.waitingText}>AI is examining your photos...</Text>
               )}
-              <TouchableOpacity style={styles.cancelButton} onPress={cancelAnalysis} activeOpacity={0.8}>
+              <PressableRow style={styles.cancelButton} onPress={cancelAnalysis} >
                 <Feather name="x" size={16} color={colors.foreground} />
                 <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
 
@@ -360,28 +351,18 @@ export function AIPhotoAnalysisModal({
                 <Text style={styles.resultText}>{analysisText}</Text>
               </ScrollView>
               <View style={styles.resultActions}>
-                <TouchableOpacity
-                  style={[styles.addButton, isAddingToNotes && styles.buttonDisabled]}
-                  onPress={addToNotes}
-                  disabled={isAddingToNotes}
-                  activeOpacity={0.8}
-                >
+                <PressableRow style={[styles.addButton, isAddingToNotes && styles.buttonDisabled]} onPress={addToNotes} disabled={isAddingToNotes} >
                   {isAddingToNotes ? (
                     <ActivityIndicator size="small" color={colors.primaryForeground} />
                   ) : (
                     <Feather name="plus" size={16} color={colors.primaryForeground} />
                   )}
                   <Text style={styles.addButtonText}>Add to Notes</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.discardButton, isAddingToNotes && styles.buttonDisabled]}
-                  onPress={discardAnalysis}
-                  disabled={isAddingToNotes}
-                  activeOpacity={0.8}
-                >
+                </PressableRow>
+                <PressableRow style={[styles.discardButton, isAddingToNotes && styles.buttonDisabled]} onPress={discardAnalysis} disabled={isAddingToNotes} >
                   <Feather name="x" size={16} color={colors.foreground} />
                   <Text style={styles.discardButtonText}>Start Over</Text>
-                </TouchableOpacity>
+                </PressableRow>
               </View>
             </View>
           )}

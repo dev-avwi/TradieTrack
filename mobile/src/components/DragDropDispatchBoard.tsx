@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { PressableRow } from './ui/PressableRow';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -309,28 +310,14 @@ export function DragDropDispatchBoard({
     const left = TIME_COLUMN_WIDTH + columnIndex * columnWidth + 2;
 
     return (
-      <TouchableOpacity
-        style={[
-          styles.timelineJobCard,
-          {
-            top: position.top,
-            height: position.height,
-            left,
-            width: columnWidth - 4,
-            backgroundColor: statusColor.bg,
-            borderLeftColor: statusColor.text,
-          },
-        ]}
-        onPress={() => onJobPress(job.id)}
-        activeOpacity={0.8}
-      >
+      <PressableRow style={[ styles.timelineJobCard, { top: position.top, height: position.height, left, width: columnWidth - 4, backgroundColor: statusColor.bg, borderLeftColor: statusColor.text, }, ]} onPress={() => onJobPress(job.id)} >
         <Text style={[styles.timelineJobTitle, { color: statusColor.text }]} numberOfLines={1}>
           {job.title}
         </Text>
         <Text style={styles.timelineJobTime}>
           {job.scheduledTime}
         </Text>
-      </TouchableOpacity>
+      </PressableRow>
     );
   };
 

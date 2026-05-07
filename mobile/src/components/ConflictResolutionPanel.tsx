@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useOfflineStore } from '../lib/offline-storage';
 import offlineStorage, { ConflictRecord } from '../lib/offline-storage';
 import { useTheme } from '../lib/theme';
+import { PressableRow } from './ui/PressableRow';
 
 interface ConflictItemProps {
   conflict: ConflictRecord;
@@ -45,11 +46,7 @@ function ConflictItem({ conflict, onResolve }: ConflictItemProps) {
   
   return (
     <View style={[styles.conflictItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <TouchableOpacity 
-        style={styles.conflictHeader}
-        onPress={() => setExpanded(!expanded)}
-        activeOpacity={0.7}
-      >
+      <PressableRow style={styles.conflictHeader} onPress={() => setExpanded(!expanded)} >
         <View style={styles.conflictInfo}>
           <View style={[styles.conflictBadge, { backgroundColor: colors.destructiveLight }]}>
             <Text style={[styles.conflictBadgeText, { color: colors.destructive }]}>{getEntityLabel(conflict.entityType)}</Text>
@@ -61,7 +58,7 @@ function ConflictItem({ conflict, onResolve }: ConflictItemProps) {
           size={20} 
           color={colors.mutedForeground} 
         />
-      </TouchableOpacity>
+      </PressableRow>
       
       {expanded && (
         <View style={[styles.conflictDetails, { borderTopColor: colors.border }]}>
@@ -89,20 +86,14 @@ function ConflictItem({ conflict, onResolve }: ConflictItemProps) {
           </View>
           
           <View style={styles.resolutionButtons}>
-            <TouchableOpacity 
-              style={[styles.resolutionButton, { backgroundColor: colors.primary + '15' }]}
-              onPress={() => onResolve('kept_server')}
-            >
+            <PressableRow style={[styles.resolutionButton, { backgroundColor: colors.primary + '15' }]} onPress={() => onResolve('kept_server')} >
               <Ionicons name="cloud-outline" size={16} color={colors.primary} />
               <Text style={[styles.resolutionButtonText, { color: colors.primary }]}>Use Server</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.resolutionButton, { backgroundColor: colors.warning + '15' }]}
-              onPress={() => onResolve('kept_local')}
-            >
+            </PressableRow>
+            <PressableRow style={[styles.resolutionButton, { backgroundColor: colors.warning + '15' }]} onPress={() => onResolve('kept_local')} >
               <Ionicons name="phone-portrait-outline" size={16} color={colors.warning} />
               <Text style={[styles.resolutionButtonText, { color: colors.warning }]}>Keep Mine</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
         </View>
       )}
@@ -154,18 +145,13 @@ export function ConflictResolutionPanel() {
   
   return (
     <>
-      <TouchableOpacity 
-        style={[styles.conflictBanner, { backgroundColor: colors.destructiveLight, borderBottomColor: colors.destructive + '30' }]}
-        onPress={() => setVisible(true)}
-        activeOpacity={0.7}
-        data-testid="banner-sync-conflicts"
-      >
+      <PressableRow style={[styles.conflictBanner, { backgroundColor: colors.destructiveLight, borderBottomColor: colors.destructive + '30' }]} onPress={() => setVisible(true)} data-testid="banner-sync-conflicts" >
         <Ionicons name="alert-circle" size={18} color={colors.destructive} />
         <Text style={[styles.conflictBannerText, { color: colors.destructive }]}>
           {unresolvedConflictCount} sync conflict{unresolvedConflictCount !== 1 ? 's' : ''} need attention
         </Text>
         <Ionicons name="chevron-forward" size={18} color={colors.destructive} />
-      </TouchableOpacity>
+      </PressableRow>
       
       <Modal
         visible={visible}
@@ -176,13 +162,9 @@ export function ConflictResolutionPanel() {
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Sync Conflicts</Text>
-            <TouchableOpacity 
-              onPress={() => setVisible(false)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              data-testid="button-close-conflicts"
-            >
+            <PressableRow onPress={() => setVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} data-testid="button-close-conflicts" >
               <Ionicons name="close" size={24} color={colors.mutedForeground} />
-            </TouchableOpacity>
+            </PressableRow>
           </View>
           
           <Text style={[styles.modalDescription, { color: colors.secondaryText }]}>

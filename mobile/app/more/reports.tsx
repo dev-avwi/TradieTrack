@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Rect, Path, Line, Text as SvgText, G } from 'react-native-svg';
@@ -1111,49 +1112,31 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               <Text style={styles.pageTitle}>Reports</Text>
               <Text style={styles.pageSubtitle}>Business analytics & insights</Text>
             </View>
-            <TouchableOpacity 
-              style={styles.exportButton} 
-              onPress={handleExport}
-              disabled={!summary}
-              activeOpacity={0.7}
-            >
+            <PressableRow style={styles.exportButton} onPress={handleExport} disabled={!summary} >
               <Feather name="share" size={iconSizes.lg} color={summary ? colors.foreground : colors.mutedForeground} />
               <Text style={[styles.exportButtonText, !summary && { color: colors.mutedForeground }]}>Share</Text>
-            </TouchableOpacity>
+            </PressableRow>
           </View>
 
-          <TouchableOpacity
-            style={styles.periodSelector}
-            onPress={() => setShowPeriodPicker(!showPeriodPicker)}
-            activeOpacity={0.7}
-          >
+          <PressableRow style={styles.periodSelector} onPress={() => setShowPeriodPicker(!showPeriodPicker)} >
             <Feather name="calendar" size={iconSizes.lg} color={colors.primary} />
             <Text style={styles.periodSelectorText}>
               {PERIODS.find(p => p.key === period)?.label}
             </Text>
             <Feather name={showPeriodPicker ? "chevron-up" : "chevron-down"} size={iconSizes.lg} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          </PressableRow>
 
           {showPeriodPicker && (
             <View style={styles.periodPicker}>
               {PERIODS.map((p, index) => (
-                <TouchableOpacity
-                  key={p.key}
-                  style={[
-                    styles.periodOption,
-                    period === p.key && styles.periodOptionActive,
-                    index === PERIODS.length - 1 && { borderBottomWidth: 0 }
-                  ]}
-                  onPress={() => handlePeriodChange(p.key)}
-                  activeOpacity={0.7}
-                >
+                <PressableRow key={p.key} style={[ styles.periodOption, period === p.key && styles.periodOptionActive, index === PERIODS.length - 1 && { borderBottomWidth: 0 } ]} onPress={() => handlePeriodChange(p.key)} >
                   <Text style={[
                     styles.periodOptionText,
                     period === p.key && styles.periodOptionTextActive
                   ]}>
                     {p.label}
                   </Text>
-                </TouchableOpacity>
+                </PressableRow>
               ))}
             </View>
           )}
@@ -1162,9 +1145,9 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
             <View style={styles.errorContainer}>
               <Feather name="alert-circle" size={40} color={colors.destructive} />
               <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={refreshData} activeOpacity={0.7}>
+              <PressableRow style={styles.retryButton} onPress={refreshData} >
                 <Text style={styles.retryButtonText}>Try Again</Text>
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
 
@@ -1173,12 +1156,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
               {REPORT_TABS.map((tab) => {
                 const isActive = activeReportTab === tab.key;
                 return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={[styles.reportTab, isActive && styles.reportTabActive]}
-                    onPress={() => setActiveReportTab(tab.key)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={tab.key} style={[styles.reportTab, isActive && styles.reportTabActive]} onPress={() => setActiveReportTab(tab.key)} >
                     <Feather
                       name={tab.icon as any}
                       size={iconSizes.md}
@@ -1187,7 +1165,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                     <Text style={[styles.reportTabText, isActive && styles.reportTabTextActive]}>
                       {tab.label}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 );
               })}
             </ScrollView>
@@ -1887,7 +1865,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                 Choose a report to share or export as CSV or text.
               </Text>
               
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('income')} activeOpacity={0.7}>
+              <PressableRow style={styles.reportCard} onPress={() => handleReportDownload('income')} >
                 <View style={[styles.reportCardIcon, { backgroundColor: colors.successLight }]}>
                   <Feather name="dollar-sign" size={20} color={colors.success} />
                 </View>
@@ -1896,9 +1874,9 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardSubtitle}>Detailed breakdown of all income</Text>
                 </View>
                 <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('jobs')} activeOpacity={0.7}>
+              <PressableRow style={styles.reportCard} onPress={() => handleReportDownload('jobs')} >
                 <View style={styles.reportCardIcon}>
                   <Feather name="briefcase" size={20} color={colors.primary} />
                 </View>
@@ -1907,9 +1885,9 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardSubtitle}>Jobs by status and completion rate</Text>
                 </View>
                 <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('quotes')} activeOpacity={0.7}>
+              <PressableRow style={styles.reportCard} onPress={() => handleReportDownload('quotes')} >
                 <View style={[styles.reportCardIcon, { backgroundColor: colors.infoLight }]}>
                   <Feather name="file-text" size={20} color={colors.info} />
                 </View>
@@ -1918,9 +1896,9 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardSubtitle}>Quote conversion and acceptance rates</Text>
                 </View>
                 <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity style={styles.reportCard} onPress={() => handleReportDownload('tax')} activeOpacity={0.7}>
+              <PressableRow style={styles.reportCard} onPress={() => handleReportDownload('tax')} >
                 <View style={[styles.reportCardIcon, { backgroundColor: colors.warningLight }]}>
                   <Feather name="percent" size={20} color={colors.warning} />
                 </View>
@@ -1929,9 +1907,9 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardSubtitle}>GST collected and payable</Text>
                 </View>
                 <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
 
-              <TouchableOpacity style={[styles.reportCard, { marginTop: spacing.sm }]} onPress={handleExport} activeOpacity={0.7}>
+              <PressableRow style={[styles.reportCard, { marginTop: spacing.sm }]} onPress={handleExport} >
                 <View style={[styles.reportCardIcon, { backgroundColor: colors.primaryLight }]}>
                   <Feather name="share-2" size={20} color={colors.primary} />
                 </View>
@@ -1940,7 +1918,7 @@ Generated: ${new Date().toLocaleDateString('en-AU')}`;
                   <Text style={styles.reportCardSubtitle}>Share complete business summary</Text>
                 </View>
                 <Feather name="share" size={iconSizes.lg} color={colors.mutedForeground} />
-              </TouchableOpacity>
+              </PressableRow>
             </View>
           )}
         </ScrollView>

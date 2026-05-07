@@ -12,6 +12,7 @@ import { spacing, radius, typography } from '../../src/lib/design-tokens';
 import { useMapsStore, MapsPreference } from '../../src/lib/maps-store';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
+import { PressableRow } from '../../src/components/ui/PressableRow';
 
 const MAP_COLORS = [
   { name: 'Blue', hex: '#3b82f6' },
@@ -414,13 +415,7 @@ function MapsPreferenceSection() {
       <View style={styles.card}>
         <View style={styles.mapsOptionRow}>
           {options.map(({ value, icon, label, bgColor }) => (
-            <TouchableOpacity
-              key={value || 'none'}
-              style={[styles.mapsOption, mapsPreference === value && styles.mapsOptionActive]}
-              onPress={() => setMapsPreference(value)}
-              activeOpacity={0.7}
-              data-testid={`button-maps-pref-${value}`}
-            >
+            <PressableRow key={value || 'none'} style={[styles.mapsOption, mapsPreference === value && styles.mapsOptionActive]} onPress={() => setMapsPreference(value)} data-testid={`button-maps-pref-${value}`} >
               <View style={[
                 styles.mapsOptionIcon,
                 { backgroundColor: mapsPreference === value ? bgColor : colors.mutedForeground + '20' }
@@ -435,7 +430,7 @@ function MapsPreferenceSection() {
                 styles.mapsOptionLabel,
                 mapsPreference === value && styles.mapsOptionLabelActive
               ]}>{label}</Text>
-            </TouchableOpacity>
+            </PressableRow>
           ))}
         </View>
         {!mapsPreference && (
@@ -614,9 +609,9 @@ export default function AppSettingsScreen() {
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <PressableRow onPress={() => router.back()} style={styles.backButton}>
               <Feather name="arrow-left" size={24} color={colors.foreground} />
-            </TouchableOpacity>
+            </PressableRow>
             <View style={styles.headerContent}>
               <Text style={styles.headerTitle}>App Settings</Text>
               <Text style={styles.headerSubtitle}>Customize your experience</Text>
@@ -638,12 +633,7 @@ export default function AppSettingsScreen() {
                   { mode: 'dark' as ThemeMode, icon: 'moon', label: 'Dark' },
                   { mode: 'system' as ThemeMode, icon: 'smartphone', label: 'Auto' },
                 ].map(({ mode, icon, label }) => (
-                  <TouchableOpacity
-                    key={mode}
-                    style={[styles.themeOption, themeMode === mode && styles.themeOptionActive]}
-                    onPress={() => setThemeMode(mode)}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow key={mode} style={[styles.themeOption, themeMode === mode && styles.themeOptionActive]} onPress={() => setThemeMode(mode)} >
                     <View style={[
                       styles.themeOptionIcon, 
                       { backgroundColor: themeMode === mode ? colors.primary : colors.mutedForeground + '20' }
@@ -658,7 +648,7 @@ export default function AppSettingsScreen() {
                       styles.themeOptionLabel,
                       themeMode === mode && styles.themeOptionLabelActive
                     ]}>{label}</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 ))}
               </View>
             </View>
@@ -703,25 +693,14 @@ export default function AppSettingsScreen() {
                     const isTaken = colorOptions.length > 0 && !isAvailable && !isCurrentUser;
                     
                     return (
-                      <TouchableOpacity
-                        key={color.hex}
-                        style={[
-                          styles.colorOption,
-                          { backgroundColor: color.hex },
-                          isSelected && styles.colorOptionSelected,
-                          isTaken && styles.colorOptionTaken,
-                        ]}
-                        onPress={() => handleColorSelect(color.hex, isAvailable || isCurrentUser)}
-                        disabled={isTaken || isSavingColor}
-                        activeOpacity={0.7}
-                      >
+                      <PressableRow key={color.hex} style={[ styles.colorOption, { backgroundColor: color.hex }, isSelected && styles.colorOptionSelected, isTaken && styles.colorOptionTaken, ]} onPress={() => handleColorSelect(color.hex, isAvailable || isCurrentUser)} disabled={isTaken || isSavingColor} >
                         {isSelected && <Feather name="check" size={18} color={colors.white} />}
                         {isTaken && (
                           <View style={styles.takenOverlay}>
                             <Feather name="x" size={14} color={colors.white} />
                           </View>
                         )}
-                      </TouchableOpacity>
+                      </PressableRow>
                     );
                   })}
                 </View>
@@ -834,15 +813,7 @@ export default function AppSettingsScreen() {
                 </View>
                 
                 <View style={styles.syncActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.syncButton,
-                      { backgroundColor: isOnline && !isSyncing && !isFullSyncing ? colors.primary : colors.muted }
-                    ]}
-                    onPress={handleSync}
-                    disabled={!isOnline || isSyncing || isFullSyncing}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={[ styles.syncButton, { backgroundColor: isOnline && !isSyncing && !isFullSyncing ? colors.primary : colors.muted } ]} onPress={handleSync} disabled={!isOnline || isSyncing || isFullSyncing} >
                     {(isSyncing || isFullSyncing) ? (
                       <ActivityIndicator size="small" color={colors.white} />
                     ) : (
@@ -851,25 +822,17 @@ export default function AppSettingsScreen() {
                     <Text style={[styles.syncButtonText, { color: isOnline ? colors.white : colors.mutedForeground }]}>
                       {(isSyncing || isFullSyncing) ? 'Syncing...' : 'Sync Now'}
                     </Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                   
-                  <TouchableOpacity
-                    style={[styles.syncButton, styles.outlineButton, { borderColor: colors.warning }]}
-                    onPress={handleRetryFailed}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={[styles.syncButton, styles.outlineButton, { borderColor: colors.warning }]} onPress={handleRetryFailed} >
                     <Feather name="rotate-ccw" size={16} color={colors.warning} />
                     <Text style={[styles.syncButtonText, { color: colors.warning }]}>Retry Failed</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
 
-                  <TouchableOpacity
-                    style={[styles.syncButton, styles.outlineButton, { borderColor: colors.border }]}
-                    onPress={handleClearCache}
-                    activeOpacity={0.7}
-                  >
+                  <PressableRow style={[styles.syncButton, styles.outlineButton, { borderColor: colors.border }]} onPress={handleClearCache} >
                     <Feather name="trash-2" size={16} color={colors.mutedForeground} />
                     <Text style={[styles.syncButtonText, { color: colors.mutedForeground }]}>Clear</Text>
-                  </TouchableOpacity>
+                  </PressableRow>
                 </View>
               </View>
               
