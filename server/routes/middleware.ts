@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { db } from "../storage";
 import { storage } from "../storage";
 import { sql } from "drizzle-orm";
@@ -48,9 +48,93 @@ export const generalApiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req: any) => {
-    return req.path.startsWith('/assets') || req.path.startsWith('/public') || req.path === '/api/health';
+    const p = req.path || '';
+    return p.startsWith('/assets') || p.startsWith('/public')
+      || p === '/api/health' || p === '/health'
+      || p === '/api/metrics' || p === '/metrics';
   },
 });
+
+// Per-user keyed limiters for heavy endpoints. These are *additive* on top of
+// the IP-based generalApiLimiter and exist to prevent a single authenticated
+// user from monopolising scarce server resources (Puppeteer slots, OpenAI
+// quota, Twilio media, etc).
+const perUserKey = (req: any, res: any) => {
+  const id = req.userId || req.session?.userId;
+  if (id) return `u:${id}`;
+  // Fall back to IPv6-safe IP key when unauthenticated.
+  return ipKeyGenerator(req.ip || '', 56);
+};
+
+export const pdfPerUserLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  keyGenerator: perUserKey,
+  message: { error: 'Too many PDF generations. Please wait a moment.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const aiPerUserLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  keyGenerator: perUserKey,
+  message: { error: 'Too many AI requests. Please wait a moment.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const visionPerUserLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: perUserKey,
+  message: { error: 'Too many image-analysis requests. Please wait a moment.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const photoUploadPerUserLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  keyGenerator: perUserKey,
+  message: { error: 'Too many photo uploads. Please wait a moment.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const transcribePerUserLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  keyGenerator: perUserKey,
+  message: { error: 'Too many transcription requests. Please wait a moment.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Express error-handling middleware that converts a `BackpressureError`
+ * thrown anywhere in the request lifecycle into a polite HTTP 429 with a
+ * `Retry-After` header so callers (web + mobile) can back off gracefully.
+ */
+export function backpressureErrorHandler(
+  err: any,
+  _req: any,
+  res: any,
+  next: any,
+) {
+  if (err && err.name === 'BackpressureError') {
+    const retryAfter = Math.max(1, Math.min(60, err.retryAfterSec || 5));
+    if (!res.headersSent) {
+      res.set('Retry-After', String(retryAfter));
+      return res.status(429).json({
+        error: err.message,
+        type: 'BACKPRESSURE',
+        retryAfter,
+      });
+    }
+  }
+  return next(err);
+}
 
 export const requireAuth = async (req: any, res: any, next: any) => {
   let userId = req.session?.userId;

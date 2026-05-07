@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { aiQueue, visionQueue } from "./concurrency";
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -550,12 +551,12 @@ Each suggestion should:
 Return ONLY a JSON object like: {"suggestions": ["suggestion 1", "suggestion 2", "suggestion 3", "suggestion 4"]}`;
     }
 
-    const response = await openai.chat.completions.create({
+    const response = await aiQueue.run(() => openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       max_tokens: 400,
-    });
+    }));
 
     const content = response.choices[0]?.message?.content || '{"suggestions": []}';
     const parsed = JSON.parse(content);
@@ -567,7 +568,8 @@ Return ONLY a JSON object like: {"suggestions": ["suggestion 1", "suggestion 2",
     }
     
     return [];
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'BackpressureError') throw error;
     console.error('AI suggestion generation error:', error);
     // Return role-specific fallback suggestions
     if (context.userRole === 'worker') {
@@ -822,7 +824,7 @@ You can do ALL of these for ${context.tradieFirstName}:
 - Proactively suggest cashflow improvements and business growth opportunities`;
     }
 
-    const response = await openai.chat.completions.create({
+    const response = await aiQueue.run(() => openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
@@ -831,7 +833,7 @@ You can do ALL of these for ${context.tradieFirstName}:
       tools: tools,
       tool_choice: "auto",
       max_tokens: 600,
-    });
+    }));
 
     const responseMessage = response.choices[0]?.message;
     
@@ -1118,7 +1120,8 @@ You can do ALL of these for ${context.tradieFirstName}:
       suggestedFollowups: generateFollowups(context)
     };
 
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'BackpressureError') throw error;
     console.error('AI chat error:', error);
     return { response: "I'm having a moment. Give it another shot?" };
   }
@@ -1677,7 +1680,7 @@ Return a JSON object with this exact structure:
       userContent = userPrompt;
     }
 
-    const completion = await openai.chat.completions.create({
+    const completion = await aiQueue.run(() => openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
@@ -1686,7 +1689,7 @@ Return a JSON object with this exact structure:
       temperature: 0.7,
       max_tokens: 1500,
       response_format: { type: "json_object" }
-    });
+    }));
 
     const responseText = completion.choices[0]?.message?.content || '{}';
     
@@ -1739,7 +1742,8 @@ Return a JSON object with this exact structure:
       confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'medium',
       notes: Array.isArray(parsed.notes) ? parsed.notes.map(String).slice(0, 5) : []
     };
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.name === 'BackpressureError') throw error;
     console.error('AI quote generation error:', error);
     return {
       success: false,
@@ -2377,7 +2381,7 @@ export async function detectHazards(imageBuffers: Buffer[], jobContext: string):
   }
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await visionQueue.run(() => openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
@@ -2420,7 +2424,7 @@ Be conservative — only flag clear, visible hazards. Maximum 8 hazards.`
       response_format: { type: "json_object" },
       max_tokens: 2000,
       temperature: 0.2
-    });
+    }));
 
     const content = response.choices[0]?.message?.content || '{"hazards":[]}';
     const parsed = JSON.parse(content);
@@ -2438,6 +2442,7 @@ Be conservative — only flag clear, visible hazards. Maximum 8 hazards.`
 
     return { hazards, disclaimer };
   } catch (error: any) {
+    if (error?.name === 'BackpressureError') throw error;
     console.error('[AI] Hazard detection error:', error);
     return { hazards: [], disclaimer };
   }
@@ -2465,7 +2470,7 @@ export async function analyzeReceipt(imageBuffer: Buffer): Promise<ReceiptAnalys
   const mimeType = 'image/jpeg';
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await visionQueue.run(() => openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
@@ -2500,7 +2505,7 @@ Return ONLY a JSON object in this exact format:
       response_format: { type: "json_object" },
       max_tokens: 1500,
       temperature: 0.1
-    });
+    }));
 
     const content = response.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(content);
@@ -2520,6 +2525,7 @@ Return ONLY a JSON object in this exact format:
       disclaimer: 'AI-extracted data — please review all fields before saving.',
     };
   } catch (error: any) {
+    if (error?.name === 'BackpressureError') throw error;
     console.error('[AI] Receipt analysis error:', error);
     throw new Error('Failed to analyse receipt. Please try again or enter details manually.');
   }
@@ -2532,7 +2538,7 @@ export async function categorizePhoto(imageBuffer: Buffer, jobContext: string): 
     const base64Image = imageBuffer.toString('base64');
     const mimeType = 'image/jpeg';
 
-    const response = await openai.chat.completions.create({
+    const response = await visionQueue.run(() => openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
@@ -2555,7 +2561,7 @@ export async function categorizePhoto(imageBuffer: Buffer, jobContext: string): 
       response_format: { type: "json_object" },
       max_tokens: 50,
       temperature: 0.1
-    });
+    }));
 
     const content = response.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(content);
@@ -2568,6 +2574,7 @@ export async function categorizePhoto(imageBuffer: Buffer, jobContext: string): 
 
     return 'general';
   } catch (error: any) {
+    if (error?.name === 'BackpressureError') throw error;
     console.error('[AI] Photo categorization error:', error);
     return 'general';
   }

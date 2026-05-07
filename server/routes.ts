@@ -21,7 +21,14 @@ import {
   messageSendLimiter,
   generalApiLimiter,
   setupOnboardingGuard,
+  pdfPerUserLimiter,
+  aiPerUserLimiter,
+  visionPerUserLimiter,
+  photoUploadPerUserLimiter,
+  transcribePerUserLimiter,
+  backpressureErrorHandler,
 } from "./routes/middleware";
+import { isBackpressure, send429, aiQueue } from "./concurrency";
 import {
   dbCheckEnRouteNotif,
   chatRateLimiterMiddleware,
@@ -288,6 +295,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const latency = Date.now() - startTime;
     const status = dbOk ? "healthy" : "degraded";
     const { pool } = await import('./storage');
+    const { getAllQueueStats } = await import('./concurrency');
+    const { getCacheStats } = await import('./cache');
+    const { getMetricsSnapshot } = await import('./metrics');
+    const mem = process.memoryUsage();
+    const metrics = getMetricsSnapshot();
     res.status(dbOk ? 200 : 503).json({
       status,
       timestamp: new Date().toISOString(),
@@ -297,6 +309,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       database: dbOk ? "connected" : "unreachable",
       responseMs: latency,
       pool: { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount },
+      memoryMb: {
+        rss: Math.round(mem.rss / 1024 / 1024),
+        heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+      },
+      queues: getAllQueueStats(),
+      caches: getCacheStats(),
+      requests: metrics.totals,
+      latency: metrics.overall,
+    });
+  });
+
+  // Detailed in-memory metrics: top routes by traffic with p50/p95/p99.
+  // Intentionally public read-only for ops/load-test scripts; contains no PII.
+  app.get("/api/metrics", async (req: any, res) => {
+    const { getMetricsSnapshot } = await import('./metrics');
+    const { getAllQueueStats } = await import('./concurrency');
+    const { getCacheStats } = await import('./cache');
+    const { pool } = await import('./storage');
+    const mem = process.memoryUsage();
+    res.json({
+      timestamp: new Date().toISOString(),
+      uptimeSec: Math.floor(process.uptime()),
+      ...getMetricsSnapshot(),
+      queues: getAllQueueStats(),
+      caches: getCacheStats(),
+      pool: { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount },
+      memoryMb: {
+        rss: Math.round(mem.rss / 1024 / 1024),
+        heapUsed: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(mem.heapTotal / 1024 / 1024),
+      },
     });
   });
 
@@ -6466,13 +6510,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Assistant Routes - Enhanced with rich business context
-  app.get("/api/ai/suggestions", requireAuth, requireProSubscription, async (req: any, res) => {
+  app.get("/api/ai/suggestions", requireAuth, aiPerUserLimiter, requireProSubscription, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const context = await gatherAIContext(req.userId, storage, userContext);
       const suggestions = await generateAISuggestions(context);
       res.json({ suggestions });
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error generating AI suggestions:", error);
       res.status(500).json({ error: "Failed to generate suggestions" });
     }
@@ -6608,7 +6653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/ai/chat", requireAuth, requireProSubscription, async (req: any, res) => {
+  app.post("/api/ai/chat", requireAuth, aiPerUserLimiter, requireProSubscription, async (req: any, res) => {
     try {
       const { message } = req.body;
       
@@ -6621,7 +6666,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chatResponse = await chatWithAI(message, context);
       
       res.json(chatResponse);
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error in AI chat:", error);
       res.status(500).json({ error: "Failed to process chat message" });
     }
@@ -7237,7 +7283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Email Suggestion endpoint - generates professional Australian English email content
-  app.post("/api/ai/email-suggestion", requireAuth, requireProSubscription, async (req: any, res) => {
+  app.post("/api/ai/email-suggestion", requireAuth, aiPerUserLimiter, requireProSubscription, async (req: any, res) => {
     try {
       const { type, clientName, clientFirstName, documentNumber, documentTitle, total, businessName } = req.body;
       
@@ -7262,7 +7308,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(suggestion);
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error generating email suggestion:", error);
       res.status(500).json({ error: "Failed to generate email suggestion" });
     }
@@ -7372,14 +7419,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(suggestions);
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error generating schedule suggestions:", error);
       res.status(500).json({ error: "Failed to generate schedule suggestions" });
     }
   });
 
   // AI Quote Learning endpoint - suggests pricing based on similar past quotes
-  app.post("/api/ai/quote-suggestions", requireAuth, requireProSubscription, async (req: any, res) => {
+  app.post("/api/ai/quote-suggestions", requireAuth, aiPerUserLimiter, requireProSubscription, async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { description, jobType } = req.body;
@@ -7461,7 +7509,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         suggestions,
         message
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error generating quote suggestions:", error);
       res.status(500).json({ error: "Failed to generate quote suggestions" });
     }
@@ -7472,7 +7521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================
 
   // AI Quote Generator from Photos + Voice - THE KILLER FEATURE (team-aware)
-  app.post("/api/ai/generate-quote", requireAuth, requireProSubscription, async (req: any, res) => {
+  app.post("/api/ai/generate-quote", requireAuth, aiPerUserLimiter, requireProSubscription, async (req: any, res) => {
     console.log('[AI Quote] Starting AI quote generation for user:', req.userId);
     try {
       const userContext = await getUserContext(req.userId);
@@ -7513,6 +7562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[AI Quote] Result:', { success: result.success, lineItemCount: result.lineItems?.length, confidence: result.confidence });
       res.json(result);
     } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("[AI Quote] Error generating AI quote:", error?.message || error);
       res.status(500).json({ error: "Failed to generate quote. Please try again." });
     }
@@ -22242,7 +22292,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // PDF Download - Quote (team-aware)
-  app.get("/api/quotes/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
+  app.get("/api/quotes/:id/pdf", requireAuth, pdfPerUserLimiter, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { generateQuotePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
@@ -22338,7 +22388,8 @@ Be specific about materials, colors, and features that would be included.`
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="Quote-${quoteWithItems.number}.pdf"`);
       res.send(pdfBuffer);
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error generating quote PDF:", error);
       res.status(500).json({ error: "Failed to generate quote PDF" });
     }
@@ -22381,14 +22432,15 @@ Be specific about materials, colors, and features that would be included.`
       res.setHeader('Content-Type', 'image/png');
       res.setHeader('Content-Disposition', `inline; filename="Quote-${quoteWithItems.number}.png"`);
       res.send(imageBuffer);
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error generating quote image:", error);
       res.status(500).json({ error: "Failed to generate quote image" });
     }
   });
 
   // Preview PDF - Generate PDF from draft quote data (before saving) (team-aware)
-  app.post("/api/quotes/preview-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
+  app.post("/api/quotes/preview-pdf", requireAuth, pdfPerUserLimiter, createPermissionMiddleware(PERMISSIONS.READ_QUOTES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { generateQuotePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
@@ -23857,7 +23909,7 @@ Be specific about materials, colors, and features that would be included.`
   });
 
   // PDF Download - Invoice (team-aware)
-  app.get("/api/invoices/:id/pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
+  app.get("/api/invoices/:id/pdf", requireAuth, pdfPerUserLimiter, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
     const invoiceId = req.params.id;
     try {
       const userContext = await getUserContext(req.userId);
@@ -24028,6 +24080,7 @@ Be specific about materials, colors, and features that would be included.`
       res.setHeader('Content-Disposition', `attachment; filename="Invoice-${invoiceWithItems.number || invoiceId}.pdf"`);
       res.send(pdfBuffer);
     } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error(`[Invoice PDF] Unexpected error generating PDF for invoice ${invoiceId}:`, error);
       res.status(500).json({ 
         error: "Failed to generate invoice PDF", 
@@ -24074,14 +24127,15 @@ Be specific about materials, colors, and features that would be included.`
       res.setHeader('Content-Type', 'image/png');
       res.setHeader('Content-Disposition', `inline; filename="Invoice-${invoiceWithItems.number || invoiceId}.png"`);
       res.send(imageBuffer);
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error generating invoice image:", error);
       res.status(500).json({ error: "Failed to generate invoice image" });
     }
   });
 
   // Preview PDF - Generate PDF from draft invoice data (before saving) (team-aware)
-  app.post("/api/invoices/preview-pdf", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
+  app.post("/api/invoices/preview-pdf", requireAuth, pdfPerUserLimiter, createPermissionMiddleware(PERMISSIONS.READ_INVOICES), async (req: any, res) => {
     try {
       const userContext = await getUserContext(req.userId);
       const { generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
@@ -24779,6 +24833,13 @@ Be specific about materials, colors, and features that would be included.`
   //   unassignedJobs, allJobs, activityFeed, integrationsHealth, subscriptionUsage }
   app.get("/api/dashboard/unified", requireAuth, async (req: any, res) => {
     const userId = req.userId as string;
+
+    // Hot-read cache: 15s TTL keyed per user — collapses repeated dashboard mounts.
+    const { aggregateDashboardCache } = await import('./cache');
+    const cached = aggregateDashboardCache.get(userId);
+    if (cached) {
+      return res.json(cached);
+    }
 
     const safe = async <T,>(label: string, fn: () => Promise<T>): Promise<T | { error: string }> => {
       try {
@@ -25741,7 +25802,7 @@ Be specific about materials, colors, and features that would be included.`
         }),
       ]);
 
-      res.json({
+      const payload = {
         user: userResult,
         businessSettings: businessSettingsResult,
         kpis: kpisResult,
@@ -25762,7 +25823,9 @@ Be specific about materials, colors, and features that would be included.`
         availableJobs: availableJobsResult,
         activeTimeEntry: activeTimeEntryResult,
         timeTrackingDashboard: timeTrackingDashboardResult,
-      });
+      };
+      aggregateDashboardCache.set(userId, payload);
+      res.json(payload);
     } catch (error: any) {
       logger.error('api', 'Unified dashboard fatal failure', { error: error?.message, userId });
       res.status(500).json({ error: error?.message || 'Failed to load dashboard' });
@@ -31134,7 +31197,7 @@ Respond with JSON in this format:
     limits: { fileSize: 10 * 1024 * 1024 }
   });
 
-  app.post("/api/expenses/scan-receipt", requireAuth, receiptUpload.single('receipt'), async (req: any, res) => {
+  app.post("/api/expenses/scan-receipt", requireAuth, visionPerUserLimiter, receiptUpload.single('receipt'), async (req: any, res) => {
     try {
       let imageBuffer: Buffer;
 
@@ -31150,6 +31213,7 @@ Respond with JSON in this format:
       const result = await analyzeReceipt(imageBuffer);
       res.json(result);
     } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Receipt scan error:", error);
       res.status(500).json({ error: error.message || "Failed to analyse receipt" });
     }
@@ -33514,7 +33578,7 @@ Respond with JSON in this format:
   });
   
   // Upload photo for job/quote/invoice
-  app.post("/api/photos/upload", requireAuth, async (req: any, res) => {
+  app.post("/api/photos/upload", requireAuth, photoUploadPerUserLimiter, async (req: any, res) => {
     try {
       const userId = req.userId!;
       const validatedData = photoUploadSchema.parse(req.body);
@@ -33560,7 +33624,8 @@ Respond with JSON in this format:
       }
       
       res.json({ url: photoUrl, success: true });
-    } catch (error) {
+    } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid input", details: error.errors });
       }
@@ -36072,7 +36137,7 @@ Respond with JSON in this format:
     }
   });
 
-  app.post("/api/voice-notes/transcribe", requireAuth, async (req: any, res) => {
+  app.post("/api/voice-notes/transcribe", requireAuth, transcribePerUserLimiter, async (req: any, res) => {
     try {
       let { audioUrl } = req.body;
       const safeUrlLog = audioUrl?.startsWith('/objects/') ? audioUrl.substring(0, 60) : `https://...${audioUrl?.split('/').pop()?.split('?')[0] || ''}`;
@@ -36152,18 +36217,19 @@ Respond with JSON in this format:
       const file = new File([audioBuffer], fileName, { type: 'audio/m4a' });
       console.log('[VoiceTranscribe] Transcribing audio:', { fileName, size: audioBuffer.length });
 
-      const transcription = await openai.audio.transcriptions.create({
+      const transcription = await aiQueue.run(() => openai.audio.transcriptions.create({
         file,
         model: 'whisper-1',
         language: 'en',
         response_format: 'text'
-      });
+      }));
 
       const transcriptionText = transcription.toString();
       console.log('[VoiceTranscribe] Done:', transcriptionText.substring(0, 100));
 
       res.json({ success: true, transcription: transcriptionText });
     } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error('[VoiceTranscribe] Error:', error);
       res.status(500).json({ error: error.message });
     }
@@ -47437,7 +47503,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
-  app.post("/api/photos/upload-standalone", requireAuth, async (req: any, res) => {
+  app.post("/api/photos/upload-standalone", requireAuth, photoUploadPerUserLimiter, async (req: any, res) => {
     try {
       const userId = req.userId;
       const { data, fileName, mimeType, jobId: targetJobId, category, caption, tags: photoTags } = req.body;
@@ -47504,6 +47570,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         res.json({ success: true, id: photo.id });
       }
     } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Error uploading standalone photo:", error);
       res.status(500).json({ error: error.message });
     }
@@ -48159,7 +48226,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     limits: { fileSize: 10 * 1024 * 1024 },
   });
 
-  app.post("/api/swms/scan-hazards", requireAuth, hazardScanUpload.array('photos', 10), async (req: any, res) => {
+  app.post("/api/swms/scan-hazards", requireAuth, visionPerUserLimiter, hazardScanUpload.array('photos', 10), async (req: any, res) => {
     try {
       const userId = req.userId!;
       const userContext = await getUserContext(userId);
@@ -48203,6 +48270,7 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       const result = await detectHazards(imageBuffers, contextStr);
       res.json(result);
     } catch (error: any) {
+      if (isBackpressure(error)) return send429(res, error);
       console.error("Hazard scan error:", error);
       res.status(500).json({ error: error.message || "Failed to scan for hazards" });
     }
@@ -51765,6 +51833,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
       res.status(500).json({ error: 'Failed to update port request.' });
     }
   });
+
+  // Convert any thrown BackpressureError into HTTP 429 + Retry-After
+  app.use(backpressureErrorHandler);
 
   const httpServer = createServer(app);
   return httpServer;

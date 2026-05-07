@@ -1,19 +1,24 @@
 import type { Quote, Invoice, QuoteLineItem, InvoiceLineItem, Client, BusinessSettings, DigitalSignature, Job, TimeEntry } from "@shared/schema";
 import { ObjectStorageService, parseObjectPath, objectStorageClient } from './objectStorage';
+import { pdfQueue, BackpressureError } from './concurrency';
 
-let activePdfGenerations = 0;
-const MAX_CONCURRENT_PDFS = 3;
-
+// Backwards-compat shims. PDF concurrency is now governed by `pdfQueue`
+// (see server/concurrency.ts). Callers that wrap their work inside
+// `acquirePdfSlot()` ... `releasePdfSlot()` are still supported, but new
+// code should prefer `pdfQueue.run(() => ...)` so that backpressure is
+// raised as a `BackpressureError` (HTTP 429 + Retry-After) instead of
+// busy-waiting.
 async function acquirePdfSlot(): Promise<void> {
-  while (activePdfGenerations >= MAX_CONCURRENT_PDFS) {
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
-  activePdfGenerations++;
+  // Use the bounded queue so callers fail fast (HTTP 429) when overloaded
+  // instead of polling forever and tying up the event loop.
+  await pdfQueue.acquire();
 }
 
 function releasePdfSlot(): void {
-  activePdfGenerations = Math.max(0, activePdfGenerations - 1);
+  pdfQueue.release();
 }
+
+export { pdfQueue, BackpressureError };
 
 /**
  * Resolves a logo URL from object storage path to a base64 data URL.

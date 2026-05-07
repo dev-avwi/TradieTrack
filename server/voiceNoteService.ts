@@ -338,13 +338,14 @@ export async function transcribeVoiceNote(
       size: audioBuffer.length
     });
     
-    // Call OpenAI Whisper for transcription
-    const transcription = await openai.audio.transcriptions.create({
+    // Call OpenAI Whisper for transcription (queued for backpressure)
+    const { aiQueue } = await import('./concurrency');
+    const transcription = await aiQueue.run(() => openai.audio.transcriptions.create({
       file,
       model: 'whisper-1',
       language: 'en',
       response_format: 'text'
-    });
+    }));
     
     console.log('[VoiceNoteService] Transcription complete:', transcription.substring(0, 100) + '...');
     

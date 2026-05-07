@@ -12,6 +12,7 @@ import { initializeStripe } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { storage } from "./storage";
 import { setupWebSocket } from "./websocket";
+import { metricsMiddleware } from "./metrics";
 
 process.on('uncaughtException', (error: Error) => {
   Sentry.captureException(error);
@@ -449,6 +450,9 @@ if (process.env.DATABASE_URL) {
     }
     next();
   });
+
+  // Per-route timing + counters for /api/metrics (in-memory, ring buffer per route)
+  app.use(metricsMiddleware);
 
   app.use((req, res, next) => {
     const start = Date.now();

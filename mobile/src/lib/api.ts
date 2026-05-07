@@ -70,6 +70,8 @@ interface ApiResponse<T> {
   data?: T;
   error?: string;
   isOffline?: boolean;
+  /** Set when the server returned 429 (bounded queue / rate limiter at capacity). */
+  backpressure?: { code: 'BACKPRESSURE'; retryAfterSec: number };
 }
 
 interface LoginResponse {
@@ -180,12 +182,38 @@ class ApiClient {
       const url = `${this.baseUrl}${endpoint}`;
       if (__DEV__) console.log(`[API] ${method} ${endpoint}`);
       
-      const response = await fetch(url, config);
-      
+      let response = await fetch(url, config);
+
+      // Graceful 429 handling: server returns Retry-After (seconds) when a
+      // bounded queue (PDF/AI/vision) or per-user limiter is at capacity.
+      // For idempotent GETs we transparently back off and retry once. For
+      // mutations we surface BACKPRESSURE so the caller can show a friendly
+      // "Server busy — try again" message instead of failing silently.
+      if (response.status === 429 && method === 'GET') {
+        const retryAfterRaw = response.headers.get('retry-after');
+        const retryAfterSec = retryAfterRaw ? Math.min(15, Math.max(1, parseInt(retryAfterRaw, 10) || 5)) : 5;
+        const jitterMs = Math.floor(Math.random() * 500);
+        if (__DEV__) console.log(`[API] 429 backoff ${retryAfterSec}s for GET ${endpoint}`);
+        await new Promise((r) => setTimeout(r, retryAfterSec * 1000 + jitterMs));
+        response = await fetch(url, config);
+      }
+
       const contentType = response.headers.get('content-type') || '';
       const isJson = contentType.includes('application/json');
-      
+
       if (!response.ok) {
+        if (response.status === 429) {
+          const retryAfterRaw = response.headers.get('retry-after');
+          const retryAfterSec = retryAfterRaw ? parseInt(retryAfterRaw, 10) : 5;
+          if (__DEV__) console.log(`[API] 429 backpressure (final) for ${method} ${endpoint}, retry-after=${retryAfterSec}s`);
+          return {
+            error: `Server is busy — please try again in ${retryAfterSec}s.`,
+            backpressure: { code: 'BACKPRESSURE', retryAfterSec },
+          };
+        }
+        if (response.status === 504) {
+          return { error: 'Request took too long. Please try again.' };
+        }
         if (isJson) {
           const errorData = await response.json().catch(() => ({}));
           if (__DEV__) console.log(`[API] Error ${response.status}:`, errorData);

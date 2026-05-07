@@ -1301,13 +1301,19 @@ export class PostgresStorage implements IStorage {
 
   // Users
   async getUser(id: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
+    const { userCache } = await import('./cache');
+    return await userCache.getOrLoad(id, async () => {
+      const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      return result[0];
+    });
   }
 
   async getUserById(id: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
+    const { userCache } = await import('./cache');
+    return await userCache.getOrLoad(id, async () => {
+      const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      return result[0];
+    });
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -1331,6 +1337,8 @@ export class PostgresStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(id);
     return result[0];
   }
 
@@ -1582,8 +1590,12 @@ export class PostgresStorage implements IStorage {
 
   // Business Settings
   async getBusinessSettings(userId: string): Promise<BusinessSettings | undefined> {
-    const result = await db.select().from(businessSettings).where(eq(businessSettings.userId, userId)).limit(1);
-    return result[0];
+    // Hot-read cache (60s TTL). Invalidated on update/delete in this class.
+    const { businessSettingsCache } = await import('./cache');
+    return await businessSettingsCache.getOrLoad(userId, async () => {
+      const result = await db.select().from(businessSettings).where(eq(businessSettings.userId, userId)).limit(1);
+      return result[0];
+    });
   }
 
   async getAllBusinessSettings(): Promise<BusinessSettings[]> {
@@ -1597,6 +1609,8 @@ export class PostgresStorage implements IStorage {
   }
 
   async updateBusinessSettings(userId: string, settings: Partial<InsertBusinessSettings>): Promise<BusinessSettings | undefined> {
+    const { invalidateBusinessSettings } = await import('./cache');
+    invalidateBusinessSettings(userId);
     const result = await db
       .update(businessSettings)
       .set({ ...settings, updatedAt: new Date() })
@@ -2218,6 +2232,8 @@ export class PostgresStorage implements IStorage {
 
   async createJob(job: InsertJob & { userId: string }): Promise<Job> {
     const result = await db.insert(jobs).values(job).returning();
+    const { invalidateAggregateDashboard } = await import('./cache');
+    invalidateAggregateDashboard(job.userId);
     return result[0];
   }
 
@@ -2232,6 +2248,10 @@ export class PostgresStorage implements IStorage {
       .set(updateData)
       .where(and(eq(jobs.id, id), eq(jobs.userId, userId)))
       .returning();
+    if (result[0]) {
+      const { invalidateAggregateDashboard } = await import('./cache');
+      invalidateAggregateDashboard(userId);
+    }
     return result[0];
   }
 
@@ -2239,6 +2259,10 @@ export class PostgresStorage implements IStorage {
     const result = await db
       .delete(jobs)
       .where(and(eq(jobs.id, id), eq(jobs.userId, userId)));
+    if (result.rowCount > 0) {
+      const { invalidateAggregateDashboard } = await import('./cache');
+      invalidateAggregateDashboard(userId);
+    }
     return result.rowCount > 0;
   }
 
@@ -2429,6 +2453,8 @@ export class PostgresStorage implements IStorage {
       number: quote.number || await this.generateQuoteNumber(quote.userId)
     };
     const result = await db.insert(quotes).values(quoteData).returning();
+    const { invalidateAggregateDashboard } = await import('./cache');
+    invalidateAggregateDashboard(quote.userId);
     return result[0];
   }
 
@@ -2438,6 +2464,10 @@ export class PostgresStorage implements IStorage {
       .set({ ...quote, updatedAt: new Date() })
       .where(and(eq(quotes.id, id), eq(quotes.userId, userId)))
       .returning();
+    if (result[0]) {
+      const { invalidateAggregateDashboard } = await import('./cache');
+      invalidateAggregateDashboard(userId);
+    }
     return result[0];
   }
 
@@ -2445,6 +2475,10 @@ export class PostgresStorage implements IStorage {
     const result = await db
       .delete(quotes)
       .where(and(eq(quotes.id, id), eq(quotes.userId, userId)));
+    if (result.rowCount > 0) {
+      const { invalidateAggregateDashboard } = await import('./cache');
+      invalidateAggregateDashboard(userId);
+    }
     return result.rowCount > 0;
   }
 
@@ -2641,6 +2675,8 @@ export class PostgresStorage implements IStorage {
       number: invoice.number || await this.generateInvoiceNumber(invoice.userId)
     };
     const result = await db.insert(invoices).values(invoiceData).returning();
+    const { invalidateAggregateDashboard } = await import('./cache');
+    invalidateAggregateDashboard(invoice.userId);
     return result[0];
   }
 
@@ -2677,6 +2713,10 @@ export class PostgresStorage implements IStorage {
       }
     }
 
+    if (result[0]) {
+      const { invalidateAggregateDashboard } = await import('./cache');
+      invalidateAggregateDashboard(userId);
+    }
     return result[0];
   }
 
@@ -2684,6 +2724,10 @@ export class PostgresStorage implements IStorage {
     const result = await db
       .delete(invoices)
       .where(and(eq(invoices.id, id), eq(invoices.userId, userId)));
+    if (result.rowCount > 0) {
+      const { invalidateAggregateDashboard } = await import('./cache');
+      invalidateAggregateDashboard(userId);
+    }
     return result.rowCount > 0;
   }
 
@@ -3213,13 +3257,16 @@ export class PostgresStorage implements IStorage {
 
   // Line Item Catalog implementation
   async getLineItemCatalog(userId: string, tradeType?: string): Promise<LineItemCatalog[]> {
-    // Look for both user-specific catalog items AND shared items (userId = 'shared')
-    const baseCondition = or(eq(lineItemCatalog.userId, userId), eq(lineItemCatalog.userId, 'shared'));
-    const condition = tradeType 
-      ? and(baseCondition, eq(lineItemCatalog.tradeType, tradeType))
-      : baseCondition;
-    
-    return await db.select().from(lineItemCatalog).where(condition).orderBy(desc(lineItemCatalog.createdAt));
+    const { lineItemCatalogCache } = await import('./cache');
+    const cacheKey = `${userId}:${tradeType || '_all'}`;
+    return await lineItemCatalogCache.getOrLoad(cacheKey, async () => {
+      // Look for both user-specific catalog items AND shared items (userId = 'shared')
+      const baseCondition = or(eq(lineItemCatalog.userId, userId), eq(lineItemCatalog.userId, 'shared'));
+      const condition = tradeType
+        ? and(baseCondition, eq(lineItemCatalog.tradeType, tradeType))
+        : baseCondition;
+      return await db.select().from(lineItemCatalog).where(condition).orderBy(desc(lineItemCatalog.createdAt));
+    });
   }
 
   async getLineItemCatalogItem(id: string): Promise<LineItemCatalog | null> {
@@ -3229,6 +3276,8 @@ export class PostgresStorage implements IStorage {
 
   async createLineItemCatalogItem(data: InsertLineItemCatalog & { userId: string }): Promise<LineItemCatalog> {
     const result = await db.insert(lineItemCatalog).values(data).returning();
+    const { invalidateCatalog } = await import('./cache');
+    invalidateCatalog(data.userId);
     return result[0];
   }
 
@@ -3238,22 +3287,34 @@ export class PostgresStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(eq(lineItemCatalog.id, id))
       .returning();
+    if (result[0]?.userId) {
+      const { invalidateCatalog } = await import('./cache');
+      invalidateCatalog(result[0].userId);
+    }
     return result[0];
   }
 
   async deleteLineItemCatalogItem(id: string): Promise<void> {
+    const existing = await db.select({ userId: lineItemCatalog.userId }).from(lineItemCatalog).where(eq(lineItemCatalog.id, id)).limit(1);
     await db.delete(lineItemCatalog).where(eq(lineItemCatalog.id, id));
+    if (existing[0]?.userId) {
+      const { invalidateCatalog } = await import('./cache');
+      invalidateCatalog(existing[0].userId);
+    }
   }
 
   // Rate Cards implementation
   async getRateCards(userId: string, tradeType?: string): Promise<RateCard[]> {
-    // Look for both user-specific rate cards AND shared cards (userId = 'shared')
-    const baseCondition = or(eq(rateCards.userId, userId), eq(rateCards.userId, 'shared'));
-    const condition = tradeType 
-      ? and(baseCondition, eq(rateCards.tradeType, tradeType))
-      : baseCondition;
-    
-    return await db.select().from(rateCards).where(condition).orderBy(desc(rateCards.createdAt));
+    const { rateCardCache } = await import('./cache');
+    const cacheKey = `${userId}:${tradeType || '_all'}`;
+    return await rateCardCache.getOrLoad(cacheKey, async () => {
+      // Look for both user-specific rate cards AND shared cards (userId = 'shared')
+      const baseCondition = or(eq(rateCards.userId, userId), eq(rateCards.userId, 'shared'));
+      const condition = tradeType
+        ? and(baseCondition, eq(rateCards.tradeType, tradeType))
+        : baseCondition;
+      return await db.select().from(rateCards).where(condition).orderBy(desc(rateCards.createdAt));
+    });
   }
 
   async getRateCard(id: string): Promise<RateCard | null> {
@@ -3263,6 +3324,8 @@ export class PostgresStorage implements IStorage {
 
   async createRateCard(data: InsertRateCard & { userId: string }): Promise<RateCard> {
     const result = await db.insert(rateCards).values(data).returning();
+    const { invalidateRateCards } = await import('./cache');
+    invalidateRateCards(data.userId);
     return result[0];
   }
 
@@ -3272,11 +3335,20 @@ export class PostgresStorage implements IStorage {
       .set({ ...data, updatedAt: new Date() })
       .where(eq(rateCards.id, id))
       .returning();
+    if (result[0]?.userId) {
+      const { invalidateRateCards } = await import('./cache');
+      invalidateRateCards(result[0].userId);
+    }
     return result[0];
   }
 
   async deleteRateCard(id: string): Promise<void> {
+    const existing = await db.select({ userId: rateCards.userId }).from(rateCards).where(eq(rateCards.id, id)).limit(1);
     await db.delete(rateCards).where(eq(rateCards.id, id));
+    if (existing[0]?.userId) {
+      const { invalidateRateCards } = await import('./cache');
+      invalidateRateCards(existing[0].userId);
+    }
   }
 
   // Quote Templates implementation
@@ -3459,6 +3531,8 @@ export class PostgresStorage implements IStorage {
 
   async createTimeEntry(entry: InsertTimeEntry & { userId: string }): Promise<TimeEntry> {
     const result = await db.insert(timeEntries).values(entry as any).returning();
+    const { invalidateAggregateDashboard } = await import('./cache');
+    invalidateAggregateDashboard(entry.userId);
     return result[0];
   }
 
@@ -3467,12 +3541,20 @@ export class PostgresStorage implements IStorage {
       .set({ ...entry, updatedAt: new Date() })
       .where(and(eq(timeEntries.id, id), eq(timeEntries.userId, userId)))
       .returning();
+    if (result[0]) {
+      const { invalidateAggregateDashboard } = await import('./cache');
+      invalidateAggregateDashboard(userId);
+    }
     return result[0];
   }
 
   async deleteTimeEntry(id: string, userId: string): Promise<boolean> {
     const result = await db.delete(timeEntries)
       .where(and(eq(timeEntries.id, id), eq(timeEntries.userId, userId)));
+    if (result.rowCount > 0) {
+      const { invalidateAggregateDashboard } = await import('./cache');
+      invalidateAggregateDashboard(userId);
+    }
     return result.rowCount > 0;
   }
 
@@ -3874,15 +3956,19 @@ export class PostgresStorage implements IStorage {
   async getTeamMembers(businessOwnerId: string): Promise<TeamMember[]> {
     // Include both active members AND pending invitations (which have isActive=false until accepted)
     // Using inArray for cleaner syntax and guaranteed multi-value support
-    return await db.select().from(teamMembers)
-      .where(and(
-        eq(teamMembers.businessOwnerId, businessOwnerId), 
-        or(
-          eq(teamMembers.isActive, true),
-          inArray(teamMembers.inviteStatus, ['pending', 'invited'])
-        )
-      ))
-      .orderBy(teamMembers.createdAt);
+    // Hot-read cache (30s TTL). Invalidated on roster mutations below.
+    const { teamRosterCache } = await import('./cache');
+    return await teamRosterCache.getOrLoad(businessOwnerId, async () => {
+      return await db.select().from(teamMembers)
+        .where(and(
+          eq(teamMembers.businessOwnerId, businessOwnerId),
+          or(
+            eq(teamMembers.isActive, true),
+            inArray(teamMembers.inviteStatus, ['pending', 'invited'])
+          )
+        ))
+        .orderBy(teamMembers.createdAt);
+    });
   }
 
   async getTeamMember(id: string, businessOwnerId: string): Promise<TeamMember | undefined> {
@@ -3948,10 +4034,14 @@ export class PostgresStorage implements IStorage {
 
   async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
     const result = await db.insert(teamMembers).values(member).returning();
+    const { invalidateTeamRoster } = await import('./cache');
+    if (member.businessOwnerId) invalidateTeamRoster(member.businessOwnerId);
     return result[0];
   }
 
   async updateTeamMember(id: string, businessOwnerId: string, member: Partial<InsertTeamMember>): Promise<TeamMember | undefined> {
+    const { invalidateTeamRoster } = await import('./cache');
+    invalidateTeamRoster(businessOwnerId);
     const result = await db.update(teamMembers)
       .set({ ...member, updatedAt: new Date() })
       .where(and(eq(teamMembers.id, id), eq(teamMembers.businessOwnerId, businessOwnerId)))
@@ -3968,6 +4058,10 @@ export class PostgresStorage implements IStorage {
       })
       .where(eq(teamMembers.id, id))
       .returning();
+    if (result[0]?.businessOwnerId) {
+      const { invalidateTeamRoster } = await import('./cache');
+      invalidateTeamRoster(result[0].businessOwnerId);
+    }
     return result[0];
   }
 
@@ -3979,16 +4073,24 @@ export class PostgresStorage implements IStorage {
       })
       .where(eq(teamMembers.id, id))
       .returning();
+    if (result[0]?.businessOwnerId) {
+      const { invalidateTeamRoster } = await import('./cache');
+      invalidateTeamRoster(result[0].businessOwnerId);
+    }
     return result[0];
   }
 
   async deleteTeamMember(id: string, businessOwnerId: string): Promise<boolean> {
+    const { invalidateTeamRoster } = await import('./cache');
+    invalidateTeamRoster(businessOwnerId);
     const result = await db.delete(teamMembers)
       .where(and(eq(teamMembers.id, id), eq(teamMembers.businessOwnerId, businessOwnerId)));
     return result.rowCount > 0;
   }
 
   async suspendTeamMembersByOwner(ownerId: string): Promise<number> {
+    const { invalidateTeamRoster } = await import('./cache');
+    invalidateTeamRoster(ownerId);
     const result = await db.update(teamMembers)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(teamMembers.businessOwnerId, ownerId))
