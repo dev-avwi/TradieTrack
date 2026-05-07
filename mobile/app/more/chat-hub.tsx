@@ -14,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { useActionSheet } from '../../src/components/ui/ActionSheet';
 import { Stack, router, useFocusEffect } from 'expo-router';
@@ -289,7 +290,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderRadius: sizes.filterCountMin / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: spacing.xs,
   },
   filterBadgeActive: {
     backgroundColor: 'rgba(255,255,255,0.3)',
@@ -618,6 +619,7 @@ export default function ChatHubScreen() {
   const confirm = useConfirmDialog();
   const showActionSheet = useActionSheet();
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuthStore();
   const { isSubcontractor, teamMemberId } = useUserRole();
@@ -1512,6 +1514,7 @@ export default function ChatHubScreen() {
         <ScrollView
           ref={conversationsScrollRef}
           style={styles.conversationsList}
+          contentContainerStyle={{ paddingBottom: bottomInset }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }

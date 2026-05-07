@@ -184,7 +184,7 @@ function createStyles(colors: ThemeColors, bottomNavHeight: number = 0) {
       backgroundColor: colors.muted,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 4,
+      paddingHorizontal: spacing.xs,
     },
     activeFilterBadge: {
       backgroundColor: 'rgba(255,255,255,0.25)',
@@ -244,7 +244,7 @@ function createStyles(colors: ThemeColors, bottomNavHeight: number = 0) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: spacing.xs,
-      marginBottom: 4,
+      marginBottom: spacing.xs,
     },
     cardInfoText: {
       ...typography.caption,

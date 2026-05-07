@@ -14,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -66,6 +67,7 @@ interface AiConfig {
 const MAX_NUMBERS = 5;
 export default function PhoneNumbersPage() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { businessSettings, fetchBusinessSettings } = useAuthStore();
 
@@ -416,7 +418,7 @@ export default function PhoneNumbersPage() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView ref={scrollViewRef} style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollViewRef} style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: bottomInset }]} keyboardShouldPersistTaps="handled">
         <Text style={styles.pageTitle}>Phone Numbers</Text>
         <Text style={styles.pageSubtitle}>
           Your dedicated Australian phone number for two-way SMS with clients and AI Receptionist calls.

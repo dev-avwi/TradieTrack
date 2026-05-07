@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import api, { API_URL } from '../../src/lib/api';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useAuthStore } from '../../src/lib/store';
 import { Card, CardContent } from '../../src/components/ui/Card';
 import { Button } from '../../src/components/ui/Button';
@@ -45,6 +46,7 @@ export default function RegisterScreen() {
   
   const checkAuth = useAuthStore((state) => state.checkAuth);
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = createStyles(colors);
 
   const resolvePostAuthRedirect = async () => {
@@ -266,7 +268,7 @@ export default function RegisterScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingBottom: bottomInset }]}>
           <View style={styles.header}>
             <View style={styles.logoGradientContainer}>
               <View style={styles.logoInner}>

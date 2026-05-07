@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -166,6 +167,7 @@ function ReceiptCard({
 
 export default function ReceiptsScreen() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -268,7 +270,7 @@ export default function ReceiptsScreen() {
       <View style={styles.container}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomInset }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useInvoicesStore, useClientsStore, useAuthStore } from '../../src/lib/store';
@@ -184,6 +185,7 @@ function InvoiceCard({
 
 export default function InvoicesScreen() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { invoices, fetchInvoices, isLoading } = useInvoicesStore();
   const { clients, fetchClients } = useClientsStore();
@@ -396,7 +398,7 @@ export default function InvoicesScreen() {
           data={sortedInvoices}
           keyExtractor={(item) => item.id.toString()}
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomInset }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

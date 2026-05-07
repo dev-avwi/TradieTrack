@@ -12,6 +12,7 @@ import {
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, iconSizes } from '../../src/lib/design-tokens';
 import haptics from '../../src/lib/haptics';
@@ -232,6 +233,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 
 export default function NotificationPreferencesScreen() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [preferences, setPreferences] = useState<Record<string, boolean>>({});
@@ -439,7 +441,7 @@ export default function NotificationPreferencesScreen() {
         </View>
       </View>
       
-      <ScrollView>
+      <ScrollView contentContainerStyle={{ paddingBottom: bottomInset }}>
         <View style={styles.masterToggle}>
           <View style={{ flex: 1 }}>
             <Text style={styles.masterToggleLabel}>Push Notifications</Text>

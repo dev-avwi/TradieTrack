@@ -15,6 +15,7 @@ import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useUserRole, type UserRoleType } from '../../src/hooks/use-user-role';
 import { spacing, radius, shadows, typography, iconSizes, sizes, usePageShell } from '../../src/lib/design-tokens';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { 
   getMorePageItemsByCategory, 
   categoryOrder,
@@ -412,6 +413,7 @@ export default function MoreScreen() {
   const { user, businessSettings, logout } = useAuthStore();
   const { colors } = useTheme();
   const responsiveShell = usePageShell();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const scrollRef = useRef<ScrollView | null>(null);
   const { scrollToTopTrigger } = useScrollToTop();
@@ -605,7 +607,8 @@ export default function MoreScreen() {
 
   const responsiveContentStyle = useMemo(() => ({
     padding: responsiveShell.paddingHorizontal,
-  }), [responsiveShell]);
+    paddingBottom: bottomInset,
+  }), [responsiveShell, bottomInset]);
 
   const totalItemCount = allItems.length;
 

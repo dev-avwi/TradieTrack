@@ -14,6 +14,7 @@ import {
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import api from '../../src/lib/api';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useAuthStore } from '../../src/lib/store';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 
@@ -36,6 +37,7 @@ interface InviteDetails {
 export default function AcceptInviteScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(24);
   const styles = createStyles(colors);
   
   const [inviteData, setInviteData] = useState<InviteDetails | null>(null);
@@ -205,7 +207,7 @@ export default function AcceptInviteScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

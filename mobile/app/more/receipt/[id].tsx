@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { PressableRow } from '../../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../../src/components/ui/BottomInsetSpacer';
 import { useConfirmDialog } from '../../../src/components/ui/ConfirmDialog';
 import { useActionSheet } from '../../../src/components/ui/ActionSheet';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -71,6 +72,7 @@ export default function ReceiptDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, businessSettings } = useAuthStore();
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
@@ -617,7 +619,7 @@ ${businessName}`;
           )
         }} 
       />
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView style={styles.container} contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomInset }]}>
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <Text style={styles.receiptNumberLarge}>{receipt.receiptNumber}</Text>

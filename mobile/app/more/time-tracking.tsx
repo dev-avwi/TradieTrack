@@ -426,7 +426,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   entryTimelineLine: {
     width: 2,
     flex: 1,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   entryContent: {
     flex: 1,
@@ -529,7 +529,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     fontSize: 10,
     fontWeight: '700',
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   statsSection: {
     gap: spacing.md,
@@ -1489,7 +1489,7 @@ export default function TimeTrackingScreen() {
                 </Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary + '20', paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radius.sm }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary + '20', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.sm }}>
               <Text style={{ ...typography.caption, fontWeight: '600', color: colors.primary }}>Team</Text>
               <Feather name="chevron-right" size={14} color={colors.primary} />
             </View>

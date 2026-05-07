@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -491,7 +492,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     ...typography.caption,
     color: colors.foreground,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   roleInfoDescription: {
     ...typography.captionSmall,
@@ -567,7 +568,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
     borderRadius: radius.md,
   },
   roleBadgeText: {
@@ -745,7 +746,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   rolePermissionText: {
     ...typography.captionSmall,
@@ -927,7 +928,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   permissionBadge: {
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
     backgroundColor: colors.muted,
     borderRadius: radius.md,
   },
@@ -1194,7 +1195,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   memberDetailName: {
     ...typography.subtitle,
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   memberDetailRole: {
     flexDirection: 'row',
@@ -1386,6 +1387,7 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 export default function TeamManagementScreen() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, isOwner } = useAuthStore();
   
@@ -2309,7 +2311,7 @@ export default function TeamManagementScreen() {
         ) : (
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomInset }]}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={isLoading} onRefresh={fetchTeam} tintColor={colors.primary} />
@@ -2391,11 +2393,11 @@ export default function TeamManagementScreen() {
                 const isExpired = ic.expiresAt ? new Date() > new Date(ic.expiresAt) : false;
                 const isExhausted = ic.usedCount >= ic.maxUses;
                 return (
-                  <View key={ic.id} style={{ backgroundColor: colors.card, borderRadius: 12, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.cardBorder }}>
+                  <View key={ic.id} style={{ backgroundColor: colors.card, borderRadius: 12, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.cardBorder }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                         <Text style={{ fontSize: 20, fontWeight: '700', fontFamily: 'monospace', color: colors.foreground, letterSpacing: 2 }}>{ic.code}</Text>
-                        <View style={{ backgroundColor: ic.roleType === 'manager' ? colors.success + '20' : ic.roleType === 'subcontractor' ? '#22c55e20' : colors.info + '20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                        <View style={{ backgroundColor: ic.roleType === 'manager' ? colors.success + '20' : ic.roleType === 'subcontractor' ? '#22c55e20' : colors.info + '20', paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: 6 }}>
                           <Text style={{ fontSize: 11, fontWeight: '600', color: ic.roleType === 'manager' ? colors.success : ic.roleType === 'subcontractor' ? '#22c55e' : colors.info, textTransform: 'capitalize' }}>{ic.roleType}</Text>
                         </View>
                       </View>
@@ -2425,8 +2427,8 @@ export default function TeamManagementScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 12,
-              padding: 14,
-              marginTop: 16,
+              padding: spacing.lg,
+              marginTop: spacing.lg,
               backgroundColor: colors.card,
               borderRadius: 12,
               borderWidth: 1,
@@ -2502,7 +2504,7 @@ export default function TeamManagementScreen() {
                 <TouchableOpacity
                   style={{
                     flex: 1,
-                    paddingVertical: 10,
+                    paddingVertical: spacing.md,
                     borderRadius: radius.md,
                     alignItems: 'center',
                     backgroundColor: inviteTab === 'email' ? colors.card : 'transparent',
@@ -2516,7 +2518,7 @@ export default function TeamManagementScreen() {
                 <TouchableOpacity
                   style={{
                     flex: 1,
-                    paddingVertical: 10,
+                    paddingVertical: spacing.md,
                     borderRadius: radius.md,
                     alignItems: 'center',
                     backgroundColor: inviteTab === 'code' ? colors.card : 'transparent',
@@ -2583,7 +2585,7 @@ export default function TeamManagementScreen() {
                       placeholderTextColor={colors.mutedForeground}
                     />
                     {invitePhone.trim() ? (
-                      <Text style={{ fontSize: 12, color: colors.primary, marginTop: 4, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 12, color: colors.primary, marginTop: spacing.xs, marginBottom: 8 }}>
                         Invite will also be sent via SMS with a smart link
                       </Text>
                     ) : null}
@@ -2649,8 +2651,8 @@ export default function TeamManagementScreen() {
                         borderWidth: 2,
                         borderColor: inviteCodeRoleType === role ? colors.primary : colors.cardBorder,
                         borderRadius: 12,
-                        padding: 14,
-                        marginBottom: 10,
+                        padding: spacing.lg,
+                        marginBottom: spacing.md,
                         gap: 12,
                       }}
                       onPress={() => setInviteCodeRoleType(role)}
@@ -2669,7 +2671,7 @@ export default function TeamManagementScreen() {
                       {inviteCodeRoleType === role && <Feather name="check-circle" size={20} color={colors.primary} />}
                     </TouchableOpacity>
                   ))}
-                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 4, marginBottom: 16 }}>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: spacing.xs, marginBottom: 16 }}>
                     Code expires in 30 days and can be used up to 10 times.
                   </Text>
                   <TouchableOpacity
@@ -2679,8 +2681,8 @@ export default function TeamManagementScreen() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       backgroundColor: colors.primary,
-                      paddingVertical: 14,
-                      paddingHorizontal: 20,
+                      paddingVertical: spacing.lg,
+                      paddingHorizontal: spacing.xl,
                       borderRadius: 10,
                       gap: 8,
                       opacity: isGeneratingCode ? 0.5 : 1,

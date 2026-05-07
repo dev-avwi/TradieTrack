@@ -15,6 +15,7 @@ import {
   Linking,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -332,6 +333,7 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 export default function DirectMessagesScreen() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(24);
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const { user: currentUser } = useAuthStore();
@@ -460,7 +462,7 @@ export default function DirectMessagesScreen() {
 
         <ScrollView 
           style={styles.listContainer}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: bottomInset }]}
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
           }

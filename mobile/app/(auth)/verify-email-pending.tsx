@@ -9,6 +9,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Mail, RefreshCw, ArrowLeft, CheckCircle } from 'lucide-react-native';
 import api from '../../src/lib/api';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 
 export default function VerifyEmailPendingScreen() {
@@ -16,6 +17,7 @@ export default function VerifyEmailPendingScreen() {
   const [resending, setResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(24);
   const styles = createStyles(colors);
 
   const handleResendEmail = async () => {
@@ -43,7 +45,7 @@ export default function VerifyEmailPendingScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingBottom: bottomInset }]}>
         <View style={styles.iconContainer}>
           <Mail size={64} color={colors.primary} strokeWidth={1.5} />
         </View>

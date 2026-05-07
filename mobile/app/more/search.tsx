@@ -9,6 +9,7 @@ import {
   ActivityIndicator 
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -120,6 +121,7 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 export default function SearchScreen() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [query, setQuery] = useState('');
@@ -253,7 +255,7 @@ export default function SearchScreen() {
 
       <ScrollView 
         style={styles.results}
-        contentContainerStyle={styles.resultsContent}
+        contentContainerStyle={[styles.resultsContent, { paddingBottom: bottomInset }]}
         showsVerticalScrollIndicator={false}
       >
         {isSearching ? (

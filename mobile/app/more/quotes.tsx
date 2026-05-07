@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useQuotesStore, useClientsStore, useAuthStore } from '../../src/lib/store';
@@ -199,6 +200,7 @@ function QuoteCard({
 
 export default function QuotesScreen() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const { quotes, fetchQuotes, isLoading } = useQuotesStore();
@@ -379,7 +381,7 @@ export default function QuotesScreen() {
           data={sortedQuotes}
           keyExtractor={(item) => item.id.toString()}
           style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomInset }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

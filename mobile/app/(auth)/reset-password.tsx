@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import api from '../../src/lib/api';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../src/components/ui/Card';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ export default function ResetPasswordScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(40);
   const styles = createStyles(colors);
 
   useEffect(() => {
@@ -96,7 +98,7 @@ export default function ResetPasswordScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.content}>
+        <View style={[styles.content, { paddingBottom: bottomInset }]}>
           <View style={styles.header}>
             <View style={styles.logoContainer}>
               <Image 

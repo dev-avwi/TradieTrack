@@ -14,6 +14,7 @@ import {
   Animated
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -407,6 +408,7 @@ function NotificationCard({
 export default function AIAssistantScreen() {
   const { colors } = useTheme();
   const { user } = useAuthStore();
+  const bottomInset = useBottomInset(24);
   const styles = useMemo(() => createStyles(colors), [colors]);
   
   const [chatMessage, setChatMessage] = useState('');
@@ -625,7 +627,7 @@ export default function AIAssistantScreen() {
           <ScrollView 
             ref={scrollViewRef}
             style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.heroSection}>
@@ -719,7 +721,7 @@ export default function AIAssistantScreen() {
           <FlatList
             ref={chatListRef}
             style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
             keyboardShouldPersistTaps="handled"
             data={chatHistory}
             keyExtractor={(item, index) => item.id || `msg-${index}`}

@@ -9,6 +9,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, XCircle, ArrowLeft } from 'lucide-react-native';
 import api from '../../src/lib/api';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useAuthStore } from '../../src/lib/store';
 
@@ -18,6 +19,7 @@ export default function VerifyEmailScreen() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(24);
   const styles = createStyles(colors);
   const { checkAuth } = useAuthStore();
 
@@ -73,7 +75,7 @@ export default function VerifyEmailScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
+      <View style={[styles.content, { paddingBottom: bottomInset }]}>
         {verifying ? (
           <>
             <ActivityIndicator size="large" color={colors.primary} />

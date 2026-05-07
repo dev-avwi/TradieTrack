@@ -14,6 +14,7 @@ import {
   Alert,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useClientsStore, useInvoicesStore, useJobsStore } from '../../src/lib/store';
@@ -194,6 +195,7 @@ export default function ClientsScreen() {
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const { colors } = useTheme();
   const responsiveShell = usePageShell();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const refreshData = useCallback(async () => {
@@ -546,7 +548,7 @@ export default function ClientsScreen() {
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
           style={styles.scrollView}
-          contentContainerStyle={responsiveContentStyle}
+          contentContainerStyle={[responsiveContentStyle, { paddingBottom: bottomInset }]}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={ListHeaderComponent}
           ListEmptyComponent={ListEmptyComponent}

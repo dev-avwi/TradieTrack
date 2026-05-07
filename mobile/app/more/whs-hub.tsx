@@ -99,7 +99,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: num
   container: { flex: 1, backgroundColor: colors.background },
   heroSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
   pageTitle: { fontSize: 28, fontWeight: '800', color: colors.foreground, letterSpacing: -0.5 },
-  pageSubtitle: { fontSize: 14, color: colors.mutedForeground, marginTop: 4, lineHeight: 20 },
+  pageSubtitle: { fontSize: 14, color: colors.mutedForeground, marginTop: spacing.xs, lineHeight: 20 },
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.cardBorder },
   statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
@@ -115,7 +115,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: num
   complianceBanner: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.card, borderRadius: radius.xl, padding: spacing.md, marginTop: spacing.md, borderWidth: 1, borderColor: colors.cardBorder },
   complianceBannerText: { fontSize: 14, fontWeight: '500', color: colors.success },
   filterScroll: { paddingHorizontal: spacing.lg, gap: spacing.xs, paddingBottom: spacing.sm },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  filterChip: { paddingHorizontal: spacing.lg, paddingVertical: 7, borderRadius: radius.full, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder, flexDirection: 'row', alignItems: 'center', gap: 4 },
   filterChipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   filterChipText: { fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
   filterChipTextActive: { color: colors.primary, fontWeight: '600' },
@@ -124,24 +124,24 @@ const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: num
   cardTitle: { fontSize: 15, fontWeight: '600', color: colors.foreground },
   cardSubtext: { fontSize: 12, color: colors.mutedForeground, marginTop: 2, lineHeight: 17 },
   cardMeta: { fontSize: 12, lineHeight: 17 },
-  badge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full, marginRight: 4, marginBottom: 4 },
+  badge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full, marginRight: spacing.xs, marginBottom: 4 },
   badgeText: { fontSize: 11, fontWeight: '600' },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl * 2, paddingHorizontal: spacing.lg, gap: spacing.sm },
   emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: `${colors.primary}12`, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
   emptyTitle: { fontSize: 17, fontWeight: '600', color: colors.foreground },
   emptyDesc: { fontSize: 14, color: colors.mutedForeground, textAlign: 'center' as const, lineHeight: 20 },
-  emptyButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.lg, marginTop: spacing.sm },
+  emptyButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderRadius: radius.lg, marginTop: spacing.sm },
   emptyButtonText: { fontSize: 14, fontWeight: '600', color: colors.primaryForeground },
   fab: { position: 'absolute', bottom: spacing.xl, right: spacing.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.lg },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.muted, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full },
+  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.muted, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
   metaChipText: { fontSize: 11, color: colors.mutedForeground },
   stepCard: { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderRadius: radius.lg, padding: spacing.sm, marginBottom: spacing.sm },
   stepHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  hazardBadge: { backgroundColor: colorWithOpacity(colors.destructive, 0.12), paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
+  hazardBadge: { backgroundColor: colorWithOpacity(colors.destructive, 0.12), paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: spacing.xs, marginBottom: 4 },
   hazardBadgeText: { fontSize: 10, color: colors.destructive, fontWeight: '600' },
-  ppeBadge: { backgroundColor: colorWithOpacity(colors.info, 0.12), paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: 4, marginBottom: 4 },
+  ppeBadge: { backgroundColor: colorWithOpacity(colors.info, 0.12), paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radius.sm, marginRight: spacing.xs, marginBottom: 4 },
   ppeBadgeText: { fontSize: 10, color: colors.info, fontWeight: '600' },
   checkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs + 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   sectionTitle: { fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.sm, marginTop: spacing.sm },
@@ -1026,7 +1026,7 @@ export default function WhsHubScreen() {
       <View key={h.id} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: spacing.xs, flexWrap: 'wrap' }}>
               <View style={[styles.badge, { backgroundColor: riskColors[h.riskLevel] || colors.warning }]}>
                 <Text style={styles.badgeText}>{h.riskLevel?.toUpperCase()}</Text>
               </View>
@@ -1035,7 +1035,7 @@ export default function WhsHubScreen() {
               </View>
             </View>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>{h.description}</Text>
-            <View style={{ flexDirection: 'row', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: spacing.xs, flexWrap: 'wrap' }}>
               <Text style={[styles.cardMeta, { color: colors.mutedForeground }]}><Feather name="map-pin" size={12} /> {h.location}</Text>
               <Text style={[styles.cardMeta, { color: colors.mutedForeground }]}>{h.dateIdentified}{h.timeIdentified ? ` at ${h.timeIdentified}` : ''}</Text>
             </View>

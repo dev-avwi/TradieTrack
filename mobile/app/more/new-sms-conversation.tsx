@@ -12,6 +12,7 @@ import {
   Platform
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -347,6 +348,7 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 export default function NewSmsConversation() {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset(24);
   const styles = createStyles(colors);
   
   const [mode, setMode] = useState<ScreenMode>('select');
@@ -494,7 +496,7 @@ export default function NewSmsConversation() {
             </View>
           </View>
 
-          <ScrollView style={styles.composeContent} contentContainerStyle={{ paddingBottom: spacing.lg }}>
+          <ScrollView style={styles.composeContent} contentContainerStyle={{ paddingBottom: spacing.lg + bottomInset }}>
             <Text style={styles.templatesLabel}>Quick Templates</Text>
             <View style={styles.templatesContainer}>
               {SMS_TEMPLATES.map((template, index) => (

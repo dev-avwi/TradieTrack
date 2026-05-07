@@ -10,6 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -133,6 +134,7 @@ export default function DocumentsScreen() {
   const contentWidth = useContentWidth();
   const isTabletDevice = useIsTablet();
   const responsiveShell = usePageShell();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors, contentWidth, responsiveShell.paddingHorizontal), [colors, contentWidth, responsiveShell.paddingHorizontal]);
   
   const params = useLocalSearchParams<{ tab?: string; filter?: string }>();
@@ -905,7 +907,7 @@ export default function DocumentsScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         style={styles.container}
-        contentContainerStyle={responsiveContentStyle}
+        contentContainerStyle={[responsiveContentStyle, { paddingBottom: bottomInset }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

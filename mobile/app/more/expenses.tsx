@@ -884,7 +884,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) =>
     pageSubtitle: {
       fontSize: 14,
       color: colors.mutedForeground,
-      marginTop: 4,
+      marginTop: spacing.xs,
       lineHeight: 20,
     },
     statsRow: {
@@ -907,7 +907,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) =>
       borderRadius: 16,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 4,
+      marginBottom: spacing.xs,
     },
     statValue: {
       fontSize: 16,
@@ -996,7 +996,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) =>
     filterChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 14,
+      paddingHorizontal: spacing.lg,
       paddingVertical: 7,
       borderRadius: radius.full,
       backgroundColor: colors.card,
@@ -1057,7 +1057,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) =>
       gap: spacing.xs,
       backgroundColor: colors.primary,
       paddingHorizontal: spacing.md,
-      paddingVertical: 10,
+      paddingVertical: spacing.md,
       borderRadius: radius.lg,
       marginTop: spacing.sm,
     },
@@ -1107,11 +1107,11 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) =>
     categoryBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 8,
+      paddingHorizontal: spacing.sm,
       paddingVertical: 3,
       borderRadius: radius.full,
       gap: 3,
-      marginTop: 4,
+      marginTop: spacing.xs,
       alignSelf: 'flex-start',
     },
     categoryBadgeText: {
@@ -1129,7 +1129,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) =>
       alignItems: 'center',
       gap: 3,
       backgroundColor: colors.muted,
-      paddingHorizontal: 8,
+      paddingHorizontal: spacing.sm,
       paddingVertical: 3,
       borderRadius: radius.full,
     },

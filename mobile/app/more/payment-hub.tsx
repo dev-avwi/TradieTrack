@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useActionSheet } from '../../src/components/ui/ActionSheet';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -128,6 +129,7 @@ const formatCurrency = (amount: number | string) => {
 export default function PaymentHubScreen() {
   const { colors } = useTheme();
   const showActionSheet = useActionSheet();
+  const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams<{ tab?: string }>();
   
@@ -1234,7 +1236,7 @@ export default function PaymentHubScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomInset }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
