@@ -498,6 +498,21 @@ export async function createAssistant(config: VapiAssistantConfig): Promise<Vapi
     maxDurationSeconds: config.maxCallDurationSeconds ?? 600,
     backgroundSound: config.backgroundSound || 'off',
     recordingEnabled: true,
+    // --- Latency-optimised defaults (target <600ms response) ---
+    responseDelaySeconds: 0,
+    llmRequestDelaySeconds: 0,
+    numWordsToInterruptAssistant: 3,
+    backgroundDenoisingEnabled: true,
+    backchannelingEnabled: false,
+    startSpeakingPlan: {
+      waitSeconds: 0.4,
+      smartEndpointingEnabled: true,
+    },
+    stopSpeakingPlan: {
+      numWords: 3,
+      voiceSeconds: 0.2,
+      backoffSeconds: 1.0,
+    },
     ...(config.voicemailDetectionEnabled !== undefined ? {
       voicemailDetection: {
         enabled: config.voicemailDetectionEnabled,
@@ -583,8 +598,121 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
     updates.serverUrl = config.webhookUrl;
   }
 
+  // Always (re)apply latency-optimised settings on update so manual UI tweaks
+  // can never silently leave the assistant in a slow configuration.
+  updates.responseDelaySeconds = 0;
+  updates.llmRequestDelaySeconds = 0;
+  updates.numWordsToInterruptAssistant = 3;
+  updates.backgroundDenoisingEnabled = true;
+  updates.backchannelingEnabled = false;
+  updates.startSpeakingPlan = { waitSeconds: 0.4, smartEndpointingEnabled: true };
+  updates.stopSpeakingPlan = { numWords: 3, voiceSeconds: 0.2, backoffSeconds: 1.0 };
+
   console.log(`[Vapi] Updating assistant ${assistantId}`);
   return vapiRequest('PATCH', `/assistant/${assistantId}`, updates);
+}
+
+// =====================================================================
+// Latency estimation
+// =====================================================================
+// Heuristic that combines: STT/network base + LLM TTFT + 11labs first-chunk
+// + extra penalty for large knowledge banks and non-default models.
+// Returns ms estimate plus a 3-tier status (target <600ms, ceiling 700ms).
+export function estimateAssistantLatency(cfg: VapiAssistantConfig): {
+  ms: number;
+  status: 'optimal' | 'amber' | 'warn';
+  breakdown: { base: number; llm: number; tts: number; promptPenalty: number; modelPenalty: number };
+  greetingWords: number;
+  promptChars: number;
+  knowledgeBankChars: number;
+} {
+  const promptChars = buildSystemPrompt(cfg).length;
+  const promptTokens = Math.ceil(promptChars / 4);
+  const greeting = (cfg.greeting || '').trim();
+  const greetingWords = greeting ? greeting.split(/\s+/).filter(Boolean).length : 0;
+
+  // STT endpointing + Vapi infra + network
+  const base = 230;
+  // gpt-4o-mini ≈ 180ms TTFT + ~25ms per 1k prompt tokens
+  const llm = 180 + Math.round((promptTokens / 1000) * 25);
+  // 11labs first audio chunk ≈ 140ms + small per-greeting-word lookahead
+  const tts = 140 + Math.round(Math.min(greetingWords, 25) * 12);
+
+  let knowledgeBankChars = 0;
+  if (cfg.knowledgeBank) {
+    const kb = cfg.knowledgeBank;
+    knowledgeBankChars =
+      (kb.serviceDescriptions || '').length +
+      (kb.pricingInfo || '').length +
+      (kb.specialInstructions || '').length +
+      ((kb.faqs || []).reduce((s, f) => s + (f.question || '').length + (f.answer || '').length, 0));
+  }
+  // Penalise large knowledge banks beyond 1500 chars (extra prompt processing).
+  const promptPenalty = knowledgeBankChars > 1500
+    ? Math.round((knowledgeBankChars - 1500) / 1000) * 25
+    : 0;
+
+  // Larger LLMs (gpt-4o, gpt-4-turbo) are noticeably slower than gpt-4o-mini.
+  const modelPenalty = cfg.aiModel && cfg.aiModel !== 'gpt-4o-mini' ? 150 : 0;
+
+  const ms = base + llm + tts + promptPenalty + modelPenalty;
+  const status: 'optimal' | 'amber' | 'warn' = ms < 600 ? 'optimal' : ms < 700 ? 'amber' : 'warn';
+
+  return {
+    ms,
+    status,
+    breakdown: { base, llm, tts, promptPenalty, modelPenalty },
+    greetingWords,
+    promptChars,
+    knowledgeBankChars,
+  };
+}
+
+// Builds a VapiAssistantConfig from the persisted DB record + business
+// settings, runs the latency heuristic, and persists the result on the
+// receptionist config row. Best-effort: never throws.
+export async function refreshLatencyEstimate(
+  userId: string,
+  configId?: string,
+): Promise<{ ms: number; status: 'optimal' | 'amber' | 'warn' } | null> {
+  try {
+    const config = configId
+      ? await storage.getAiReceptionistConfigById(configId)
+      : await storage.getAiReceptionistConfig(userId);
+    if (!config) return null;
+
+    const settings = await storage.getBusinessSettings(userId);
+    const cfg: VapiAssistantConfig = {
+      businessName: settings?.businessName || '',
+      tradeType: settings?.industry || undefined,
+      greeting: config.greeting || undefined,
+      voice: config.voiceName || 'Jess',
+      transferNumbers: (config.transferNumbers as TransferNumber[]) || [],
+      businessHours: (config.businessHours as BusinessHoursConfig) || undefined,
+      webhookUrl: '',
+      knowledgeBank: (config.knowledgeBank as KnowledgeBankContent) || undefined,
+      aiModel: config.aiModel || 'gpt-4o-mini',
+      aiMaxTokens: config.aiMaxTokens ?? 250,
+      aiTemperature: config.aiTemperature ?? 0.5,
+      customInstructions: config.customInstructions || undefined,
+    };
+    const result = estimateAssistantLatency(cfg);
+    const patch = {
+      lastLatencyMs: result.ms,
+      latencyStatus: result.status,
+      lastLatencyCheckedAt: new Date(),
+    } as Partial<InsertAiReceptionistConfig>;
+    if (configId) {
+      await storage.updateAiReceptionistConfigById(configId, patch);
+    } else {
+      await storage.updateAiReceptionistConfig(userId, patch);
+    }
+    return { ms: result.ms, status: result.status };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    console.warn('[Vapi] refreshLatencyEstimate failed:', msg);
+    return null;
+  }
 }
 
 export async function deleteAssistant(assistantId: string): Promise<void> {
@@ -750,6 +878,10 @@ export async function enableAiReceptionist(userId: string): Promise<{
     }
 
     console.log(`[Vapi] AI Receptionist enabled for user ${userId} - assistant: ${assistant.id}`);
+
+    // Auto-test latency immediately after provisioning so the UI has a value
+    // to show without the user having to click "Test Response Time".
+    refreshLatencyEstimate(userId).catch(() => {});
 
     return {
       success: true,
@@ -958,6 +1090,9 @@ export async function updateReceptionistConfig(userId: string, updates: {
       }
     }
 
+    // Recompute latency from the freshly-saved config so the UI badge is current.
+    await refreshLatencyEstimate(userId);
+
     return { success: true };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -1096,9 +1231,20 @@ export async function updateReceptionistConfigById(configId: string, userId: str
         vapiUpdates.backgroundSound = updates.backgroundSound === 'off' ? undefined : updates.backgroundSound;
       }
 
-      await makeVapiRequest(`/assistant/${config.vapiAssistantId}`, 'PATCH', vapiUpdates);
+      // Always (re)apply latency-optimised settings on update.
+      vapiUpdates.responseDelaySeconds = 0;
+      vapiUpdates.llmRequestDelaySeconds = 0;
+      vapiUpdates.numWordsToInterruptAssistant = 3;
+      vapiUpdates.backgroundDenoisingEnabled = true;
+      vapiUpdates.backchannelingEnabled = false;
+      vapiUpdates.startSpeakingPlan = { waitSeconds: 0.4, smartEndpointingEnabled: true };
+      vapiUpdates.stopSpeakingPlan = { numWords: 3, voiceSeconds: 0.2, backoffSeconds: 1.0 };
+
+      await vapiRequest('PATCH', `/assistant/${config.vapiAssistantId}`, vapiUpdates);
       console.log(`[Vapi] Updated assistant ${config.vapiAssistantId} for config ${configId}`);
     }
+
+    await refreshLatencyEstimate(userId, configId);
 
     return { success: true };
   } catch (error: unknown) {

@@ -57,6 +57,8 @@ import {
   Send,
   Sparkles,
   MessageSquare,
+  Zap,
+  AlertTriangle,
 } from "lucide-react";
 
 interface KnowledgeBankContent {
@@ -89,6 +91,10 @@ interface ReceptionistConfig {
   provisionedAt: string | null;
   approvedAt: string | null;
   knowledgeBank: KnowledgeBankContent | null;
+  smsNotifications?: boolean;
+  lastLatencyMs?: number | null;
+  latencyStatus?: 'optimal' | 'amber' | 'warn' | null;
+  lastLatencyCheckedAt?: string | null;
 }
 
 interface TransferNumber {
@@ -324,8 +330,24 @@ export default function AIReceptionist() {
     mutationFn: async (data: KnowledgeBankContent) => {
       return apiRequest("PATCH", "/api/ai-receptionist/config", { knowledgeBank: data });
     },
-    onSuccess: () => {
-      toast({ title: "Knowledge Bank saved", description: "Your training content has been synced to the AI." });
+    onSuccess: async (res: any) => {
+      const updated = await (res as Response).json().catch(() => null);
+      const latencyMs: number | null = updated?.lastLatencyMs ?? null;
+      const latencyStatus: string | null = updated?.latencyStatus ?? null;
+      if (latencyStatus === 'warn') {
+        toast({
+          title: 'Knowledge Bank saved — but response time is slow',
+          description: `Estimated ${latencyMs}ms (target <600ms). Try trimming your training content.`,
+          variant: 'destructive',
+        });
+      } else if (latencyStatus === 'amber') {
+        toast({
+          title: 'Knowledge Bank saved',
+          description: `Synced — response time ~${latencyMs}ms (slightly above 600ms target).`,
+        });
+      } else {
+        toast({ title: 'Knowledge Bank saved', description: 'Your training content has been synced to the AI.' });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/ai-receptionist/config"] });
     },
     onError: (error: Error) => {
@@ -414,13 +436,52 @@ export default function AIReceptionist() {
       }
       return apiRequest("POST", "/api/ai-receptionist/config", data);
     },
-    onSuccess: () => {
-      toast({ title: "Settings saved", description: "AI Receptionist configuration updated" });
+    onSuccess: async (res: any) => {
+      const updated = await (res as Response).json().catch(() => null);
+      const latencyMs: number | null = updated?.lastLatencyMs ?? null;
+      const latencyStatus: string | null = updated?.latencyStatus ?? null;
+      if (latencyStatus === 'warn') {
+        toast({
+          title: 'Saved — but response time is slow',
+          description: `Estimated ${latencyMs}ms (target <600ms). Try shortening your greeting or knowledge bank.`,
+          variant: 'destructive',
+        });
+      } else if (latencyStatus === 'amber') {
+        toast({
+          title: 'Saved',
+          description: `Response time ~${latencyMs}ms (slightly above 600ms target).`,
+        });
+      } else {
+        toast({ title: 'Settings saved', description: 'AI Receptionist configuration updated' });
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/ai-receptionist/config"] });
       setEditMode(false);
     },
     onError: (error: Error) => {
       toast({ title: "Save failed", description: error.message || "Failed to save settings", variant: "destructive" });
+    },
+  });
+
+  const measureLatencyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/ai-receptionist/measure-latency");
+      return (res as Response).json();
+    },
+    onSuccess: (data: { lastLatencyMs: number; latencyStatus: 'optimal' | 'amber' | 'warn' }) => {
+      const label = data.latencyStatus === 'optimal'
+        ? 'Excellent — under 600ms target'
+        : data.latencyStatus === 'amber'
+          ? 'Acceptable, but above 600ms target'
+          : 'Slow — exceeds 700ms ceiling';
+      toast({
+        title: `Estimated response time: ${data.lastLatencyMs}ms`,
+        description: label,
+        variant: data.latencyStatus === 'warn' ? 'destructive' : 'default',
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/ai-receptionist/config"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Test failed', description: error.message || 'Could not measure latency', variant: 'destructive' });
     },
   });
 
@@ -809,7 +870,43 @@ export default function AIReceptionist() {
                     <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 )}
+                {canManageConfig && config?.vapiAssistantId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => measureLatencyMutation.mutate()}
+                    disabled={measureLatencyMutation.isPending}
+                    data-testid="button-test-latency"
+                  >
+                    {measureLatencyMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <Zap className="h-4 w-4 mr-1" />
+                    )}
+                    Test Response Time
+                  </Button>
+                )}
               </div>
+              {config?.vapiAssistantId && config?.lastLatencyMs != null && (
+                <div className="flex items-center gap-2 text-sm pt-1">
+                  <Zap className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Response time:</span>
+                  <Badge
+                    variant="outline"
+                    className={
+                      config.latencyStatus === 'optimal'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0'
+                        : config.latencyStatus === 'amber'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border-0'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0'
+                    }
+                    data-testid="badge-latency"
+                  >
+                    {config.lastLatencyMs}ms · {config.latencyStatus === 'optimal' ? 'Fast' : config.latencyStatus === 'amber' ? 'OK' : 'Slow'}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">target &lt;600ms</span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -950,7 +1047,23 @@ export default function AIReceptionist() {
                   maxLength={500}
                   data-testid="input-greeting"
                 />
-                <p className="text-xs text-muted-foreground">{formData.greeting.length}/500 characters</p>
+                {(() => {
+                  const wordCount = formData.greeting.trim().split(/\s+/).filter(Boolean).length;
+                  const slow = wordCount > 15;
+                  return (
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p className="text-xs text-muted-foreground">
+                        {formData.greeting.length}/500 characters · {wordCount} words
+                      </p>
+                      {slow && (
+                        <p className="text-xs flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="h-3 w-3" />
+                          Long greetings increase response time. Try keeping it under 15 words.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
                 {formData.greeting && (
                   <div className="p-3 rounded-md bg-muted/50 text-sm">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Preview</p>
@@ -1247,6 +1360,31 @@ export default function AIReceptionist() {
                   </div>
                 ))}
               </div>
+
+              {(() => {
+                const totalChars =
+                  (knowledgeBank.serviceDescriptions || '').length +
+                  (knowledgeBank.pricingInfo || '').length +
+                  (knowledgeBank.specialInstructions || '').length +
+                  (knowledgeBank.faqs || []).reduce(
+                    (s, f) => s + (f.question || '').length + (f.answer || '').length,
+                    0,
+                  );
+                const slow = totalChars > 2000;
+                return (
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-xs text-muted-foreground">
+                      {totalChars.toLocaleString()} characters of training content
+                    </p>
+                    {slow && (
+                      <p className="text-xs flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                        <AlertTriangle className="h-3 w-3" />
+                        Large knowledge banks slow response time. Consider trimming below 2,000 characters.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               <Button
                 onClick={() => saveKnowledgeBankMutation.mutate(knowledgeBank)}

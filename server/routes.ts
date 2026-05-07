@@ -49402,6 +49402,9 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         aiMaxTokens: config.aiMaxTokens ?? 250,
         aiTemperature: config.aiTemperature ?? 0.5,
         customInstructions: config.customInstructions || null,
+        lastLatencyMs: config.lastLatencyMs ?? null,
+        latencyStatus: config.latencyStatus || null,
+        lastLatencyCheckedAt: config.lastLatencyCheckedAt || null,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -49659,11 +49662,34 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         aiMaxTokens: config?.aiMaxTokens ?? 250,
         aiTemperature: config?.aiTemperature ?? 0.5,
         customInstructions: config?.customInstructions || null,
+        lastLatencyMs: config?.lastLatencyMs ?? null,
+        latencyStatus: config?.latencyStatus || null,
+        lastLatencyCheckedAt: config?.lastLatencyCheckedAt || null,
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error("Update AI receptionist config error:", message);
       res.status(500).json({ error: "Failed to update AI receptionist config" });
+    }
+  });
+
+  app.post("/api/ai-receptionist/measure-latency", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const { refreshLatencyEstimate } = await import('./vapiService');
+      const result = await refreshLatencyEstimate(userId);
+      if (!result) {
+        return res.status(404).json({ error: 'AI Receptionist config not found' });
+      }
+      res.json({
+        lastLatencyMs: result.ms,
+        latencyStatus: result.status,
+        lastLatencyCheckedAt: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Measure latency error:', message);
+      res.status(500).json({ error: 'Failed to measure latency' });
     }
   });
 

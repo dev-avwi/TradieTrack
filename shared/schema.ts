@@ -4646,6 +4646,9 @@ export const aiReceptionistConfig = pgTable("ai_receptionist_config", {
   customInstructions: text("custom_instructions"),
   autoReplyEnabled: boolean("auto_reply_enabled").notNull().default(true),
   autoReplyMessage: text("auto_reply_message").default("Thanks for calling {{business_name}}. We got your message and will get back to you shortly. — Sent via JobRunner"),
+  lastLatencyMs: integer("last_latency_ms"),
+  lastLatencyCheckedAt: timestamp("last_latency_checked_at"),
+  latencyStatus: text("latency_status"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
