@@ -14,6 +14,7 @@ import {
 import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { useBottomInset } from './ui/BottomInsetSpacer';
 import { useNotificationsStore, UnifiedNotification } from '../lib/notifications-store';
 import { router } from 'expo-router';
 
@@ -30,6 +31,7 @@ interface NotificationsPanelProps {
 
 export function NotificationsPanel({ visible, onClose, onNavigateToItem }: NotificationsPanelProps) {
   const { colors } = useTheme();
+  const bottomInset = useBottomInset();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [slideAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -261,7 +263,7 @@ export function NotificationsPanel({ visible, onClose, onNavigateToItem }: Notif
           
           <ScrollView 
             style={styles.content}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[styles.contentContainer, { paddingBottom: bottomInset + 24 }]}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -447,7 +449,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
   },
   headerSubtitle: {
@@ -471,7 +473,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   markAllText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.primary,
   },
   closeButton: {
@@ -481,7 +483,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
   loadingContainer: {
     paddingVertical: 60,
@@ -503,7 +505,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
     marginBottom: 8,
   },
@@ -542,12 +544,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   notificationTitle: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.foreground,
     flex: 1,
   },
   notificationTitleUnread: {
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   unreadDot: {
     width: 8,
@@ -563,7 +565,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   typeBadgeText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   notificationMessage: {
     fontSize: 13,
@@ -596,7 +598,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.foreground,
   },
   dismissButton: {
@@ -627,7 +629,7 @@ const createBellStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.destructiveForeground,
   },
 });

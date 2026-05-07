@@ -154,7 +154,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statValue: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     letterSpacing: -0.5,
     color: colors.foreground,
   },
@@ -220,7 +220,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   dateGroupLabel: {
     ...typography.subtitle,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     color: colors.foreground,
   },
   dateGroupCount: {
@@ -258,7 +258,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   thumbCategoryText: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     color: colors.white,
   },
   thumbSelectOverlay: {
@@ -342,7 +342,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   bulkBarCount: {
     ...typography.caption,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     color: colors.primary,
     minWidth: 80,
   },
@@ -357,7 +357,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   bulkActionText: {
     ...typography.captionSmall,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
   },
   bulkActionDanger: {
@@ -372,7 +372,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   bulkCancelText: {
     ...typography.captionSmall,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.mutedForeground,
   },
   modalOverlay: {
@@ -397,7 +397,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   modalTitle: {
     ...typography.cardTitle,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     color: colors.foreground,
   },
   modalClose: {
@@ -418,7 +418,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   formLabel: {
     ...typography.caption,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
     marginBottom: spacing.xs,
   },
@@ -454,12 +454,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   catOptionText: {
     ...typography.caption,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.mutedForeground,
   },
   catOptionTextSelected: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   previewRow: {
     flexDirection: 'row',
@@ -504,7 +504,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sourceBtnText: {
     ...typography.body,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.mutedForeground,
   },
   cancelBtn: {
@@ -518,7 +518,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   cancelBtnText: {
     ...typography.body,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.mutedForeground,
   },
   saveBtn: {
@@ -534,7 +534,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   saveBtnText: {
     ...typography.body,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     color: colors.primaryForeground,
   },
   lightboxOverlay: {
@@ -566,7 +566,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   lightboxMeta: {
     backgroundColor: 'rgba(0,0,0,0.85)',
     padding: spacing.md,
-    paddingBottom: Platform.OS === 'ios' ? 34 : spacing.md,
+    paddingBottom: spacing.md,
   },
   lightboxBadge: {
     alignSelf: 'flex-start',
@@ -577,7 +577,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   lightboxBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     color: colors.white,
   },
   lightboxCaption: {
@@ -614,7 +614,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   lightboxLink: {
     ...typography.caption,
     color: '#60a5fa',
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   lightboxNav: {
     position: 'absolute',
@@ -638,7 +638,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   lightboxEditLabel: {
     ...typography.captionSmall,
     color: 'rgba(255,255,255,0.5)',
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     marginBottom: spacing.xs,
   },
   lightboxEditInput: {
@@ -673,7 +673,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   lightboxEditCatTextActive: {
     color: '#60a5fa',
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
   },
   lightboxSaveBtn: {
     backgroundColor: colors.primary,

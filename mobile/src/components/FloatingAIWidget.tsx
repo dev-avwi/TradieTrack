@@ -14,6 +14,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { PressableRow } from './ui/PressableRow';
+import { useBottomInset } from './ui/BottomInsetSpacer';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { colors } from '../lib/colors';
@@ -51,6 +52,7 @@ interface FloatingAIWidgetProps {
 }
 
 export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) {
+  const bottomInset = useBottomInset();
   const [message, setMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -408,7 +410,7 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
           </ScrollView>
 
           {/* Input */}
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { paddingBottom: 12 + bottomInset }]}>
             <TextInput
               style={styles.input}
               placeholder="Ask me anything..."
@@ -699,7 +701,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+    paddingBottom: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.card,

@@ -13,6 +13,8 @@ import {
   Modal,
 } from 'react-native';
 import { PressableRow } from '../../../src/components/ui/PressableRow';
+import { useConfirmDialog } from '../../../src/components/ui/ConfirmDialog';
+import { useActionSheet } from '../../../src/components/ui/ActionSheet';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -64,6 +66,8 @@ interface JobData {
 }
 
 export default function ReceiptDetailScreen() {
+  const confirm = useConfirmDialog();
+  const showActionSheet = useActionSheet();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user, businessSettings } = useAuthStore();
   const { colors } = useTheme();
@@ -88,30 +92,25 @@ export default function ReceiptDetailScreen() {
   const handleDeleteReceipt = () => {
     if (!receipt) return;
     
-    Alert.alert(
-      'Delete Receipt',
-      'Are you sure you want to delete this receipt? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeleting(true);
-            try {
-              await api.delete(`/api/receipts/${receipt.id}`);
-              Alert.alert('Success', 'Receipt deleted successfully');
-              router.back();
-            } catch (error) {
-              console.error('Error deleting receipt:', error);
-              Alert.alert('Error', 'Failed to delete receipt');
-            } finally {
-              setIsDeleting(false);
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Delete Receipt',
+      message: 'Are you sure you want to delete this receipt? This cannot be undone.',
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      setIsDeleting(true);
+      try {
+        await api.delete(`/api/receipts/${receipt.id}`);
+        Alert.alert('Success', 'Receipt deleted successfully');
+        router.back();
+      } catch (error) {
+        console.error('Error deleting receipt:', error);
+        Alert.alert('Error', 'Failed to delete receipt');
+      } finally {
+        setIsDeleting(false);
+      }
+    });
   };
 
   useEffect(() => {
@@ -304,54 +303,28 @@ export default function ReceiptDetailScreen() {
       return;
     }
     
-    // Show options for sending
-    Alert.alert(
-      'Send Receipt',
-      `To: ${client?.email || 'client'}`,
-      [
-        {
-          text: 'JobRunner: Send Now',
-          onPress: async () => {
-            await handleSendViaJobRunner();
-          },
-        },
-        {
-          text: 'JobRunner: Edit Message',
-          onPress: () => setShowEmailCompose(true),
-        },
-        {
-          text: 'Manual: Share',
-          onPress: () => showManualShareOptions(),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+    showActionSheet({
+      title: 'Send Receipt',
+      message: `To: ${client?.email || 'client'}`,
+      actions: [
+        { label: 'JobRunner: Send Now', icon: 'send', onPress: () => { handleSendViaJobRunner(); } },
+        { label: 'JobRunner: Edit Message', icon: 'edit-3', onPress: () => setShowEmailCompose(true) },
+        { label: 'Manual: Share', icon: 'share-2', onPress: () => showManualShareOptions() },
+      ],
+    });
   };
   
   const showManualShareOptions = () => {
     if (!receipt) return;
     
-    Alert.alert(
-      'Share Format',
-      'How would you like to share this receipt?',
-      [
-        {
-          text: 'PDF Attachment',
-          onPress: () => handleShareAsPdf(),
-        },
-        {
-          text: 'Composed Email',
-          onPress: () => handleShareAsComposedEmail(),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+    showActionSheet({
+      title: 'Share Format',
+      message: 'How would you like to share this receipt?',
+      actions: [
+        { label: 'PDF Attachment', icon: 'file-text', onPress: () => handleShareAsPdf() },
+        { label: 'Composed Email', icon: 'mail', onPress: () => handleShareAsComposedEmail() },
+      ],
+    });
   };
   
   const handleShareAsComposedEmail = async () => {

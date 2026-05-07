@@ -16,6 +16,7 @@ import {
   Image,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -683,6 +684,7 @@ export default function JobChatScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const scrollRef = useRef<ScrollView>(null);
 
@@ -1382,7 +1384,7 @@ export default function JobChatScreen() {
           {renderMessages()}
         </ScrollView>
 
-        <View style={[styles.composerContainer, { paddingBottom: spacing.lg }]}>
+        <View style={[styles.composerContainer, { paddingBottom: spacing.lg + insets.bottom }]}>
           <View style={styles.composerRow}>
             <PressableRow style={styles.attachButton} onPress={() => setShowAttachModal(true)} >
               <Feather name="plus" size={20} color={colors.mutedForeground} />

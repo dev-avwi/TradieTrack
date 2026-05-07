@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../lib/theme';
 import { spacing, radius } from '../../lib/design-tokens';
 import { PressableRow } from './PressableRow';
@@ -15,6 +16,7 @@ interface TrustBannerProps {
 export function TrustBanner({ businessName }: TrustBannerProps) {
   const { colors, isDark } = useTheme();
   const styles = createStyles(colors, isDark);
+  const insets = useSafeAreaInsets();
   const [isDismissed, setIsDismissed] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -37,7 +39,7 @@ export function TrustBanner({ businessName }: TrustBannerProps) {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { marginBottom: spacing.lg + insets.bottom }]}>
       <PressableRow style={styles.dismissButton} onPress={handleDismiss} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} testID="button-dismiss-banner" >
         <Feather name="x" size={16} color={colors.mutedForeground} />
       </PressableRow>

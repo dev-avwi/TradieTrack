@@ -18,6 +18,7 @@ import {
 import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, iconSizes, sizes, componentStyles, usePageShell } from '../../src/lib/design-tokens';
@@ -636,6 +637,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 type ActiveTab = 'forms' | 'templates';
 
 export default function FormBuilderScreen() {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const responsiveShell = usePageShell();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -1097,7 +1099,7 @@ export default function FormBuilderScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 + insets.bottom }} keyboardShouldPersistTaps="handled">
           {showPreview ? (
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>

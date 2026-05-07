@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { PressableRow } from './ui/PressableRow';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import api from '../lib/api';
 import { useTheme, ThemeColors } from '../lib/theme';
@@ -58,6 +59,7 @@ export function AIPhotoAnalysisModal({
   aiEnabled = true,
   aiPhotoAnalysisEnabled = true,
 }: AIPhotoAnalysisModalProps) {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = createStyles(colors);
   
@@ -305,7 +307,7 @@ export function AIPhotoAnalysisModal({
                 })}
               </ScrollView>
 
-              <View style={styles.footer}>
+              <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
                 <PressableRow style={[styles.analyseButton, selectedPhotoIds.size === 0 && styles.buttonDisabled]} onPress={startAnalysis} disabled={selectedPhotoIds.size === 0} >
                   <Feather name="zap" size={18} color={colors.primaryForeground} />
                   <Text style={styles.analyseButtonText}>
@@ -399,7 +401,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   modalTitle: {
     fontSize: typography.cardTitle.fontSize,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
   },
   selectionHeader: {
@@ -413,7 +415,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   selectionInfo: {
     fontSize: typography.body.fontSize,
     color: colors.foreground,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
   },
   selectionActions: {
     flexDirection: 'row',
@@ -426,7 +428,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   selectionButtonText: {
     fontSize: typography.caption.fontSize,
     color: colors.primary,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
   },
   photosGrid: {
     flex: 1,
@@ -485,7 +487,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   analyseButtonText: {
     fontSize: typography.button.fontSize,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.primaryForeground,
   },
   buttonDisabled: {
@@ -525,7 +527,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   cursor: {
     color: colors.primary,
-    fontWeight: 'bold',
+    fontWeight: 'bold', fontFamily: 'Inter_700Bold',
   },
   cancelButton: {
     backgroundColor: colors.muted,
@@ -540,7 +542,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: typography.button.fontSize,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.foreground,
   },
   resultContent: {
@@ -555,7 +557,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   completeText: {
     fontSize: typography.body.fontSize,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   resultScroll: {
     flex: 1,
@@ -585,7 +587,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   addButtonText: {
     fontSize: typography.button.fontSize,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.primaryForeground,
   },
   discardButton: {
@@ -600,7 +602,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   discardButtonText: {
     fontSize: typography.button.fontSize,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.foreground,
   },
   disabledContent: {

@@ -15,6 +15,7 @@ import {
   FlatList,
 } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -158,6 +159,7 @@ const defaultPOForm = {
 
 export default function InventoryScreen() {
   const { colors } = useTheme();
+  const confirm = useConfirmDialog();
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
@@ -354,28 +356,23 @@ export default function InventoryScreen() {
   };
 
   const handleDeleteItem = (item: InventoryItem) => {
-    Alert.alert(
-      'Delete Item',
-      `Are you sure you want to delete "${item.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await api.delete(`/api/inventory/items/${item.id}`);
-              if (res.error) { Alert.alert('Error', res.error); return; }
-              setShowDetailModal(false);
-              setSelectedItem(null);
-              fetchData();
-            } catch (err) {
-              Alert.alert('Error', 'Failed to delete item.');
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Delete Item',
+      message: `Are you sure you want to delete "${item.name}"?`,
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        const res = await api.delete(`/api/inventory/items/${item.id}`);
+        if (res.error) { Alert.alert('Error', res.error); return; }
+        setShowDetailModal(false);
+        setSelectedItem(null);
+        fetchData();
+      } catch (err) {
+        Alert.alert('Error', 'Failed to delete item.');
+      }
+    });
   };
 
   const openDetail = async (item: InventoryItem) => {

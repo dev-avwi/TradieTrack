@@ -21,6 +21,7 @@ import {
 import { PressableRow } from '@/components/ui/PressableRow';
 
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useContentWidth, useIsTablet } from '../../src/lib/device';
 import { Feather } from '@expo/vector-icons';
 import { useJobsStore, useClientsStore, useAuthStore } from '../../src/lib/store';
@@ -296,6 +297,7 @@ function JobCard({
 }
 
 export default function JobsScreen() {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const contentWidth = useContentWidth();
   const isTabletDevice = useIsTablet();
@@ -772,8 +774,8 @@ export default function JobsScreen() {
   const responsiveContentStyle = useMemo(() => ({
     paddingHorizontal: responsiveShell.paddingHorizontal,
     paddingTop: responsiveShell.paddingTop,
-    paddingBottom: responsiveShell.paddingBottom,
-  }), [responsiveShell]);
+    paddingBottom: responsiveShell.paddingBottom + insets.bottom,
+  }), [responsiveShell, insets.bottom]);
 
   const listHeaderComponent = useMemo(() => (
     <View>

@@ -11,6 +11,7 @@ import {
   Easing,
   Platform
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -207,6 +208,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
   const { colors } = useTheme();
   const isTabletStyle = fabStyle === 'tablet';
   const styles = useMemo(() => createStyles(colors, isTabletStyle), [colors, isTabletStyle]);
+  const fabInsets = useSafeAreaInsets();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   
   const fabPositionStyle = isTabletStyle 
@@ -335,7 +337,13 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
           style={styles.modalOverlay}
           onPress={() => setIsOpen(false)}
         >
-          <Pressable style={styles.menuContainer} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[
+              styles.menuContainer,
+              !isTabletStyle && { paddingBottom: 24 + fabInsets.bottom },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
             {/* Tablet: Header with icon and close button | Phone: Handle bar */}
             {isTabletStyle ? (
               <View style={styles.menuHeader}>

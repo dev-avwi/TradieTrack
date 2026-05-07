@@ -41,7 +41,7 @@ export function XeroRibbon({ size = 'small' }: XeroRibbonProps) {
     ribbonText: {
       color: colors.white,
       fontSize: fontSize,
-      fontWeight: '700',
+      fontWeight: '700', fontFamily: 'Inter_700Bold',
       letterSpacing: 0.5,
       textAlign: 'center',
     },

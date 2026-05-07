@@ -14,6 +14,8 @@ import {
   Platform,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useConfirmDialog } from '../../src/components/ui/ConfirmDialog';
+import { useActionSheet } from '../../src/components/ui/ActionSheet';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -613,6 +615,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
 });
 
 export default function ChatHubScreen() {
+  const confirm = useConfirmDialog();
+  const showActionSheet = useActionSheet();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user } = useAuthStore();
@@ -1009,31 +1013,37 @@ export default function ChatHubScreen() {
     const asset = result.assets[0];
     const uri = asset.uri;
 
-    Alert.alert(
-      'Send Photo via MMS',
-      'Add a message to send with this photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showActionSheet({
+      title: 'Send Photo via MMS',
+      message: 'Add a message to send with this photo?',
+      actions: [
         {
-          text: 'Send with message',
+          label: 'Send with message',
+          icon: 'edit-3',
           onPress: () => {
-            Alert.prompt?.(
-              'Message',
-              'Enter a message to accompany the photo:',
-              async (text: string) => {
-                await uploadAndSendMms(uri, phone!, text || 'Photo update', clientId, jobId);
-              },
-              'plain-text',
-              'Here\'s a photo update for you.'
-            ) || uploadAndSendMms(uri, phone!, 'Photo update', clientId, jobId);
+            const promptFn = (Alert as { prompt?: (...args: unknown[]) => unknown }).prompt;
+            if (typeof promptFn === 'function') {
+              promptFn(
+                'Message',
+                'Enter a message to accompany the photo:',
+                async (text: string) => {
+                  await uploadAndSendMms(uri, phone!, text || 'Photo update', clientId, jobId);
+                },
+                'plain-text',
+                "Here's a photo update for you.",
+              );
+            } else {
+              uploadAndSendMms(uri, phone!, 'Photo update', clientId, jobId);
+            }
           },
         },
         {
-          text: 'Send photo only',
-          onPress: () => uploadAndSendMms(uri, phone!, 'Photo update', clientId, jobId),
+          label: 'Send photo only',
+          icon: 'image',
+          onPress: () => { uploadAndSendMms(uri, phone!, 'Photo update', clientId, jobId); },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const uploadAndSendMms = async (uri: string, phone: string, message: string, clientId?: string, jobId?: string) => {
@@ -1084,20 +1094,25 @@ export default function ChatHubScreen() {
       Alert.alert('No Jobs Available', 'There are no pending or scheduled jobs to link this enquiry to. Create a new job first.');
       return;
     }
-    const jobButtons = pendingJobs.slice(0, 8).map(j => ({
-      text: `${j.title}${j.status === 'scheduled' ? ' (Scheduled)' : ''}`,
-      onPress: async () => {
-        try {
-          await api.patch(`/api/sms/conversations/${item.data.id}`, { jobId: j.id });
-          Alert.alert('Linked', `Enquiry linked to "${j.title}". Future messages from this number will appear under that job.`);
-          loadData();
-        } catch {
-          Alert.alert('Error', 'Could not link enquiry to job. Please try again.');
-        }
-      },
-    }));
-    jobButtons.push({ text: 'Cancel', onPress: () => {} });
-    Alert.alert('Link to Job', 'Choose a job to link this enquiry to:', jobButtons as any);
+    showActionSheet({
+      title: 'Link to Job',
+      message: 'Choose a job to link this enquiry to:',
+      actions: pendingJobs.slice(0, 8).map(j => ({
+        label: `${j.title}${j.status === 'scheduled' ? ' (Scheduled)' : ''}`,
+        icon: 'link' as const,
+        onPress: () => {
+          (async () => {
+            try {
+              await api.patch(`/api/sms/conversations/${item.data.id}`, { jobId: j.id });
+              Alert.alert('Linked', `Enquiry linked to "${j.title}". Future messages from this number will appear under that job.`);
+              loadData();
+            } catch {
+              Alert.alert('Error', 'Could not link enquiry to job. Please try again.');
+            }
+          })();
+        },
+      })),
+    });
   };
 
   const handleCreateJobFromEnquiry = (item: ConversationItem) => {
@@ -1130,12 +1145,11 @@ export default function ChatHubScreen() {
       text: 'Send Photo',
       onPress: () => handleSendPhoto(item),
     });
-    buttons.push({ text: 'Cancel', onPress: () => {} });
-    Alert.alert(
-      item.type === 'sms' && activeFilter === 'enquiries' ? 'Enquiry Actions' : 'Quick SMS',
-      item.type === 'sms' && activeFilter === 'enquiries' ? 'Manage this enquiry or send a quick reply:' : 'Send a quick message:',
-      buttons as any
-    );
+    showActionSheet({
+      title: item.type === 'sms' && activeFilter === 'enquiries' ? 'Enquiry Actions' : 'Quick SMS',
+      message: item.type === 'sms' && activeFilter === 'enquiries' ? 'Manage this enquiry or send a quick reply:' : 'Send a quick message:',
+      actions: buttons.map(b => ({ label: b.text, onPress: b.onPress })),
+    });
   };
 
   const handleConversationPress = (item: ConversationItem) => {
@@ -1168,57 +1182,41 @@ export default function ChatHubScreen() {
         clientId,
       });
       if (response.error) {
-        Alert.alert(
-          'Send via SMS App?',
-          'Could not send directly. Would you like to open your messaging app instead?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Open SMS App',
-              onPress: () => {
-                Linking.openURL(`sms:${phone}`).catch(() => Alert.alert('Error', 'Could not open SMS app'));
-              },
-            },
-          ]
-        );
+        confirm({
+          title: 'Send via SMS App?',
+          message: 'Could not send directly. Would you like to open your messaging app instead?',
+          confirmText: 'Open SMS App',
+        }).then((ok) => {
+          if (ok) Linking.openURL(`sms:${phone}`).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+        });
       } else {
         Alert.alert('SMS Sent', `Message sent to ${clientName || phone}`);
       }
     } catch {
-      Alert.alert(
-        'Send via SMS App?',
-        'Could not send directly. Would you like to open your messaging app instead?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Open SMS App',
-            onPress: () => {
-              Linking.openURL(`sms:${phone}`).catch(() => Alert.alert('Error', 'Could not open SMS app'));
-            },
-          },
-        ]
-      );
+      confirm({
+        title: 'Send via SMS App?',
+        message: 'Could not send directly. Would you like to open your messaging app instead?',
+        confirmText: 'Open SMS App',
+      }).then((ok) => {
+        if (ok) Linking.openURL(`sms:${phone}`).catch(() => Alert.alert('Error', 'Could not open SMS app'));
+      });
     }
   };
 
   const handleContactClient = (client: Client) => {
-    const options: { text: string; onPress?: () => void; style?: 'cancel' }[] = [
-      { text: 'Cancel', style: 'cancel' },
-    ];
-    
+    const actions: { label: string; icon: 'phone' | 'message-square' | 'mail'; onPress: () => void }[] = [];
     if (client.phone) {
-      options.push({ text: 'Call', onPress: () => Linking.openURL(`tel:${client.phone}`) });
-      options.push({ text: 'SMS', onPress: () => handleSendSmsToClient(client.phone!, client.firstName, client.id) });
+      actions.push({ label: 'Call', icon: 'phone', onPress: () => { Linking.openURL(`tel:${client.phone}`); } });
+      actions.push({ label: 'SMS', icon: 'message-square', onPress: () => { handleSendSmsToClient(client.phone!, client.firstName, client.id); } });
     }
     if (client.email) {
-      options.push({ text: 'Email', onPress: () => Linking.openURL(`mailto:${client.email}`) });
+      actions.push({ label: 'Email', icon: 'mail', onPress: () => { Linking.openURL(`mailto:${client.email}`); } });
     }
-    
-    Alert.alert(
-      `Contact ${client.firstName || 'Client'}`,
-      'Choose how to contact:',
-      options as any
-    );
+    showActionSheet({
+      title: `Contact ${client.firstName || 'Client'}`,
+      message: 'Choose how to contact:',
+      actions,
+    });
   };
 
   const formatTime = (dateStr?: string) => {
@@ -1347,7 +1345,7 @@ export default function ChatHubScreen() {
 
     if (twilioConnected) {
       return (
-        <PressableRow style={styles.twilioConnectedBanner} onPress={() => { Alert.alert( 'Business Number', `Your number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nThis number is used for SMS messaging here and AI Receptionist calls.`, [ { text: 'Phone Numbers', onPress: () => router.push('/more/phone-numbers') }, { text: 'OK', style: 'cancel' }, ] ); }} >
+        <PressableRow style={styles.twilioConnectedBanner} onPress={() => { confirm({ title: 'Business Number', message: `Your number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nThis number is used for SMS messaging here and AI Receptionist calls.`, confirmText: 'Phone Numbers', cancelText: 'OK' }).then((ok) => { if (ok) router.push('/more/phone-numbers' as never); }); }} >
           <View style={styles.twilioConnectedIcon}>
             <Feather name="check" size={16} color={colors.white} />
           </View>

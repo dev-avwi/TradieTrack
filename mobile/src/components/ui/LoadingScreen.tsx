@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, ThemeColors } from '../../lib/theme';
 import { useAuthStore } from '../../lib/store';
 import { spacing } from '../../lib/design-tokens';
@@ -442,6 +443,7 @@ export function LoadingScreen({ message = 'Loading JobRunner...', showProgress =
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { businessSettings } = useAuthStore();
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (showProgress) {
@@ -479,7 +481,7 @@ export function LoadingScreen({ message = 'Loading JobRunner...', showProgress =
   const businessLogoUrl = businessSettings?.logoUrl;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={colors.background} />
       <View style={styles.contentWrapper}>
         {/* Static logo without pulsing effect */}

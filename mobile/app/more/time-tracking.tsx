@@ -16,6 +16,7 @@ import {
   Switch
 } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useFocusEffect, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -780,6 +781,7 @@ function buildTimeTrackingConfig(colors: ThemeColors) {
 
 export default function TimeTrackingScreen() {
   const { colors } = useTheme();
+  const confirm = useConfirmDialog();
   const ttConfig = useMemo(() => buildTimeTrackingConfig(colors), [colors]);
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
@@ -1000,31 +1002,26 @@ export default function TimeTrackingScreen() {
 
   const handleStopTimer = async () => {
     if (!activeTimer) return;
-    Alert.alert(
-      'Stop Timer',
-      `Save ${formatTime(timerSeconds)} of tracked time?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Save', 
-          onPress: async () => {
-            setIsStopping(true);
-            try {
-              const success = await stopTimer();
-              if (success) {
-                await Promise.all([fetchTimeStats(), fetchWeeklyData()]);
-              } else {
-                Alert.alert('Error', 'Failed to save time entry.');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to save time entry.');
-            } finally {
-              setIsStopping(false);
-            }
-          }
-        },
-      ]
-    );
+    confirm({
+      title: 'Stop Timer',
+      message: `Save ${formatTime(timerSeconds)} of tracked time?`,
+      confirmText: 'Save',
+    }).then(async (ok) => {
+      if (!ok) return;
+      setIsStopping(true);
+      try {
+        const success = await stopTimer();
+        if (success) {
+          await Promise.all([fetchTimeStats(), fetchWeeklyData()]);
+        } else {
+          Alert.alert('Error', 'Failed to save time entry.');
+        }
+      } catch (error) {
+        Alert.alert('Error', 'Failed to save time entry.');
+      } finally {
+        setIsStopping(false);
+      }
+    });
   };
 
   const handlePauseTimer = async () => {
@@ -1056,25 +1053,20 @@ export default function TimeTrackingScreen() {
   };
 
   const handleDeleteEntry = (entry: TimeEntry) => {
-    Alert.alert(
-      'Delete Entry',
-      'Are you sure you want to delete this time entry?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/time-entries/${entry.id}`);
-              await Promise.all([fetchTimeEntries(), fetchTimeStats(), fetchWeeklyData()]);
-            } catch {
-              Alert.alert('Error', 'Failed to delete entry.');
-            }
-          }
-        }
-      ]
-    );
+    confirm({
+      title: 'Delete Entry',
+      message: 'Are you sure you want to delete this time entry?',
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        await api.delete(`/api/time-entries/${entry.id}`);
+        await Promise.all([fetchTimeEntries(), fetchTimeStats(), fetchWeeklyData()]);
+      } catch {
+        Alert.alert('Error', 'Failed to delete entry.');
+      }
+    });
   };
 
   const handleOpenEditEntry = (entry: TimeEntry) => {

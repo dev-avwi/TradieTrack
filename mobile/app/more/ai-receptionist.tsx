@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, TextInput, Linking, Platform } from 'react-native';
+import { useConfirmDialog } from '../../src/components/ui/ConfirmDialog';
+import { useActionSheet } from '../../src/components/ui/ActionSheet';
 import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -191,6 +193,8 @@ interface MultiNumberConfig {
 }
 
 export default function AIReceptionistScreen() {
+  const confirm = useConfirmDialog();
+  const showActionSheet = useActionSheet();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
@@ -346,81 +350,77 @@ export default function AIReceptionistScreen() {
 
   const handleProvisionNumber = async () => {
     const numberDisplay = formatPhoneDisplay(businessSettings?.dedicatedPhoneNumber || '');
-    Alert.alert(
-      'Activate AI Receptionist',
-      `This will set up your AI assistant on ${numberDisplay || 'your dedicated number'}. It will answer calls, take messages, and book appointments. Continue?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Activate',
-          onPress: async () => {
-            setIsProvisioning(true);
-            setProvisioningStatus('Saving your preferences...');
-            setProvisioningError(null);
-            try {
-              const enabledDaysP = schedule.filter(s => s.enabled).map(s => s.day);
-              const firstEnabledP = schedule.find(s => s.enabled);
-              await api.patch('/api/ai-receptionist/config', {
-                mode: mode || 'after_hours',
-                voice,
-                greeting: greeting || null,
-                transferNumbers,
-                businessHours: {
-                  start: firstEnabledP?.start || '08:00',
-                  end: firstEnabledP?.end || '17:00',
-                  timezone,
-                  days: enabledDaysP,
-                  schedule,
-                  holidays,
-                },
-              });
-              setProvisioningStatus('Setting up your AI assistant...');
-              const checkoutRes = await api.post<{ success?: boolean; provisioning?: boolean; url?: string }>('/api/subscription/ai-receptionist-checkout');
-              if (checkoutRes.data?.url) {
-                setIsProvisioning(false);
-                setProvisioningStatus(null);
-                if (Platform.OS === 'ios') {
-                  Alert.alert(
-                    'Contact Us to Enable',
-                    'AI Receptionist is a managed professional service. Please contact admin@avwebinnovation.com to get set up.',
-                    [{ text: 'OK' }]
-                  );
-                } else {
-                  Alert.alert(
-                    'Complete Setup',
-                    'You\'ll be taken to checkout to complete your AI Receptionist setup.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Continue', onPress: () => Linking.openURL(checkoutRes.data!.url!) },
-                    ]
-                  );
-                }
-                return;
-              }
-              setProvisioningStatus('Configuring AI voice and responses...');
-              pollProvisioningStatus();
-            } catch (e: any) {
-              setIsProvisioning(false);
-              setProvisioningStatus(null);
-              const errorData = e?.response?.data || e;
-              if (errorData?.needsDedicatedNumber) {
-                Alert.alert('Dedicated Number Required', 'You need a dedicated phone number before setting up AI Receptionist.', [
-                  { text: 'Get a Number', onPress: () => router.push('/more/phone-numbers') },
-                  { text: 'Cancel', style: 'cancel' },
-                ]);
-              } else if (errorData?.upgradeRequired) {
-                Alert.alert('Plan Upgrade Required', 'AI Receptionist requires a Pro plan or higher. Please upgrade your subscription first.', [
-                  { text: 'Upgrade', onPress: () => router.push('/more/settings') },
-                  { text: 'Cancel', style: 'cancel' },
-                ]);
-              } else {
-                Alert.alert('Error', errorData?.error || e?.message || 'Could not set up AI Receptionist. Please try again.');
-              }
-            }
+    confirm({
+      title: 'Activate AI Receptionist',
+      message: `This will set up your AI assistant on ${numberDisplay || 'your dedicated number'}. It will answer calls, take messages, and book appointments. Continue?`,
+      confirmText: 'Activate',
+    }).then(async (ok) => {
+      if (!ok) return;
+      setIsProvisioning(true);
+      setProvisioningStatus('Saving your preferences...');
+      setProvisioningError(null);
+      try {
+        const enabledDaysP = schedule.filter(s => s.enabled).map(s => s.day);
+        const firstEnabledP = schedule.find(s => s.enabled);
+        await api.patch('/api/ai-receptionist/config', {
+          mode: mode || 'after_hours',
+          voice,
+          greeting: greeting || null,
+          transferNumbers,
+          businessHours: {
+            start: firstEnabledP?.start || '08:00',
+            end: firstEnabledP?.end || '17:00',
+            timezone,
+            days: enabledDaysP,
+            schedule,
+            holidays,
           },
-        },
-      ]
-    );
+        });
+        setProvisioningStatus('Setting up your AI assistant...');
+        const checkoutRes = await api.post<{ success?: boolean; provisioning?: boolean; url?: string }>('/api/subscription/ai-receptionist-checkout');
+        if (checkoutRes.data?.url) {
+          setIsProvisioning(false);
+          setProvisioningStatus(null);
+          if (Platform.OS === 'ios') {
+            Alert.alert(
+              'Contact Us to Enable',
+              'AI Receptionist is a managed professional service. Please contact admin@avwebinnovation.com to get set up.',
+              [{ text: 'OK' }]
+            );
+          } else {
+            confirm({
+              title: 'Complete Setup',
+              message: 'You\'ll be taken to checkout to complete your AI Receptionist setup.',
+              confirmText: 'Continue',
+            }).then((ok2) => {
+              if (ok2) Linking.openURL(checkoutRes.data!.url!);
+            });
+          }
+          return;
+        }
+        setProvisioningStatus('Configuring AI voice and responses...');
+        pollProvisioningStatus();
+      } catch (e: any) {
+        setIsProvisioning(false);
+        setProvisioningStatus(null);
+        const errorData = e?.response?.data || e;
+        if (errorData?.needsDedicatedNumber) {
+          confirm({
+            title: 'Dedicated Number Required',
+            message: 'You need a dedicated phone number before setting up AI Receptionist.',
+            confirmText: 'Get a Number',
+          }).then((ok3) => { if (ok3) router.push('/more/phone-numbers'); });
+        } else if (errorData?.upgradeRequired) {
+          confirm({
+            title: 'Plan Upgrade Required',
+            message: 'AI Receptionist requires a Pro plan or higher. Please upgrade your subscription first.',
+            confirmText: 'Upgrade',
+          }).then((ok4) => { if (ok4) router.push('/more/settings'); });
+        } else {
+          Alert.alert('Error', errorData?.error || e?.message || 'Could not set up AI Receptionist. Please try again.');
+        }
+      }
+    });
   };
 
   const fetchAllConfigs = useCallback(async () => {
@@ -546,27 +546,22 @@ export default function AIReceptionistScreen() {
       Alert.alert('No Phone Number', 'Please set a business phone number in your settings first.');
       return;
     }
-    Alert.alert(
-      'Test Call',
-      `This will place a test call to ${phone}. Your AI receptionist will call you so you can hear how it sounds.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Call Me',
-          onPress: async () => {
-            setIsTestingCall(true);
-            try {
-              await api.post('/api/ai-receptionist/test-call', { phoneNumber: phone });
-              Alert.alert('Test Call Started', 'You should receive a call shortly from your AI receptionist.');
-            } catch (e: any) {
-              Alert.alert('Error', e?.response?.data?.error || 'Could not initiate test call.');
-            } finally {
-              setIsTestingCall(false);
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Test Call',
+      message: `This will place a test call to ${phone}. Your AI receptionist will call you so you can hear how it sounds.`,
+      confirmText: 'Call Me',
+    }).then(async (ok) => {
+      if (!ok) return;
+      setIsTestingCall(true);
+      try {
+        await api.post('/api/ai-receptionist/test-call', { phoneNumber: phone });
+        Alert.alert('Test Call Started', 'You should receive a call shortly from your AI receptionist.');
+      } catch (e: any) {
+        Alert.alert('Error', e?.response?.data?.error || 'Could not initiate test call.');
+      } finally {
+        setIsTestingCall(false);
+      }
+    });
   };
 
   const fetchHolidayPresets = useCallback(async () => {
@@ -982,21 +977,17 @@ export default function AIReceptionistScreen() {
                         return;
                       }
                       if (!val && config?.enabled) {
-                        Alert.alert(
-                          'Disable AI Receptionist?',
-                          'This will stop the AI from answering calls on your dedicated number. You can re-enable it anytime.',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Disable',
-                              style: 'destructive',
-                              onPress: () => {
-                                setEnabled(false);
-                                setUserChangedEnabled(true);
-                              },
-                            },
-                          ]
-                        );
+                        confirm({
+                          title: 'Disable AI Receptionist?',
+                          message: 'This will stop the AI from answering calls on your dedicated number. You can re-enable it anytime.',
+                          confirmText: 'Disable',
+                          destructive: true,
+                        }).then((ok) => {
+                          if (ok) {
+                            setEnabled(false);
+                            setUserChangedEnabled(true);
+                          }
+                        });
                       } else {
                         setEnabled(val);
                         setUserChangedEnabled(true);

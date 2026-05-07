@@ -169,17 +169,17 @@ const createProgressStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   stepLabel: {
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.mutedForeground,
     textAlign: 'center',
   },
   stepLabelComplete: {
     color: colors.success,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   stepLabelCurrent: {
     color: colors.foreground,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
 });
 
@@ -363,7 +363,7 @@ const createDocumentsStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   title: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
   },
   documentRow: {
@@ -390,7 +390,7 @@ const createDocumentsStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   documentTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
     marginBottom: 2,
   },
@@ -414,7 +414,7 @@ const createDocumentsStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     textTransform: 'capitalize',
   },
   createButton: {
@@ -425,7 +425,7 @@ const createDocumentsStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   createButtonText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.primaryForeground,
   },
 });
@@ -808,7 +808,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   urgencyText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   mainRow: {
     flexDirection: 'row',
@@ -828,7 +828,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
     marginBottom: 2,
   },
@@ -847,7 +847,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.primaryForeground,
   },
   secondaryAction: {
@@ -861,7 +861,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   secondaryActionText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     flex: 1,
   },
   smsModalOverlay: {
@@ -893,7 +893,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   smsModalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     flex: 1,
   },
   smsModalCloseButton: {
@@ -915,7 +915,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   smsRecipientName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   smsRecipientPhone: {
     fontSize: 13,
@@ -923,7 +923,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   smsMessageLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
     marginBottom: spacing.xs,
     paddingLeft: spacing.xs,
@@ -947,7 +947,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   smsInfoText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     flex: 1,
   },
   smsModalActions: {
@@ -964,7 +964,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   smsCancelButtonText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   smsSendButton: {
     flex: 1,
@@ -977,7 +977,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   smsSendButtonText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.white,
   },
 });
@@ -1099,7 +1099,7 @@ const createPaymentStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   title: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
     marginBottom: 2,
   },
@@ -1131,7 +1131,7 @@ const createPaymentStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   paymentLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
 });
 
@@ -1211,7 +1211,7 @@ const createScheduleCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     marginBottom: 2,
   },
   subtitle: {
@@ -1228,7 +1228,7 @@ const createScheduleCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.primaryForeground,
   },
 });
@@ -1469,7 +1469,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   title: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
     marginBottom: 2,
   },
@@ -1487,7 +1487,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.white,
   },
   modalOverlay: {
@@ -1519,7 +1519,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     flex: 1,
   },
   modalCloseButton: {
@@ -1541,7 +1541,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   recipientName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   recipientPhone: {
     fontSize: 13,
@@ -1549,7 +1549,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   messageLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
     marginBottom: spacing.xs,
     paddingLeft: spacing.xs,
@@ -1573,7 +1573,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   infoText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     flex: 1,
   },
   modalActions: {
@@ -1590,7 +1590,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   sendButton: {
     flex: 1,
@@ -1603,7 +1603,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sendButtonText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.white,
   },
 });
@@ -1664,7 +1664,7 @@ export function WorkerStateQuickActions({ jobId, jobStatus }: WorkerStateQuickAc
           ) : (
             <Feather name={btn.icon} size={14} color={btn.color} />
           )}
-          <Text style={{ fontSize: 13, fontWeight: '600', color: btn.color }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', fontFamily: 'Inter_600SemiBold', color: btn.color }}>
             {btn.label}
           </Text>
         </PressableRow>
@@ -1687,7 +1687,7 @@ export function WorkerStateQuickActions({ jobId, jobStatus }: WorkerStateQuickAc
           borderRadius: radius.lg,
           padding: spacing.lg,
         }}>
-          <Text style={{ fontSize: 17, fontWeight: '700', color: colors.foreground, marginBottom: spacing.xs }}>
+          <Text style={{ fontSize: 17, fontWeight: '700', fontFamily: 'Inter_700Bold', color: colors.foreground, marginBottom: spacing.xs }}>
             {pendingLabel}
           </Text>
           <Text style={{ fontSize: 14, color: colors.mutedForeground, marginBottom: spacing.md }}>
@@ -1713,10 +1713,10 @@ export function WorkerStateQuickActions({ jobId, jobStatus }: WorkerStateQuickAc
           />
           <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
             <PressableRow style={{ flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', }} onPress={() => { setShowNoteModal(false); setPendingState(null); }} >
-              <Text style={{ color: colors.foreground, fontWeight: '600' }}>Cancel</Text>
+              <Text style={{ color: colors.foreground, fontWeight: '600', fontFamily: 'Inter_600SemiBold' }}>Cancel</Text>
             </PressableRow>
             <PressableRow style={{ flex: 1, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: pendingColor, alignItems: 'center', }} onPress={confirmSetState} >
-              <Text style={{ color: colors.white, fontWeight: '600' }}>Confirm</Text>
+              <Text style={{ color: colors.white, fontWeight: '600', fontFamily: 'Inter_600SemiBold' }}>Confirm</Text>
             </PressableRow>
           </View>
         </View>

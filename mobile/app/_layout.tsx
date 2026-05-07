@@ -3,7 +3,10 @@ import { initSentry, setSentryUser, captureException } from '../src/lib/sentry';
 initSentry();
 
 import { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator, AppState, AppStateStatus, Image, Animated, Easing } from 'react-native';
+import { View, Text as RNText, TextInput as RNTextInput, StyleSheet, Alert, InteractionManager, Dimensions, ActivityIndicator, AppState, AppStateStatus, Image, Animated, Easing, Platform } from 'react-native';
+
+import { applyGlobalTextDefaults } from '../src/lib/global-text-defaults';
+applyGlobalTextDefaults({ Text: RNText, TextInput: RNTextInput });
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -40,6 +43,8 @@ import Toast from 'react-native-toast-message';
 import { buildToastConfig } from '../src/lib/toast';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { ActionSheetProvider } from '../src/components/ui/ActionSheet';
+import { ConfirmDialogProvider } from '../src/components/ui/ConfirmDialog';
 import {
   useFonts,
   Inter_400Regular,
@@ -899,7 +904,11 @@ export default function RootLayout() {
                   <TerminalProvider>
                     <CustomAlertProvider>
                       <BottomSheetModalProvider>
-                        <RootLayoutContent />
+                        <ConfirmDialogProvider>
+                          <ActionSheetProvider>
+                            <RootLayoutContent />
+                          </ActionSheetProvider>
+                        </ConfirmDialogProvider>
                       </BottomSheetModalProvider>
                     </CustomAlertProvider>
                   </TerminalProvider>

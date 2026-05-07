@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, PanResponder, Animated, LayoutChangeEvent, GestureResponderEvent, PanResponderGestureState } from 'react-native';
+import { View, StyleSheet, PanResponder, Animated, LayoutChangeEvent, GestureResponderEvent, PanResponderGestureState, Platform } from 'react-native';
 
 interface SliderProps {
   style?: object;
@@ -135,8 +135,9 @@ export function Slider({
 
 const styles = StyleSheet.create({
   container: {
-    height: 40,
+    height: Platform.OS === 'android' ? 44 : 40,
     justifyContent: 'center',
+    paddingVertical: 4,
   },
   track: {
     position: 'absolute',

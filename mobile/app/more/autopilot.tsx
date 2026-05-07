@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Switch, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { useConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -641,6 +642,7 @@ const createStyles = (colors: any, bottomNavHeight: number = 0) => StyleSheet.cr
 });
 
 export default function AutopilotScreen() {
+  const confirm = useConfirmDialog();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
@@ -878,30 +880,25 @@ export default function AutopilotScreen() {
   }, [formData, editingId, closeEditor, fetchData]);
 
   const handleDeleteAutomation = useCallback((automation: Automation) => {
-    Alert.alert(
-      'Delete Automation',
-      `Are you sure you want to delete "${automation.name}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await api.delete(`/api/automations/${automation.id}`);
-              if (res.error) {
-                Alert.alert('Error', res.error);
-              } else {
-                fetchData();
-              }
-            } catch {
-              Alert.alert('Error', 'Failed to delete automation');
-            }
-          },
-        },
-      ]
-    );
-  }, [fetchData]);
+    confirm({
+      title: 'Delete Automation',
+      message: `Are you sure you want to delete "${automation.name}"? This cannot be undone.`,
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        const res = await api.delete(`/api/automations/${automation.id}`);
+        if (res.error) {
+          Alert.alert('Error', res.error);
+        } else {
+          fetchData();
+        }
+      } catch {
+        Alert.alert('Error', 'Failed to delete automation');
+      }
+    });
+  }, [confirm, fetchData]);
 
   const updateFormTrigger = useCallback((updates: Partial<AutomationTrigger>) => {
     setFormData(prev => ({ ...prev, trigger: { ...prev.trigger, ...updates } }));

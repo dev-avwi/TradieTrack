@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useActionSheet } from '../../src/components/ui/ActionSheet';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -126,6 +127,7 @@ const formatCurrency = (amount: number | string) => {
 
 export default function PaymentHubScreen() {
   const { colors } = useTheme();
+  const showActionSheet = useActionSheet();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const params = useLocalSearchParams<{ tab?: string }>();
   
@@ -356,29 +358,36 @@ export default function PaymentHubScreen() {
       );
       const paymentUrl = response.data?.paymentUrl || response.data?.url;
       if (paymentUrl) {
-        Alert.alert(
-          'Payment Link Created',
-          'Share this payment link with your client?',
-          [
-            { text: 'Copy Link', onPress: () => {
-              import('expo-clipboard').then(({ setStringAsync }) => {
-                setStringAsync(paymentUrl);
-                Alert.alert('Copied', 'Payment link copied to clipboard.');
-              }).catch(() => {
-                Alert.alert('Link', paymentUrl);
-              });
-            }},
-            { text: 'Share', onPress: async () => {
-              try {
-                const { Share: RNShare } = await import('react-native');
-                await RNShare.share({ message: paymentUrl, title: 'Payment Link' });
-              } catch (shareError) {
-                console.warn('Failed to share payment link:', shareError);
-              }
-            }},
-            { text: 'Close', style: 'cancel' },
-          ]
-        );
+        showActionSheet({
+          title: 'Payment Link Created',
+          message: 'Share this payment link with your client?',
+          actions: [
+            {
+              label: 'Copy Link',
+              icon: 'copy',
+              onPress: () => {
+                import('expo-clipboard').then(({ setStringAsync }) => {
+                  setStringAsync(paymentUrl);
+                  Alert.alert('Copied', 'Payment link copied to clipboard.');
+                }).catch(() => {
+                  Alert.alert('Link', paymentUrl);
+                });
+              },
+            },
+            {
+              label: 'Share',
+              icon: 'share-2',
+              onPress: async () => {
+                try {
+                  const { Share: RNShare } = await import('react-native');
+                  await RNShare.share({ message: paymentUrl, title: 'Payment Link' });
+                } catch (shareError) {
+                  console.warn('Failed to share payment link:', shareError);
+                }
+              },
+            },
+          ],
+        });
       } else {
         Alert.alert('Error', response.error || 'Failed to create payment link.');
       }

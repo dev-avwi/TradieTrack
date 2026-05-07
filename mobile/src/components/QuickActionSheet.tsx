@@ -14,6 +14,7 @@ import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors } from '../lib/theme';
+import { BottomInsetSpacer } from './ui/BottomInsetSpacer';
 import { spacing, radius, typography, shadows } from '../lib/design-tokens';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -143,7 +144,7 @@ export function QuickActionSheet({
               </View>
               <Text style={[
                 styles.actionLabel,
-                action.primary && { color: colors.primary, fontWeight: '600' },
+                action.primary && { color: colors.primary, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
                 action.destructive && { color: colors.destructive },
               ]}>
                 {action.label}
@@ -157,7 +158,7 @@ export function QuickActionSheet({
           <Text style={styles.cancelText}>Cancel</Text>
         </PressableRow>
 
-        {Platform.OS === 'ios' && <View style={styles.safeAreaBottom} />}
+        <BottomInsetSpacer />
       </Animated.View>
     </Modal>
   );

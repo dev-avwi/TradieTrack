@@ -19,7 +19,7 @@ import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { validateABN, formatABN } from '../../src/lib/format';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type OnboardingRole = 'owner' | 'worker' | 'subcontractor' | null;
 
@@ -49,6 +49,7 @@ const teamSizes = [
 
 
 export default function OnboardingSetupScreen() {
+  const setupInsets = useSafeAreaInsets();
   const [selectedRole, setSelectedRole] = useState<OnboardingRole>(null);
   const [ownerStep, setOwnerStep] = useState<OwnerStep>('role');
   const [workerStep, setWorkerStep] = useState<WorkerStep>('role');
@@ -1037,7 +1038,7 @@ export default function OnboardingSetupScreen() {
     const isSubPath = selectedRole === 'subcontractor';
 
     return (
-      <View style={[styles.stepContainer, styles.doneContainer]}>
+      <View style={[styles.stepContainer, styles.doneContainer, { paddingBottom: 24 + setupInsets.bottom }]}>
         <View style={styles.doneContent}>
           <View style={styles.doneBadge}>
             <Ionicons name="checkmark" size={36} color={colors.primaryForeground} />

@@ -45,7 +45,7 @@ const createStyles = (colors: ThemeColors, isActive: boolean) => StyleSheet.crea
   label: {
     ...typography.caption,
     color: isActive ? colors.info : colors.mutedForeground,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     marginLeft: spacing.xs,
   },
   statusLabel: {
@@ -136,7 +136,7 @@ const bannerStyles = (colors: ThemeColors) => StyleSheet.create({
   bannerText: {
     ...typography.caption,
     color: colors.info,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     flex: 1,
   },
   bannerStatus: {

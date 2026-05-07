@@ -9,6 +9,7 @@ import {
   Animated,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
@@ -77,6 +78,7 @@ interface OnboardingTourProps {
 }
 
 export function OnboardingTour({ forceShow = false, onComplete }: OnboardingTourProps) {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const [visible, setVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -208,7 +210,7 @@ export function OnboardingTour({ forceShow = false, onComplete }: OnboardingTour
             ))}
           </View>
           
-          <View style={styles.buttonRow}>
+          <View style={[styles.buttonRow, { marginBottom: insets.bottom }]}>
             {!isFirstStep && (
               <TouchableOpacity
                 style={[styles.button, styles.secondaryButton, { borderColor: colors.border }]}
@@ -281,7 +283,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: typography.sizes.sm,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
   },
   iconContainer: {
     width: 100,
@@ -294,7 +296,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: typography.sizes.xxl,
-    fontWeight: '700',
+    fontWeight: '700', fontFamily: 'Inter_700Bold',
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
@@ -336,6 +338,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: typography.sizes.md,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
 });

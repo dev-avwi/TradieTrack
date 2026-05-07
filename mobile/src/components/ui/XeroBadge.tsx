@@ -46,6 +46,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: staticColors.white,
+    fontFamily: 'Inter_700Bold',
     fontWeight: '700',
   },
   textSm: {

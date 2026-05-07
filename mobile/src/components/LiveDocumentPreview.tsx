@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Image, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMemo } from 'react';
 import { 
   getTemplateStyles, 
@@ -147,6 +148,7 @@ export default function LiveDocumentPreview({
   serverGstAmount,
   serverTotal,
 }: LiveDocumentPreviewProps) {
+  const insets = useSafeAreaInsets();
   const { colors: themeColors } = useTheme();
   
   const colors = useMemo(() => ({
@@ -293,7 +295,7 @@ export default function LiveDocumentPreview({
       lineHeight: 16,
     },
     businessDetailBold: {
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     },
     documentMeta: {
       flex: 1,
@@ -321,7 +323,7 @@ export default function LiveDocumentPreview({
     },
     statusText: {
       fontSize: 10,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
@@ -339,12 +341,12 @@ export default function LiveDocumentPreview({
       textTransform: 'uppercase',
       letterSpacing: 1,
       color: colors.textLight,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       marginBottom: 6,
     },
     clientName: {
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.text,
     },
     clientDetail: {
@@ -363,7 +365,7 @@ export default function LiveDocumentPreview({
     },
     detailLabel: {
       fontSize: 11,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.text,
       marginRight: 4,
     },
@@ -379,7 +381,7 @@ export default function LiveDocumentPreview({
     },
     descriptionTitle: {
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: primaryColor,
       marginBottom: 8,
     },
@@ -402,7 +404,7 @@ export default function LiveDocumentPreview({
     },
     tableHeaderCell: {
       fontSize: 10,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       textTransform: 'uppercase',
       letterSpacing: 0.5,
       color: tableHeaderStyle.color,
@@ -449,7 +451,7 @@ export default function LiveDocumentPreview({
     },
     totalValue: {
       fontSize: 11,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.text,
     },
     grandTotalRow: {
@@ -462,12 +464,12 @@ export default function LiveDocumentPreview({
     },
     grandTotalLabel: {
       fontSize: 14,
-      fontWeight: '700',
+      fontWeight: '700', fontFamily: 'Inter_700Bold',
       color: isPaid ? colors.success : primaryColor,
     },
     grandTotalValue: {
       fontSize: 14,
-      fontWeight: '700',
+      fontWeight: '700', fontFamily: 'Inter_700Bold',
       color: isPaid ? colors.success : primaryColor,
     },
     gstNote: {
@@ -493,7 +495,7 @@ export default function LiveDocumentPreview({
     },
     depositValue: {
       fontSize: 11,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.text,
     },
     notesSection: {
@@ -502,7 +504,7 @@ export default function LiveDocumentPreview({
     },
     notesSectionTitle: {
       fontSize: 12,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: '#333',
       marginBottom: 8,
     },
@@ -517,7 +519,7 @@ export default function LiveDocumentPreview({
     },
     photosSectionTitle: {
       fontSize: 12,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: '#333',
       marginBottom: 10,
       letterSpacing: 0.3,
@@ -547,7 +549,7 @@ export default function LiveDocumentPreview({
     },
     termsTitle: {
       fontSize: 11,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: '#333',
       marginBottom: 8,
     },
@@ -566,7 +568,7 @@ export default function LiveDocumentPreview({
     },
     acceptanceTitle: {
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: '#333',
       marginBottom: 12,
     },
@@ -602,7 +604,7 @@ export default function LiveDocumentPreview({
     },
     confirmationTitle: {
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.successText,
       marginBottom: 4,
     },
@@ -649,7 +651,7 @@ export default function LiveDocumentPreview({
     },
     paidWatermark: {
       fontSize: 72,
-      fontWeight: '800',
+      fontWeight: '800', fontFamily: 'Inter_800ExtraBold',
       color: colors.success,
       opacity: 0.08,
       transform: [{ rotate: '-30deg' }],
@@ -669,7 +671,7 @@ export default function LiveDocumentPreview({
     },
     paidBadgeText: {
       fontSize: 14,
-      fontWeight: '700',
+      fontWeight: '700', fontFamily: 'Inter_700Bold',
       color: colors.successText,
       letterSpacing: 2,
     },
@@ -684,7 +686,7 @@ export default function LiveDocumentPreview({
     },
     signatureDisplayTitle: {
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.primary,
       marginBottom: 12,
     },
@@ -706,7 +708,7 @@ export default function LiveDocumentPreview({
     },
     signatureMetaValue: {
       fontSize: 10,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.text,
     },
     jobSignaturesSection: {
@@ -720,7 +722,7 @@ export default function LiveDocumentPreview({
     },
     jobSignaturesTitle: {
       fontSize: 12,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.text,
       textTransform: 'uppercase',
       letterSpacing: 0.5,
@@ -751,7 +753,7 @@ export default function LiveDocumentPreview({
     },
     jobSignatureName: {
       fontSize: 11,
-      fontWeight: '600',
+      fontWeight: '600', fontFamily: 'Inter_600SemiBold',
       color: colors.text,
     },
     jobSignatureRole: {
@@ -769,7 +771,7 @@ export default function LiveDocumentPreview({
   return (
     <ScrollView 
       style={styles.container}
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
+      contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + insets.bottom }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.documentCard}>
@@ -941,7 +943,7 @@ export default function LiveDocumentPreview({
                     <Text style={[styles.tableCell, styles.priceCol]}>
                       {formatCurrency(safeParseFloat(item.unitPrice))}
                     </Text>
-                    <Text style={[styles.tableCell, styles.amountCol, { fontWeight: '600' }]}>
+                    <Text style={[styles.tableCell, styles.amountCol, { fontWeight: '600', fontFamily: 'Inter_600SemiBold' }]}>
                       {formatCurrency(calculateLineTotal(item))}
                     </Text>
                   </View>

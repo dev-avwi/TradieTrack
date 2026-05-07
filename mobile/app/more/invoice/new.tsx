@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { 
   View, 
   Text, 
@@ -643,6 +644,7 @@ interface LineItem {
 
 export default function NewInvoiceScreen() {
   const insets = useSafeAreaInsets();
+  const confirm = useConfirmDialog();
   const params = useLocalSearchParams<{ jobId?: string; clientId?: string; editInvoiceId?: string }>();
   const { user, businessSettings } = useAuthStore();
   const { clients, fetchClients, isLoading: isLoadingClients } = useClientsStore();
@@ -1055,11 +1057,13 @@ export default function NewInvoiceScreen() {
     if (!isOnline) {
       try {
         await offlineStorage.saveInvoiceOffline(invoiceData);
-        Alert.alert(
-          'Saved Offline', 
-          'Invoice saved locally and will sync when you\'re back online.',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
+        await confirm({
+          title: 'Saved Offline',
+          message: 'Invoice saved locally and will sync when you\'re back online.',
+          confirmText: 'OK',
+          showCancel: false,
+        });
+        router.back();
       } catch (error) {
         console.error('Failed to save invoice offline:', error);
         Alert.alert('Error', 'Failed to save invoice offline. Please try again.');
@@ -1078,9 +1082,13 @@ export default function NewInvoiceScreen() {
         Alert.alert('Error', response.error || (isEditing ? 'Failed to update invoice' : 'Failed to create invoice'));
       } else if (response.data) {
         await fetchInvoices();
-        Alert.alert('Success', isEditing ? 'Invoice updated successfully' : 'Invoice created successfully', [
-          { text: 'OK', onPress: () => router.back() }
-        ]);
+        await confirm({
+          title: 'Success',
+          message: isEditing ? 'Invoice updated successfully' : 'Invoice created successfully',
+          confirmText: 'OK',
+          showCancel: false,
+        });
+        router.back();
       } else {
         Alert.alert('Error', isEditing ? 'Failed to update invoice' : 'Failed to create invoice');
       }
@@ -1089,11 +1097,13 @@ export default function NewInvoiceScreen() {
       if (!isEditing && (error.message?.includes('Network') || error.code === 'ECONNABORTED')) {
         try {
           await offlineStorage.saveInvoiceOffline(invoiceData);
-          Alert.alert(
-            'Saved Offline', 
-            'Invoice saved locally and will sync when connection is restored.',
-            [{ text: 'OK', onPress: () => router.back() }]
-          );
+          await confirm({
+            title: 'Saved Offline',
+            message: 'Invoice saved locally and will sync when connection is restored.',
+            confirmText: 'OK',
+            showCancel: false,
+          });
+          router.back();
         } catch (offlineError) {
           console.error('Failed to save invoice offline:', offlineError);
           Alert.alert('Error', 'Failed to save invoice. Please try again.');

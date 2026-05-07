@@ -15,6 +15,7 @@ import {
   Linking,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
@@ -214,7 +215,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+    paddingBottom: 12,
     backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
@@ -291,6 +292,7 @@ const createStyles = (colors: any) => StyleSheet.create({
 export default function TeamChatScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const bottomInset = useBottomInset();
   
   const { user } = useAuthStore();
   const [messages, setMessages] = useState<TeamChatMessage[]>([]);
@@ -682,7 +684,7 @@ export default function TeamChatScreen() {
           )}
         </ScrollView>
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { paddingBottom: 12 + bottomInset }]}>
           <PressableRow onPress={handleAttachment} disabled={isSending} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', opacity: isSending ? 0.5 : 1, }} accessibilityLabel="Attach photo" >
             <Feather name="paperclip" size={20} color={colors.mutedForeground} />
           </PressableRow>

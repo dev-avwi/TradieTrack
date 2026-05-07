@@ -25,6 +25,8 @@ import {
   ActionSheetIOS,
 } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useActionSheet } from '@/components/ui/ActionSheet';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { WebView } from 'react-native-webview';
@@ -1859,6 +1861,8 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
 export default function JobDetailScreen() {
   const { id, action: navAction } = useLocalSearchParams<{ id: string; action?: string }>();
   const { colors, isDark } = useTheme();
+  const confirm = useConfirmDialog();
+  const showActionSheet = useActionSheet();
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
@@ -2446,25 +2450,20 @@ export default function JobDetailScreen() {
   };
 
   const handleRevokeSubcontractor = (tokenId: string, name?: string) => {
-    Alert.alert(
-      'Revoke Access',
-      `Remove access for ${name || 'this subcontractor'}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Revoke',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/jobs/${id}/subcontractor-tokens/${tokenId}`);
-              loadSubcontractorTokens();
-            } catch (e) {
-              showToast({ type: 'error', message: 'Error', description: 'Failed to revoke access' });
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Revoke Access',
+      message: `Remove access for ${name || 'this subcontractor'}?`,
+      confirmText: 'Revoke',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        await api.delete(`/api/jobs/${id}/subcontractor-tokens/${tokenId}`);
+        loadSubcontractorTokens();
+      } catch (e) {
+        showToast({ type: 'error', message: 'Error', description: 'Failed to revoke access' });
+      }
+    });
   };
 
   const toggleSubcontractorPermission = (perm: string) => {
@@ -2575,30 +2574,25 @@ export default function JobDetailScreen() {
   }, [id, loadUploadedDocuments]);
 
   const handleDeleteDocument = useCallback((doc: JobDocument) => {
-    Alert.alert(
-      'Delete Document',
-      `Are you sure you want to delete "${doc.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await api.delete(`/api/jobs/${id}/documents/${doc.id}`);
-              if (res.error) {
-                showToast({ type: 'error', message: 'Error', description: res.error });
-              } else {
-                setUploadedDocuments(prev => prev.filter(d => d.id !== doc.id));
-              }
-            } catch (e) {
-              showToast({ type: 'error', message: 'Error', description: 'Failed to delete document' });
-            }
-          },
-        },
-      ]
-    );
-  }, [id]);
+    confirm({
+      title: 'Delete Document',
+      message: `Are you sure you want to delete "${doc.title}"?`,
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        const res = await api.delete(`/api/jobs/${id}/documents/${doc.id}`);
+        if (res.error) {
+          showToast({ type: 'error', message: 'Error', description: res.error });
+        } else {
+          setUploadedDocuments(prev => prev.filter(d => d.id !== doc.id));
+        }
+      } catch (e) {
+        showToast({ type: 'error', message: 'Error', description: 'Failed to delete document' });
+      }
+    });
+  }, [id, confirm]);
 
   const handleOpenDocument = useCallback((doc: JobDocument) => {
     if (doc.fileUrl) {
@@ -3091,25 +3085,20 @@ export default function JobDetailScreen() {
   };
 
   const handleDeleteMaterial = (material: JobMaterial) => {
-    Alert.alert(
-      'Delete Material',
-      `Remove "${material.name}" from this job?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/materials/${material.id}`);
-              await loadMaterials();
-            } catch (e) {
-              showToast({ type: 'error', message: 'Error', description: 'Failed to delete material' });
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Delete Material',
+      message: `Remove "${material.name}" from this job?`,
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        await api.delete(`/api/materials/${material.id}`);
+        await loadMaterials();
+      } catch (e) {
+        showToast({ type: 'error', message: 'Error', description: 'Failed to delete material' });
+      }
+    });
   };
 
   const handleMaterialStatusChange = (material: JobMaterial) => {
@@ -3128,11 +3117,11 @@ export default function JobDetailScreen() {
         }
       },
     }));
-    Alert.alert(
-      'Material Status',
-      `Current: ${currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}`,
-      [...options, { text: 'Cancel', style: 'cancel' as const, onPress: () => {} }]
-    );
+    showActionSheet({
+      title: 'Material Status',
+      message: `Current: ${currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1)}`,
+      actions: options.map(o => ({ label: o.text, onPress: o.onPress })),
+    });
   };
 
   const updateMaterialStatus = async (materialId: string, status: string, unitCost?: string) => {
@@ -3203,25 +3192,20 @@ export default function JobDetailScreen() {
 
   const handleRemoveAssignment = async (workerId: string) => {
     if (!id) return;
-    Alert.alert(
-      'Remove Worker',
-      'Remove this worker from the job?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/jobs/${id}/assignments/${workerId}/remove`);
-              await Promise.all([loadJob(), loadJobAssignments()]);
-            } catch (e) {
-              showToast({ type: 'error', message: 'Error', description: 'Failed to remove worker' });
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Remove Worker',
+      message: 'Remove this worker from the job?',
+      confirmText: 'Remove',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        await api.delete(`/api/jobs/${id}/assignments/${workerId}/remove`);
+        await Promise.all([loadJob(), loadJobAssignments()]);
+      } catch (e) {
+        showToast({ type: 'error', message: 'Error', description: 'Failed to remove worker' });
+      }
+    });
   };
 
   const handleNudgeWorker = async (workerId: string) => {
@@ -3781,55 +3765,45 @@ export default function JobDetailScreen() {
   const handleDeleteVoiceNote = async (voiceNoteId: string) => {
     if (!job) return;
     
-    Alert.alert(
-      'Delete Voice Note',
-      'Are you sure you want to delete this voice note?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/jobs/${job.id}/voice-notes/${voiceNoteId}`);
-              setVoiceNotes(voiceNotes.filter(v => v.id !== voiceNoteId));
-            } catch (error) {
-              console.error('Error deleting voice note:', error);
-              showToast({ type: 'error', message: 'Error', description: 'Failed to delete voice note' });
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Delete Voice Note',
+      message: 'Are you sure you want to delete this voice note?',
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        await api.delete(`/api/jobs/${job.id}/voice-notes/${voiceNoteId}`);
+        setVoiceNotes(voiceNotes.filter(v => v.id !== voiceNoteId));
+      } catch (error) {
+        console.error('Error deleting voice note:', error);
+        showToast({ type: 'error', message: 'Error', description: 'Failed to delete voice note' });
+      }
+    });
   };
 
   const handleDeleteJob = () => {
     if (!job) return;
     
-    Alert.alert(
-      'Delete Job',
-      `Are you sure you want to delete "${job.title}"? This action cannot be undone.\n\nAll photos, notes, and other data associated with this job will be permanently deleted.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeletingJob(true);
-            try {
-              await api.delete(`/api/jobs/${job.id}`);
-              showToast({ type: 'success', message: 'Job Deleted', description: 'The job has been permanently deleted' });
-              router.back();
-            } catch (error) {
-              console.error('Error deleting job:', error);
-              showToast({ type: 'error', message: 'Error', description: 'Failed to delete job' });
-            } finally {
-              setIsDeletingJob(false);
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Delete Job',
+      message: `Are you sure you want to delete "${job.title}"? This action cannot be undone.\n\nAll photos, notes, and other data associated with this job will be permanently deleted.`,
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      setIsDeletingJob(true);
+      try {
+        await api.delete(`/api/jobs/${job.id}`);
+        showToast({ type: 'success', message: 'Job Deleted', description: 'The job has been permanently deleted' });
+        router.back();
+      } catch (error) {
+        console.error('Error deleting job:', error);
+        showToast({ type: 'error', message: 'Error', description: 'Failed to delete job' });
+      } finally {
+        setIsDeletingJob(false);
+      }
+    });
   };
 
   const handleCloneJob = async () => {
@@ -3882,15 +3856,19 @@ export default function JobDetailScreen() {
         }
       );
     } else {
-      Alert.alert(
-        'Job Actions',
-        undefined,
-        options.map((label, i) => {
-          if (label === 'Cancel') return { text: 'Cancel', style: 'cancel' as const };
-          if (label === 'Delete Job') return { text: label, style: 'destructive' as const, onPress: actions[i] };
-          return { text: label, onPress: actions[i] };
-        })
-      );
+      showActionSheet({
+        title: 'Job Actions',
+        actions: options
+          .map((label, i) => {
+            if (label === 'Cancel') return null;
+            return {
+              label,
+              style: (label === 'Delete Job' ? 'destructive' : 'default') as 'destructive' | 'default',
+              onPress: actions[i],
+            };
+          })
+          .filter((a): a is { label: string; style: 'destructive' | 'default'; onPress: () => void } => a !== null),
+      });
     }
   };
 
@@ -3949,20 +3927,14 @@ export default function JobDetailScreen() {
   const handleDeleteSignature = (signatureId: string) => {
     if (!job) return;
     
-    Alert.alert(
-      'Delete Signature',
-      'Are you sure you want to delete this signature?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteSignatureDirectly(signatureId);
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Delete Signature',
+      message: 'Are you sure you want to delete this signature?',
+      confirmText: 'Delete',
+      destructive: true,
+    }).then((ok) => {
+      if (ok) deleteSignatureDirectly(signatureId);
+    });
   };
 
   const loadRelatedDocuments = async () => {
@@ -4301,19 +4273,19 @@ export default function JobDetailScreen() {
     const portalLink = getPortalLink();
     const message = `Hi ${client.name || 'there'}, here's a link to track your job "${job.title}" progress: ${portalLink}`;
 
-    Alert.alert(
-      'Send Portal Link via SMS',
-      'How would you like to send the portal link?',
-      [
+    showActionSheet({
+      title: 'Send Portal Link via SMS',
+      message: 'How would you like to send the portal link?',
+      actions: [
         {
-          text: 'Send via JobRunner',
+          label: 'Send via JobRunner',
           onPress: () => {
             setSendModalDefaultTab('sms');
             setShowSendModal(true);
           },
         },
         {
-          text: 'Open Phone SMS',
+          label: 'Open Phone SMS',
           onPress: async () => {
             try {
               const separator = Platform.OS === 'ios' ? '&' : '?';
@@ -4323,9 +4295,8 @@ export default function JobDetailScreen() {
             }
           },
         },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+      ],
+    });
   };
 
   const handleSendPortalEmail = () => {
@@ -4334,19 +4305,19 @@ export default function JobDetailScreen() {
     const subject = `Job Progress: ${job.title}`;
     const body = `Hi ${client.name || 'there'},\n\nHere's a link to track your job progress:\n${portalLink}\n\nYou can view the latest status, photos, and updates for "${job.title}".\n\nThanks`;
 
-    Alert.alert(
-      'Send Portal Link via Email',
-      'How would you like to send the portal link?',
-      [
+    showActionSheet({
+      title: 'Send Portal Link via Email',
+      message: 'How would you like to send the portal link?',
+      actions: [
         {
-          text: 'Send via JobRunner',
+          label: 'Send via JobRunner',
           onPress: () => {
             setSendModalDefaultTab('email');
             setShowSendModal(true);
           },
         },
         {
-          text: 'Open Phone Email',
+          label: 'Open Phone Email',
           onPress: async () => {
             try {
               await Linking.openURL(`mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
@@ -4355,9 +4326,8 @@ export default function JobDetailScreen() {
             }
           },
         },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+      ],
+    });
   };
 
   const handleLoadProofPackPreview = async () => {
@@ -4405,33 +4375,28 @@ export default function JobDetailScreen() {
       invoiced: 'Invoiced',
     };
 
-    Alert.alert(
-      'Rollback Status',
-      `Are you sure you want to change the status from "${statusLabels[job.status]}" back to "${statusLabels[previousStatus]}"?\n\nThis will undo the current status change.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Rollback',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await api.patch(`/api/jobs/${job.id}`, { status: previousStatus });
-              if (response.data) {
-                setJob({ ...job, status: previousStatus });
-                const { fetchJobs, fetchTodaysJobs } = useJobsStore.getState();
-                fetchJobs();
-                fetchTodaysJobs();
-                showToast({ type: 'success', message: 'Success', description: `Status rolled back to "${statusLabels[previousStatus]}"` });
-              } else {
-                showToast({ type: 'error', message: 'Error', description: 'Failed to rollback status' });
-              }
-            } catch (error) {
-              showToast({ type: 'error', message: 'Error', description: 'Failed to rollback status' });
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Rollback Status',
+      message: `Are you sure you want to change the status from "${statusLabels[job.status]}" back to "${statusLabels[previousStatus]}"?\n\nThis will undo the current status change.`,
+      confirmText: 'Rollback',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        const response = await api.patch(`/api/jobs/${job.id}`, { status: previousStatus });
+        if (response.data) {
+          setJob({ ...job, status: previousStatus });
+          const { fetchJobs, fetchTodaysJobs } = useJobsStore.getState();
+          fetchJobs();
+          fetchTodaysJobs();
+          showToast({ type: 'success', message: 'Success', description: `Status rolled back to "${statusLabels[previousStatus]}"` });
+        } else {
+          showToast({ type: 'error', message: 'Error', description: 'Failed to rollback status' });
+        }
+      } catch (error) {
+        showToast({ type: 'error', message: 'Error', description: 'Failed to rollback status' });
+      }
+    });
   };
 
   // Use pre-calculated total tracked hours from completed time entries
@@ -4480,42 +4445,32 @@ export default function JobDetailScreen() {
     const formatAmount = (amount: number) => 
       new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
     
-    Alert.alert(
-      'Record Cash Payment',
-      `Record ${formatAmount(outstanding)} cash payment for ${invoice.number}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Record Payment',
-          onPress: async () => {
-            try {
-              // Create receipt with cash payment (no timestamp for cash)
-              await api.post('/api/receipts', {
-                invoiceId: invoice.id,
-                jobId: job.id,
-                clientId: client?.id,
-                amount: String(outstanding.toFixed(2)),
-                paymentMethod: 'cash',
-                reference: invoice.number,
-                description: `Cash payment for ${invoice.number}`,
-                // Note: paidAt is intentionally not set for cash payments
-              });
-              
-              // Mark invoice as paid
-              await api.patch(`/api/invoices/${invoice.id}`, {
-                status: 'paid',
-                paidAmount: total,
-              });
-              
-              showToast({ type: 'success', message: 'Success', description: 'Cash payment recorded successfully' });
-              handleRefresh();
-            } catch (error: any) {
-              showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to record payment' });
-            }
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Record Cash Payment',
+      message: `Record ${formatAmount(outstanding)} cash payment for ${invoice.number}?`,
+      confirmText: 'Record Payment',
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        await api.post('/api/receipts', {
+          invoiceId: invoice.id,
+          jobId: job.id,
+          clientId: client?.id,
+          amount: String(outstanding.toFixed(2)),
+          paymentMethod: 'cash',
+          reference: invoice.number,
+          description: `Cash payment for ${invoice.number}`,
+        });
+        await api.patch(`/api/invoices/${invoice.id}`, {
+          status: 'paid',
+          paidAmount: total,
+        });
+        showToast({ type: 'success', message: 'Success', description: 'Cash payment recorded successfully' });
+        handleRefresh();
+      } catch (error: any) {
+        showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to record payment' });
+      }
+    });
   };
 
   // Quick Collect Payment - collect at job site, auto-creates invoice + receipt
@@ -4576,56 +4531,50 @@ export default function JobDetailScreen() {
 
     const sourceLabel = source === 'quote' ? 'accepted quote' : 'materials';
 
-    Alert.alert(
-      'Quick Collect Payment',
-      `Collect ${formatAmount(total)} via ${methodLabels[paymentMethod]}?\n\nBased on ${sourceLabel}. Invoice and receipt will be created automatically.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Collect Payment',
-          onPress: async () => {
-            setIsQuickCollecting(true);
-            try {
-              const body: any = {
-                paymentMethod,
-                amount: String(total.toFixed(2)),
-              };
-              if (quote && quote.status === 'accepted') {
-                body.quoteId = quote.id;
-              }
-              const lineItems = getQuickCollectLineItems();
-              if (lineItems.length > 0) {
-                body.lineItems = lineItems;
-              }
+    confirm({
+      title: 'Quick Collect Payment',
+      message: `Collect ${formatAmount(total)} via ${methodLabels[paymentMethod]}?\n\nBased on ${sourceLabel}. Invoice and receipt will be created automatically.`,
+      confirmText: 'Collect Payment',
+    }).then(async (ok) => {
+      if (!ok) return;
+      setIsQuickCollecting(true);
+      try {
+        const body: any = {
+          paymentMethod,
+          amount: String(total.toFixed(2)),
+        };
+        if (quote && quote.status === 'accepted') {
+          body.quoteId = quote.id;
+        }
+        const lineItems = getQuickCollectLineItems();
+        if (lineItems.length > 0) {
+          body.lineItems = lineItems;
+        }
 
-              const response = await api.post<{ receiptId: string; invoiceId: string }>(`/api/jobs/${job.id}/quick-collect`, body);
-              
-              if (response.error) {
-                showToast({ type: 'error', message: 'Error', description: response.error });
-                return;
-              }
-              
-              Alert.alert(
-                'Payment Collected!',
-                `${formatAmount(total)} collected successfully.\n\nInvoice and receipt have been created.`,
-                [
-                  {
-                    text: 'View Receipt',
-                    onPress: () => response.data?.receiptId && router.push(`/more/receipt/${response.data.receiptId}`),
-                  },
-                  { text: 'OK', style: 'cancel' },
-                ]
-              );
-              handleRefresh();
-            } catch (error: any) {
-              showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to collect payment' });
-            } finally {
-              setIsQuickCollecting(false);
-            }
-          },
-        },
-      ]
-    );
+        const response = await api.post<{ receiptId: string; invoiceId: string }>(`/api/jobs/${job.id}/quick-collect`, body);
+
+        if (response.error) {
+          showToast({ type: 'error', message: 'Error', description: response.error });
+          return;
+        }
+
+        showActionSheet({
+          title: 'Payment Collected!',
+          message: `${formatAmount(total)} collected successfully.\n\nInvoice and receipt have been created.`,
+          actions: [
+            {
+              label: 'View Receipt',
+              onPress: () => response.data?.receiptId && router.push(`/more/receipt/${response.data.receiptId}`),
+            },
+          ],
+        });
+        handleRefresh();
+      } catch (error: any) {
+        showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to collect payment' });
+      } finally {
+        setIsQuickCollecting(false);
+      }
+    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -4675,22 +4624,17 @@ export default function JobDetailScreen() {
   const [isSendingSms, setIsSendingSms] = useState(false);
 
   const fallbackToNativeSms = (phone: string, message?: string) => {
-    Alert.alert(
-      'Send via SMS App?',
-      'Could not send directly. Would you like to open your messaging app instead?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open SMS App',
-          onPress: () => {
-            const url = message 
-              ? `sms:${phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`
-              : `sms:${phone}`;
-            Linking.openURL(url).catch(() => showToast({ type: 'error', message: 'Error', description: 'Could not open SMS app' }));
-          },
-        },
-      ]
-    );
+    confirm({
+      title: 'Send via SMS App?',
+      message: 'Could not send directly. Would you like to open your messaging app instead?',
+      confirmText: 'Open SMS App',
+    }).then((ok) => {
+      if (!ok) return;
+      const url = message 
+        ? `sms:${phone}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`
+        : `sms:${phone}`;
+      Linking.openURL(url).catch(() => showToast({ type: 'error', message: 'Error', description: 'Could not open SMS app' }));
+    });
   };
 
   const handleSMS = () => {
@@ -4787,100 +4731,89 @@ export default function JobDetailScreen() {
   const handleDuplicateJob = async () => {
     if (!job) return;
     
-    Alert.alert(
-      'Duplicate Job',
-      'Create a new job with the same details?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Duplicate',
-          onPress: async () => {
-            try {
-              const newJobData = {
-                title: job.title,
-                description: job.description ? `${job.description}\n\n(Duplicated from job #${job.id})` : `Duplicated from job #${job.id}`,
-                address: job.address,
-                clientId: job.clientId,
-                status: 'pending',
-                estimatedDuration: job.estimatedDuration,
-                estimatedCost: job.estimatedCost,
-                geofenceRadius: job.geofenceRadius,
-                latitude: job.latitude,
-                longitude: job.longitude,
-                notes: job.notes ? `${job.notes}\n\n(Original job: #${job.id})` : `Original job: #${job.id}`,
-              };
-              
-              const response = await api.post<{ id: string }>('/api/jobs', newJobData);
-              
-              if (response.data?.id) {
-                Alert.alert('Success', 'Job duplicated successfully', [
-                  {
-                    text: 'View New Job',
-                    onPress: () => router.push(`/job/${response.data!.id}`),
-                  },
-                ]);
-              } else {
-                showToast({ type: 'error', message: 'Error', description: 'Failed to duplicate job' });
-              }
-            } catch (error) {
-              console.error('Error duplicating job:', error);
-              showToast({ type: 'error', message: 'Error', description: 'Failed to duplicate job' });
-            }
-          }
+    confirm({
+      title: 'Duplicate Job',
+      message: 'Create a new job with the same details?',
+      confirmText: 'Duplicate',
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        const newJobData = {
+          title: job.title,
+          description: job.description ? `${job.description}\n\n(Duplicated from job #${job.id})` : `Duplicated from job #${job.id}`,
+          address: job.address,
+          clientId: job.clientId,
+          status: 'pending',
+          estimatedDuration: job.estimatedDuration,
+          estimatedCost: job.estimatedCost,
+          geofenceRadius: job.geofenceRadius,
+          latitude: job.latitude,
+          longitude: job.longitude,
+          notes: job.notes ? `${job.notes}\n\n(Original job: #${job.id})` : `Original job: #${job.id}`,
+        };
+
+        const response = await api.post<{ id: string }>('/api/jobs', newJobData);
+
+        if (response.data?.id) {
+          showActionSheet({
+            title: 'Success',
+            message: 'Job duplicated successfully',
+            actions: [
+              {
+                label: 'View New Job',
+                onPress: () => router.push(`/job/${response.data!.id}`),
+              },
+            ],
+          });
+        } else {
+          showToast({ type: 'error', message: 'Error', description: 'Failed to duplicate job' });
         }
-      ]
-    );
+      } catch (error) {
+        console.error('Error duplicating job:', error);
+        showToast({ type: 'error', message: 'Error', description: 'Failed to duplicate job' });
+      }
+    });
   };
 
   const handleStopRecurring = async () => {
     if (!job) return;
     
-    Alert.alert(
-      'Stop Recurring',
-      'This will stop future jobs from being automatically created. Continue?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Stop Recurring',
-          style: 'destructive',
-          onPress: async () => {
-            const { isOnline } = useOfflineStore.getState();
-            const updates = { isRecurring: false, nextRecurrenceDate: null };
-            
-            // Optimistic UI update
-            setJob({ ...job, ...updates });
-            
-            if (!isOnline) {
-              await offlineStorage.updateJobOffline(job.id, updates);
-              showToast({ type: 'success', message: 'Saved Offline', description: 'Changes will sync when online' });
-              return;
-            }
-            
-            try {
-              const response = await api.patch(`/api/jobs/${job.id}`, updates);
-              
-              if (response.data) {
-                showToast({ type: 'success', message: 'Success', description: 'Recurring schedule stopped' });
-              } else {
-                // Revert on failure
-                setJob(job);
-                showToast({ type: 'error', message: 'Error', description: 'Failed to stop recurring schedule' });
-              }
-            } catch (error: any) {
-              if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
-                await offlineStorage.updateJobOffline(job.id, updates);
-                showToast({ type: 'success', message: 'Saved Offline', description: 'Changes will sync when connection is restored' });
-              } else {
-                // Revert on error
-                setJob(job);
-                console.error('Error stopping recurring:', error);
-                showToast({ type: 'error', message: 'Error', description: 'Failed to stop recurring schedule' });
-              }
-            }
-          }
+    confirm({
+      title: 'Stop Recurring',
+      message: 'This will stop future jobs from being automatically created. Continue?',
+      confirmText: 'Stop Recurring',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      const { isOnline } = useOfflineStore.getState();
+      const updates = { isRecurring: false, nextRecurrenceDate: null };
+      setJob({ ...job, ...updates });
+
+      if (!isOnline) {
+        await offlineStorage.updateJobOffline(job.id, updates);
+        showToast({ type: 'success', message: 'Saved Offline', description: 'Changes will sync when online' });
+        return;
+      }
+
+      try {
+        const response = await api.patch(`/api/jobs/${job.id}`, updates);
+        if (response.data) {
+          showToast({ type: 'success', message: 'Success', description: 'Recurring schedule stopped' });
+        } else {
+          setJob(job);
+          showToast({ type: 'error', message: 'Error', description: 'Failed to stop recurring schedule' });
         }
-      ]
-    );
+      } catch (error: any) {
+        if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
+          await offlineStorage.updateJobOffline(job.id, updates);
+          showToast({ type: 'success', message: 'Saved Offline', description: 'Changes will sync when connection is restored' });
+        } else {
+          setJob(job);
+          console.error('Error stopping recurring:', error);
+          showToast({ type: 'error', message: 'Error', description: 'Failed to stop recurring schedule' });
+        }
+      }
+    });
   };
 
   const proceedWithTimerStart = async (skipStatusChange?: boolean) => {
@@ -4901,37 +4834,31 @@ export default function JobDetailScreen() {
     if (!job) return;
     
     if (activeTimer && !isTimerForThisJob) {
-      Alert.alert(
-        'Timer Already Running',
-        'You have an active timer on another job. Would you like to stop it and start timing this job?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Switch',
-            onPress: async () => {
-              const stopped = await stopTimer();
-              if (!stopped) {
-                showToast({ type: 'error', message: 'Error', description: 'Failed to stop the existing timer. Please try again.' });
-                return;
-              }
-              await proceedWithTimerStart();
-            }
-          }
-        ]
-      );
+      confirm({
+        title: 'Timer Already Running',
+        message: 'You have an active timer on another job. Would you like to stop it and start timing this job?',
+        confirmText: 'Switch',
+      }).then(async (ok) => {
+        if (!ok) return;
+        const stopped = await stopTimer();
+        if (!stopped) {
+          showToast({ type: 'error', message: 'Error', description: 'Failed to stop the existing timer. Please try again.' });
+          return;
+        }
+        await proceedWithTimerStart();
+      });
       return;
     }
 
     if (job.status === 'scheduled' && (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs)) {
-      Alert.alert(
-        'Safety Check Required',
-        'Safety documentation is incomplete. Starting the timer will transition this job to "In Progress". Complete safety docs first?',
-        [
-          { text: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
-          { text: 'Start Anyway', onPress: () => proceedWithTimerStart(), style: 'destructive' },
-          { text: 'Cancel', style: 'cancel' }
-        ]
-      );
+      showActionSheet({
+        title: 'Safety Check Required',
+        message: 'Safety documentation is incomplete. Starting the timer will transition this job to "In Progress". Complete safety docs first?',
+        actions: [
+          { label: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
+          { label: 'Start Anyway', onPress: () => proceedWithTimerStart(), style: 'destructive' },
+        ],
+      });
       return;
     }
 
@@ -4940,25 +4867,21 @@ export default function JobDetailScreen() {
 
   const handleStopTimer = async () => {
     const timeWorked = formatElapsedTime(elapsedTime);
-    Alert.alert(
-      'Stop Timer',
-      `You've worked ${timeWorked}. Stop the timer?`,
-      [
-        { text: 'Keep Running', style: 'cancel' },
-        {
-          text: 'Stop',
-          onPress: async () => {
-            const success = await stopTimer();
-            if (success) {
-              await loadTimeEntries();
-              await loadTeamTimers();
-            } else {
-              showToast({ type: 'error', message: 'Error', description: 'Failed to stop timer. Please try again.' });
-            }
-          }
-        }
-      ]
-    );
+    confirm({
+      title: 'Stop Timer',
+      message: `You've worked ${timeWorked}. Stop the timer?`,
+      confirmText: 'Stop',
+      cancelText: 'Keep Running',
+    }).then(async (ok) => {
+      if (!ok) return;
+      const success = await stopTimer();
+      if (success) {
+        await loadTimeEntries();
+        await loadTeamTimers();
+      } else {
+        showToast({ type: 'error', message: 'Error', description: 'Failed to stop timer. Please try again.' });
+      }
+    });
   };
 
   const handleTakeBreak = async () => {
@@ -4990,14 +4913,11 @@ export default function JobDetailScreen() {
     if (action.next === 'in_progress' && automationSettings?.requirePhotoBeforeStart) {
       const beforePhotos = photos.filter(p => p.category === 'before');
       if (beforePhotos.length === 0) {
-        Alert.alert(
-          'Before Photo Required',
-          'A "Before" photo is required before starting this job. Please take a photo to document the work site and mark it as "Before".',
-          [
-            { text: 'Take Photo', onPress: () => setActiveTab('documents') },
-            { text: 'Cancel', style: 'cancel' }
-          ]
-        );
+        confirm({
+          title: 'Before Photo Required',
+          message: 'A "Before" photo is required before starting this job. Please take a photo to document the work site and mark it as "Before".',
+          confirmText: 'Take Photo',
+        }).then((ok) => { if (ok) setActiveTab('documents'); });
         return;
       }
     }
@@ -5008,14 +4928,11 @@ export default function JobDetailScreen() {
       if (automationSettings?.requirePhotoAfterComplete) {
         const afterPhotos = photos.filter(p => p.category === 'after');
         if (afterPhotos.length === 0) {
-          Alert.alert(
-            'After Photo Required',
-            'An "After" photo is required before completing this job. Please take a photo to document the completed work and mark it as "After".',
-            [
-              { text: 'Take Photo', onPress: () => setActiveTab('documents') },
-              { text: 'Cancel', style: 'cancel' }
-            ]
-          );
+          confirm({
+            title: 'After Photo Required',
+            message: 'An "After" photo is required before completing this job. Please take a photo to document the completed work and mark it as "After".',
+            confirmText: 'Take Photo',
+          }).then((ok) => { if (ok) setActiveTab('documents'); });
           return;
         }
       }
@@ -5052,13 +4969,14 @@ export default function JobDetailScreen() {
       const warningMsg = warnings.join(', ');
       const complianceNote = '\n\nWHS Compliance: SWMS documents are legally required for high-risk construction work including work at heights, near electrical installations, in confined spaces, or involving hazardous substances.';
 
-      Alert.alert(
-        'Safety Check Required',
-        `${warningMsg}. It is recommended to complete safety documentation before starting work.${complianceNote}`,
-        [
-          { text: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
-          { 
-            text: 'Start Anyway', 
+      showActionSheet({
+        title: 'Safety Check Required',
+        message: `${warningMsg}. It is recommended to complete safety documentation before starting work.${complianceNote}`,
+        actions: [
+          { label: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
+          {
+            label: 'Start Anyway',
+            style: 'destructive',
             onPress: async () => {
               const success = await updateJobStatus(job.id, action.next as any);
               if (success) {
@@ -5066,49 +4984,37 @@ export default function JobDetailScreen() {
                 await proceedWithTimerStart(true);
               }
             },
-            style: 'destructive'
           },
-          { text: 'Cancel', style: 'cancel' }
-        ]
-      );
+        ],
+      });
       return;
     }
 
     if (action.next === 'in_progress') {
-      Alert.alert(
-        action.label,
-        `Are you sure you want to ${action.label.toLowerCase()}?\n\nThe job timer will start automatically.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Confirm',
-            onPress: async () => {
-              const success = await updateJobStatus(job.id, 'in_progress');
-              if (success) {
-                setJob({ ...job, status: 'in_progress' });
-                await proceedWithTimerStart(true);
-              }
-            }
-          }
-        ]
-      );
+      confirm({
+        title: action.label,
+        message: `Are you sure you want to ${action.label.toLowerCase()}?\n\nThe job timer will start automatically.`,
+        confirmText: 'Confirm',
+      }).then(async (ok) => {
+        if (!ok) return;
+        const success = await updateJobStatus(job.id, 'in_progress');
+        if (success) {
+          setJob({ ...job, status: 'in_progress' });
+          await proceedWithTimerStart(true);
+        }
+      });
     } else {
-      Alert.alert(
-        action.label,
-        `Are you sure you want to ${action.label.toLowerCase()}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Confirm',
-            onPress: async () => {
-              const success = await updateJobStatus(job.id, action.next as any);
-              if (success) {
-                setJob({ ...job, status: action.next as any });
-              }
-            }
-          }
-        ]
-      );
+      confirm({
+        title: action.label,
+        message: `Are you sure you want to ${action.label.toLowerCase()}?`,
+        confirmText: 'Confirm',
+      }).then(async (ok) => {
+        if (!ok) return;
+        const success = await updateJobStatus(job.id, action.next as any);
+        if (success) {
+          setJob({ ...job, status: action.next as any });
+        }
+      });
     }
   };
 
@@ -5685,17 +5591,17 @@ export default function JobDetailScreen() {
         ? `Still needed: ${needsMore.join(', ')}. What type of ${mediaType === 'video' ? 'video' : 'photo'} is this?`
         : `What type of ${mediaType === 'video' ? 'video' : 'photo'} is this?`;
       
-      Alert.alert(
-        `${mediaType === 'video' ? 'Video' : 'Photo'} Category`,
+      showActionSheet({
+        title: `${mediaType === 'video' ? 'Video' : 'Photo'} Category`,
         message,
-        [
-          { text: 'Before (Site Condition)', onPress: () => uploadMedia(uri, mediaType, 'before') },
-          { text: 'After (Completed Work)', onPress: () => uploadMedia(uri, mediaType, 'after') },
-          { text: 'Progress', onPress: () => uploadMedia(uri, mediaType, 'progress') },
-          { text: 'Materials', onPress: () => uploadMedia(uri, mediaType, 'materials') },
-          { text: 'General', onPress: () => uploadMedia(uri, mediaType, 'general') },
-        ]
-      );
+        actions: [
+          { label: 'Before (Site Condition)', onPress: () => uploadMedia(uri, mediaType, 'before') },
+          { label: 'After (Completed Work)', onPress: () => uploadMedia(uri, mediaType, 'after') },
+          { label: 'Progress', onPress: () => uploadMedia(uri, mediaType, 'progress') },
+          { label: 'Materials', onPress: () => uploadMedia(uri, mediaType, 'materials') },
+          { label: 'General', onPress: () => uploadMedia(uri, mediaType, 'general') },
+        ],
+      });
     } else {
       uploadMedia(uri, mediaType, 'general');
     }
@@ -5824,18 +5730,17 @@ export default function JobDetailScreen() {
   };
 
   const handleChangePhotoCategory = (photo: JobPhoto) => {
-    Alert.alert(
-      'Change Photo Category',
-      `Current category: ${photo.category || 'general'}`,
-      [
-        { text: 'Before (Site Condition)', onPress: () => updatePhotoCategory(photo, 'before') },
-        { text: 'After (Completed Work)', onPress: () => updatePhotoCategory(photo, 'after') },
-        { text: 'Progress', onPress: () => updatePhotoCategory(photo, 'progress') },
-        { text: 'Materials', onPress: () => updatePhotoCategory(photo, 'materials') },
-        { text: 'General', onPress: () => updatePhotoCategory(photo, 'general') },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
+    showActionSheet({
+      title: 'Change Photo Category',
+      message: `Current category: ${photo.category || 'general'}`,
+      actions: [
+        { label: 'Before (Site Condition)', onPress: () => updatePhotoCategory(photo, 'before') },
+        { label: 'After (Completed Work)', onPress: () => updatePhotoCategory(photo, 'after') },
+        { label: 'Progress', onPress: () => updatePhotoCategory(photo, 'progress') },
+        { label: 'Materials', onPress: () => updatePhotoCategory(photo, 'materials') },
+        { label: 'General', onPress: () => updatePhotoCategory(photo, 'general') },
+      ],
+    });
   };
 
   const updatePhotoCategory = async (photo: JobPhoto, newCategory: string) => {
@@ -5860,27 +5765,22 @@ export default function JobDetailScreen() {
   };
 
   const handleDeletePhoto = async (photo: JobPhoto) => {
-    Alert.alert(
-      'Delete Photo',
-      'Are you sure you want to delete this photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/jobs/${job?.id}/photos/${photo.id}`);
-              setPhotos(photos.filter(p => p.id !== photo.id));
-              setSelectedPhoto(null);
-            } catch (error) {
-              setPhotos(photos.filter(p => p.id !== photo.id));
-              setSelectedPhoto(null);
-            }
-          }
-        }
-      ]
-    );
+    confirm({
+      title: 'Delete Photo',
+      message: 'Are you sure you want to delete this photo?',
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        await api.delete(`/api/jobs/${job?.id}/photos/${photo.id}`);
+        setPhotos(photos.filter(p => p.id !== photo.id));
+        setSelectedPhoto(null);
+      } catch (error) {
+        setPhotos(photos.filter(p => p.id !== photo.id));
+        setSelectedPhoto(null);
+      }
+    });
   };
 
   const [isSavingMedia, setIsSavingMedia] = useState(false);
@@ -9554,22 +9454,17 @@ export default function JobDetailScreen() {
                     <View style={{ flexDirection: 'row', gap: spacing.xs }}>
                       <TouchableOpacity 
                         onPress={() => {
-                          Alert.alert(
-                            'Re-sign?',
-                            'Delete this signature and capture a new one?',
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              {
-                                text: 'Re-sign',
-                                onPress: async () => {
-                                  const deleted = await deleteSignatureDirectly(sig.id);
-                                  if (deleted) {
-                                    setShowSignaturePad(true);
-                                  }
-                                },
-                              },
-                            ]
-                          );
+                          confirm({
+                            title: 'Re-sign?',
+                            message: 'Delete this signature and capture a new one?',
+                            confirmText: 'Re-sign',
+                          }).then(async (ok) => {
+                            if (!ok) return;
+                            const deleted = await deleteSignatureDirectly(sig.id);
+                            if (deleted) {
+                              setShowSignaturePad(true);
+                            }
+                          });
                         }}
                         style={{ padding: spacing.xs }}
                         data-testid={`button-resign-${sig.id}`}

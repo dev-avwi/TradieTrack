@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Stack, useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -162,6 +163,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean, bottomNavHeight: num
 
 export default function WhsHubScreen() {
   const { colors, isDark } = useTheme();
+  const confirm = useConfirmDialog();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
@@ -374,15 +376,18 @@ export default function WhsHubScreen() {
   }
 
   async function deleteItem(endpoint: string, id: string) {
-    Alert.alert('Delete', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        try {
-          await api.delete(`${endpoint}/${id}`);
-          fetchData();
-        } catch (e) { console.error(e); }
-      }},
-    ]);
+    confirm({
+      title: 'Delete',
+      message: 'Are you sure?',
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try {
+        await api.delete(`${endpoint}/${id}`);
+        fetchData();
+      } catch (e) { console.error(e); }
+    });
   }
 
   async function closeIncident(id: string) {
@@ -988,12 +993,15 @@ export default function WhsHubScreen() {
   }
 
   async function deleteHazardReport(id: string) {
-    Alert.alert('Delete', 'Delete this hazard report?', [
-      { text: 'Cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        try { await api.delete(`/api/whs/hazard-reports/${id}`); fetchData(); } catch (e) { Alert.alert('Error', 'Failed to delete'); }
-      }},
-    ]);
+    confirm({
+      title: 'Delete',
+      message: 'Delete this hazard report?',
+      confirmText: 'Delete',
+      destructive: true,
+    }).then(async (ok) => {
+      if (!ok) return;
+      try { await api.delete(`/api/whs/hazard-reports/${id}`); fetchData(); } catch (e) { Alert.alert('Error', 'Failed to delete'); }
+    });
   }
 
   function renderHazardReports() {

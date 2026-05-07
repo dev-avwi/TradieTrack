@@ -22,6 +22,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows, statusColors } from '../lib/design-tokens';
@@ -73,6 +74,7 @@ export function DragDropDispatchBoard({
   onJobPress,
   isScheduling,
 }: DragDropDispatchBoardProps) {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   
@@ -377,7 +379,7 @@ export function DragDropDispatchBoard({
       <ScrollView 
         ref={scrollViewRef}
         style={styles.timelineContainer}
-        contentContainerStyle={styles.timelineContent}
+        contentContainerStyle={[styles.timelineContent, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         <GestureHandlerRootView style={styles.timelineGrid}>
@@ -449,7 +451,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
   },
   badge: {
@@ -461,7 +463,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   badgeText: {
     fontSize: 11,
     color: colors.primaryForeground,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   dragHint: {
     fontSize: 12,
@@ -496,7 +498,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   jobCardTitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
     color: colors.foreground,
     flex: 1,
   },
@@ -544,7 +546,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   memberName: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     color: colors.foreground,
   },
   timelineContainer: {
@@ -570,7 +572,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   timeLabel: {
     fontSize: 10,
     color: colors.mutedForeground,
-    fontWeight: '500',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
   },
   gridArea: {
     flex: 1,
@@ -604,7 +606,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   timelineJobTitle: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
   timelineJobTime: {
     fontSize: 10,
@@ -629,7 +631,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   dragIndicatorText: {
     color: colors.primaryForeground,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600', fontFamily: 'Inter_600SemiBold',
   },
 });
 
