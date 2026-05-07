@@ -200,6 +200,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: spacing.xs,
+    flexShrink: 0,
   },
   priorityBadgeText: {
     fontSize: 10,
@@ -367,8 +368,8 @@ export function WhatYouMissedPopup() {
                     <Feather name={iconName} size={18} color={priorityColors.icon} />
                   </View>
                   <View style={styles.notificationContent}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={styles.notificationTitle} numberOfLines={1}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                      <Text style={[styles.notificationTitle, { flex: 1, minWidth: 0 }]} numberOfLines={1} ellipsizeMode="tail">
                         {notification.title}
                       </Text>
                       {notification.priority === 'urgent' && (

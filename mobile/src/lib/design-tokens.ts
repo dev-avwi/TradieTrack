@@ -230,11 +230,25 @@ export const shadows = {
   }) as object,
 } as const;
 
+// === FONT FAMILIES (Inter loaded globally in app/_layout.tsx) ===
+// Maps fontWeight to the matching Inter family. Falls back to system font
+// before fonts have loaded.
+export const fontFamilies = {
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+  extrabold: 'Inter_800ExtraBold',
+} as const;
+
 // === TYPOGRAPHY (matches web's iOS-style system from index.css) ===
 // Web uses: ios-title, ios-section-title, ios-card-title, ios-body, ios-caption, ios-label
+// Premium Inter typography: Apple-grade letter-spacing + line-height ratios
+// to make Android feel as polished as iOS.
 export const typography = {
   // iOS Large Title - 32-34px on web
   largeTitle: {
+    fontFamily: fontFamilies.bold,
     fontSize: 32,
     fontWeight: '700' as const,
     lineHeight: 38,
@@ -242,26 +256,31 @@ export const typography = {
   },
   // iOS Section Title - 22-24px on web (.ios-section-title)
   sectionTitle: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 22,
     fontWeight: '600' as const,
     lineHeight: 28,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   // Page title (legacy) - same as section title
   pageTitle: {
+    fontFamily: fontFamilies.bold,
     fontSize: 22,
     fontWeight: '700' as const,
     lineHeight: 28,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   // Headline
   headline: {
+    fontFamily: fontFamilies.bold,
     fontSize: 20,
     fontWeight: '700' as const,
     lineHeight: 26,
+    letterSpacing: -0.4,
   },
   // iOS Card Title - 17px on web (.ios-card-title)
   cardTitle: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 17,
     fontWeight: '600' as const,
     lineHeight: 23,
@@ -269,6 +288,7 @@ export const typography = {
   },
   // Subtitle (section headers)
   subtitle: {
+    fontFamily: fontFamilies.bold,
     fontSize: 16,
     fontWeight: '700' as const,
     lineHeight: 22,
@@ -276,30 +296,39 @@ export const typography = {
   },
   // iOS Body - 15px on web (.ios-body)
   body: {
+    fontFamily: fontFamilies.regular,
     fontSize: 15,
     fontWeight: '400' as const,
     lineHeight: 22,
+    letterSpacing: -0.1,
   },
   // Body semibold
   bodySemibold: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 15,
     fontWeight: '600' as const,
     lineHeight: 22,
+    letterSpacing: -0.1,
   },
   // iOS Caption - 13px on web (.ios-caption)
   caption: {
+    fontFamily: fontFamilies.regular,
     fontSize: 13,
     fontWeight: '400' as const,
     lineHeight: 18,
+    letterSpacing: -0.05,
   },
   // Small caption
   captionSmall: {
+    fontFamily: fontFamilies.regular,
     fontSize: 12,
     fontWeight: '400' as const,
     lineHeight: 16,
+    letterSpacing: -0.05,
   },
   // iOS Label - 11px on web (.ios-label)
   label: {
+    fontFamily: fontFamilies.medium,
     fontSize: 11,
     fontWeight: '500' as const,
     letterSpacing: 0.5,
@@ -307,21 +336,26 @@ export const typography = {
   },
   // Button text - 14px
   button: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 14,
     fontWeight: '600' as const,
     lineHeight: 20,
+    letterSpacing: -0.1,
   },
   // Badge text - 11px
   badge: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 11,
     fontWeight: '600' as const,
     lineHeight: 14,
   },
   // Stat value - large numbers
   statValue: {
+    fontFamily: fontFamilies.bold,
     fontSize: 22,
     fontWeight: '700' as const,
     lineHeight: 28,
+    letterSpacing: -0.4,
   },
 } as const;
 

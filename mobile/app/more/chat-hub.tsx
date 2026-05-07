@@ -246,13 +246,19 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
     ...typography.body,
     color: colors.foreground,
+    height: sizes.searchBarHeight,
+    paddingVertical: 0,
+    includeFontPadding: false,
   },
   filterContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: pageShell.paddingHorizontal,
     paddingBottom: spacing.sm,
     marginTop: spacing.sm,
+  },
+  filterContainerContent: {
+    flexDirection: 'row',
+    paddingHorizontal: pageShell.paddingHorizontal,
     gap: spacing.sm,
+    alignItems: 'center',
   },
   filterButton: {
     flexDirection: 'row',
@@ -399,6 +405,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     ...typography.cardTitle,
     color: colors.foreground,
     flex: 1,
+    minWidth: 0,
   },
   conversationTitleUnread: {
     fontWeight: '700',
@@ -1451,7 +1458,13 @@ export default function ChatHubScreen() {
           </View>
         </View>
         
-        <View style={styles.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterContainer}
+          contentContainerStyle={styles.filterContainerContent}
+          keyboardShouldPersistTaps="handled"
+        >
           {(isSubcontractor ? ['jobs'] as FilterType[] : ['jobs', 'team', 'enquiries'] as FilterType[]).map((filter) => {
             const count = getFilterUnreadCount(filter);
             const isActive = activeFilter === filter;
@@ -1476,7 +1489,7 @@ export default function ChatHubScreen() {
               </PressableRow>
             );
           })}
-        </View>
+        </ScrollView>
 
         {activeFilter === 'jobs' && (
           <ScrollView

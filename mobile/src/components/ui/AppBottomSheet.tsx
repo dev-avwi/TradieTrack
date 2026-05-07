@@ -14,6 +14,7 @@ import {
   BottomSheetScrollView,
   BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
 import { radius, spacing, shadows, typography } from '../../lib/design-tokens';
@@ -61,6 +62,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     ref
   ) => {
     const { colors, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
     const sheetRef = useRef<BottomSheetModal>(null);
 
     useImperativeHandle(
@@ -132,7 +134,13 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     ) : null;
 
-    const innerStyle = { paddingHorizontal: contentPadding, paddingBottom: contentPadding };
+    // Add safe-area bottom inset so content (and any sticky CTA) clears the
+    // Android edge-to-edge nav bar / iOS home indicator. Without this, the
+    // last row of pickers / buttons is partially hidden behind system chrome.
+    const innerStyle = {
+      paddingHorizontal: contentPadding,
+      paddingBottom: contentPadding + Math.max(insets.bottom, 0),
+    };
 
     return (
       <BottomSheetModal

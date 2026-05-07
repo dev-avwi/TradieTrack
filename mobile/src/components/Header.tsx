@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image, Animated, Easing, Platform, useWindowDimensions } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -171,6 +171,11 @@ export function Header({
   const advancedSetMode = useAdvancedThemeStore(state => state.setMode);
   const advancedMode = useAdvancedThemeStore(state => state.mode);
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  // On narrow phones the brand wordmark "JobRunner" can squeeze the page
+  // title into "Jo..". Hide the wordmark on tight widths so the page title
+  // gets full breathing room. The logo image stays as the brand mark.
+  const isNarrowPhone = windowWidth < 380;
   const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const { unreadCount } = useNotificationsStore();
   const pathname = usePathname();
@@ -282,7 +287,9 @@ export function Header({
                 resizeMode="contain"
               />
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.brandName} numberOfLines={1}>JobRunner</Text>
+                {!isNarrowPhone && (
+                  <Text style={styles.brandName} numberOfLines={1}>JobRunner</Text>
+                )}
                 {showWorkspaceIndicator && (
                   <Pressable 
                     onPress={() => setShowSwitcher(true)} 

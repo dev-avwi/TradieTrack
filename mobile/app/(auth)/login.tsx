@@ -509,8 +509,6 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     backgroundColor: '#E8862E',
-    borderWidth: 2,
-    borderColor: '#2563eb',
   },
   logoInner: {
     flex: 1,
