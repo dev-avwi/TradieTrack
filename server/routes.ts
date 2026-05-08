@@ -49673,6 +49673,55 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
     }
   });
 
+  app.post("/api/ai-receptionist/resync", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
+    try {
+      const userId = req.effectiveUserId || req.userId || req.session?.userId;
+      const config = await storage.getAiReceptionistConfig(userId);
+      const bizSettings = await storage.getBusinessSettings(userId);
+      const assistantId = config?.vapiAssistantId || bizSettings?.vapiAssistantId;
+      if (!assistantId) {
+        return res.status(404).json({ error: 'No Vapi assistant provisioned for this account' });
+      }
+
+      const { updateAssistant, getWebhookUrl, refreshLatencyEstimate } = await import('./vapiService');
+      const webhookUrl = getWebhookUrl();
+
+      await updateAssistant(assistantId, {
+        webhookUrl,
+        greeting: config?.greeting ?? undefined,
+        voiceName: config?.voiceName ?? undefined,
+        knowledgeBank: (config?.knowledgeBank as any) ?? undefined,
+        voiceStability: config?.voiceStability ?? undefined,
+        voiceClarity: config?.voiceClarity ?? undefined,
+        voiceSpeed: config?.voiceSpeed ?? undefined,
+        voiceStyleExaggeration: config?.voiceStyleExaggeration ?? undefined,
+        voiceSpeakerBoost: config?.voiceSpeakerBoost ?? undefined,
+        silenceTimeoutSeconds: config?.silenceTimeoutSeconds ?? undefined,
+        maxCallDurationSeconds: config?.maxCallDurationSeconds ?? undefined,
+        endCallMessage: config?.endCallMessage ?? undefined,
+        backgroundSound: config?.backgroundSound ?? undefined,
+        aiModel: config?.aiModel ?? undefined,
+        aiMaxTokens: config?.aiMaxTokens ?? undefined,
+        aiTemperature: config?.aiTemperature ?? undefined,
+        customInstructions: config?.customInstructions ?? undefined,
+      } as any);
+
+      const latency = await refreshLatencyEstimate(userId);
+
+      res.json({
+        success: true,
+        assistantId,
+        webhookUrl,
+        lastLatencyMs: latency?.ms ?? null,
+        latencyStatus: latency?.status ?? null,
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Resync assistant error:', message);
+      res.status(500).json({ error: 'Failed to resync assistant', detail: message });
+    }
+  });
+
   app.post("/api/ai-receptionist/measure-latency", requireAuth, ownerOrManagerOnly(), requirePermission(PERMISSIONS.MANAGE_AI_RECEPTIONIST), async (req: any, res) => {
     try {
       const userId = req.effectiveUserId || req.userId || req.session?.userId;

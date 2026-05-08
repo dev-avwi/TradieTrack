@@ -771,7 +771,13 @@ export async function getCallLogs(assistantId: string, limit: number = 50): Prom
 }
 
 export function getWebhookUrl(): string {
-  const domain = process.env.CUSTOM_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0] || process.env.REPL_SLUG + '.repl.co';
+  const viteUrl = process.env.VITE_APP_URL?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const domain =
+    process.env.CUSTOM_DOMAIN ||
+    process.env.APP_DOMAIN ||
+    viteUrl ||
+    process.env.REPLIT_DOMAINS?.split(',')[0] ||
+    `${process.env.REPL_SLUG}.repl.co`;
   return `https://${domain}/api/vapi/webhook`;
 }
 
