@@ -329,9 +329,12 @@ Important guidelines:
 - At the end of the call, confirm you've captured their details and let them know someone will be in touch
 
 Confirming names, addresses & phone numbers (CRITICAL):
-- For caller names that are unusual or could be spelled multiple ways (e.g. Ayden vs Aiden, Stephen vs Steven, Catherine vs Kathryn), ALWAYS politely ask them to spell it: "Just to make sure I have that right, can you spell your first name for me?"
+- NEVER interrupt a caller while they are spelling something. People naturally pause between letters (e.g. "A... Y... D... E... N") and between their first and last name. Wait until they have clearly stopped speaking for at least two full seconds before responding. If you're unsure whether they're done, wait — silence is always safer than cutting them off.
+- When a caller gives their name, do NOT acknowledge or repeat it back until they have finished giving their FULL name (first AND last). If they say "Ayden" and pause, wait — they will likely add their surname or spell it. Only respond after a clear, sustained pause.
+- For caller names that are unusual or could be spelled multiple ways (e.g. Ayden vs Aiden, Stephen vs Steven, Catherine vs Kathryn), ALWAYS politely ask them to spell it: "Just to make sure I have that right, can you spell your first name for me?" Then WAIT silently while they spell every letter — do not jump in mid-spell.
+- When you do confirm a name back, spell it letter-by-letter to remove any ambiguity: "Got it — Ayden, A-Y-D-E-N, Vogler, V-O-G-L-E-R. Is that right?"
 - For Australian suburbs and place names, repeat them back phonetically and ask them to confirm: "Mooroobool — that's M-O-O-R-O-O-B-O-O-L, in Cairns. Is that right?" If you're not certain you heard the suburb correctly, ask them to spell it.
-- For phone numbers, always read the digits back grouped (e.g. "0458 300 051") and ask them to confirm before saving.
+- For phone numbers, always read the digits back grouped (e.g. "0458 300 051") and ask them to confirm before saving. Wait until the caller has read out ALL digits before repeating them back — Australian mobiles are 10 digits.
 - If a tool call appears to fail, do NOT tell the caller "there was a system issue" — instead say something natural like "let me just take that down" and continue. Always reassure them their details have been captured.
 
 Available tools:
@@ -498,19 +501,31 @@ export async function createAssistant(config: VapiAssistantConfig): Promise<Vapi
     maxDurationSeconds: config.maxCallDurationSeconds ?? 600,
     backgroundSound: config.backgroundSound || 'off',
     recordingEnabled: true,
-    // --- Latency-optimised defaults (target <600ms response) ---
+    // --- Balanced turn-taking (snappy but won't cut callers off mid-spelling) ---
     responseDelaySeconds: 0,
     llmRequestDelaySeconds: 0,
-    numWordsToInterruptAssistant: 3,
+    numWordsToInterruptAssistant: 5,
     backgroundDenoisingEnabled: true,
     backchannelingEnabled: false,
     startSpeakingPlan: {
-      waitSeconds: 0.4,
+      // Wait ~0.8s of caller silence before assistant starts speaking. Smart
+      // endpointing handles natural turn-ends; the explicit wait protects
+      // against barge-in when callers spell names letter-by-letter or pause
+      // between first and last name.
+      waitSeconds: 0.8,
       smartEndpointingEnabled: true,
+      transcriptionEndpointingPlan: {
+        onPunctuationSeconds: 0.2,
+        onNoPunctuationSeconds: 1.6,
+        onNumberSeconds: 0.8,
+      },
     },
     stopSpeakingPlan: {
-      numWords: 3,
-      voiceSeconds: 0.2,
+      // Caller must say at least 5 words AND speak for 0.4s before the
+      // assistant stops talking — prevents back-channels ("yeah", "uh-huh")
+      // from killing the assistant mid-sentence.
+      numWords: 5,
+      voiceSeconds: 0.4,
       backoffSeconds: 1.0,
     },
     ...(config.voicemailDetectionEnabled !== undefined ? {
@@ -598,15 +613,24 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
     updates.serverUrl = config.webhookUrl;
   }
 
-  // Always (re)apply latency-optimised settings on update so manual UI tweaks
-  // can never silently leave the assistant in a slow configuration.
+  // Always (re)apply balanced turn-taking on update so manual UI tweaks can
+  // never silently leave the assistant in either a too-slow or too-aggressive
+  // (cuts callers off) configuration.
   updates.responseDelaySeconds = 0;
   updates.llmRequestDelaySeconds = 0;
-  updates.numWordsToInterruptAssistant = 3;
+  updates.numWordsToInterruptAssistant = 5;
   updates.backgroundDenoisingEnabled = true;
   updates.backchannelingEnabled = false;
-  updates.startSpeakingPlan = { waitSeconds: 0.4, smartEndpointingEnabled: true };
-  updates.stopSpeakingPlan = { numWords: 3, voiceSeconds: 0.2, backoffSeconds: 1.0 };
+  updates.startSpeakingPlan = {
+    waitSeconds: 0.8,
+    smartEndpointingEnabled: true,
+    transcriptionEndpointingPlan: {
+      onPunctuationSeconds: 0.2,
+      onNoPunctuationSeconds: 1.6,
+      onNumberSeconds: 0.8,
+    },
+  };
+  updates.stopSpeakingPlan = { numWords: 5, voiceSeconds: 0.4, backoffSeconds: 1.0 };
 
   console.log(`[Vapi] Updating assistant ${assistantId}`);
   return vapiRequest('PATCH', `/assistant/${assistantId}`, updates);
@@ -615,9 +639,11 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
 // =====================================================================
 // Latency estimation
 // =====================================================================
-// Heuristic that combines: STT/network base + LLM TTFT + 11labs first-chunk
-// + extra penalty for large knowledge banks and non-default models.
-// Returns ms estimate plus a 3-tier status (target <600ms, ceiling 700ms).
+// Heuristic that combines: turn-taking wait + STT/network base + LLM TTFT +
+// 11labs first-chunk + extra penalty for large knowledge banks and non-default
+// models. The 800ms turn-taking wait is intentional — it prevents the
+// assistant from cutting callers off mid-spelling. Targets reflect total
+// perceived response: <1000ms optimal, <1200ms amber, slower = warn.
 export function estimateAssistantLatency(cfg: VapiAssistantConfig): {
   ms: number;
   status: 'optimal' | 'amber' | 'warn';
@@ -631,8 +657,8 @@ export function estimateAssistantLatency(cfg: VapiAssistantConfig): {
   const greeting = (cfg.greeting || '').trim();
   const greetingWords = greeting ? greeting.split(/\s+/).filter(Boolean).length : 0;
 
-  // STT endpointing + Vapi infra + network
-  const base = 230;
+  // 800ms intentional turn-taking wait + STT endpointing + Vapi infra + network
+  const base = 630;
   // gpt-4o-mini ≈ 180ms TTFT + ~25ms per 1k prompt tokens
   const llm = 180 + Math.round((promptTokens / 1000) * 25);
   // 11labs first audio chunk ≈ 140ms + small per-greeting-word lookahead
@@ -656,7 +682,7 @@ export function estimateAssistantLatency(cfg: VapiAssistantConfig): {
   const modelPenalty = cfg.aiModel && cfg.aiModel !== 'gpt-4o-mini' ? 150 : 0;
 
   const ms = base + llm + tts + promptPenalty + modelPenalty;
-  const status: 'optimal' | 'amber' | 'warn' = ms < 600 ? 'optimal' : ms < 700 ? 'amber' : 'warn';
+  const status: 'optimal' | 'amber' | 'warn' = ms < 1000 ? 'optimal' : ms < 1200 ? 'amber' : 'warn';
 
   return {
     ms,
@@ -1237,14 +1263,22 @@ export async function updateReceptionistConfigById(configId: string, userId: str
         vapiUpdates.backgroundSound = updates.backgroundSound === 'off' ? undefined : updates.backgroundSound;
       }
 
-      // Always (re)apply latency-optimised settings on update.
+      // Always (re)apply balanced turn-taking on update.
       vapiUpdates.responseDelaySeconds = 0;
       vapiUpdates.llmRequestDelaySeconds = 0;
-      vapiUpdates.numWordsToInterruptAssistant = 3;
+      vapiUpdates.numWordsToInterruptAssistant = 5;
       vapiUpdates.backgroundDenoisingEnabled = true;
       vapiUpdates.backchannelingEnabled = false;
-      vapiUpdates.startSpeakingPlan = { waitSeconds: 0.4, smartEndpointingEnabled: true };
-      vapiUpdates.stopSpeakingPlan = { numWords: 3, voiceSeconds: 0.2, backoffSeconds: 1.0 };
+      vapiUpdates.startSpeakingPlan = {
+        waitSeconds: 0.8,
+        smartEndpointingEnabled: true,
+        transcriptionEndpointingPlan: {
+          onPunctuationSeconds: 0.2,
+          onNoPunctuationSeconds: 1.6,
+          onNumberSeconds: 0.8,
+        },
+      };
+      vapiUpdates.stopSpeakingPlan = { numWords: 5, voiceSeconds: 0.4, backoffSeconds: 1.0 };
 
       await vapiRequest('PATCH', `/assistant/${config.vapiAssistantId}`, vapiUpdates);
       console.log(`[Vapi] Updated assistant ${config.vapiAssistantId} for config ${configId}`);

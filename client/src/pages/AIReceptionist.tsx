@@ -337,13 +337,13 @@ export default function AIReceptionist() {
       if (latencyStatus === 'warn') {
         toast({
           title: 'Knowledge Bank saved — but response time is slow',
-          description: `Estimated ${latencyMs}ms (target <600ms). Try trimming your training content.`,
+          description: `Estimated ${latencyMs}ms (target <1000ms). Try trimming your training content.`,
           variant: 'destructive',
         });
       } else if (latencyStatus === 'amber') {
         toast({
           title: 'Knowledge Bank saved',
-          description: `Synced — response time ~${latencyMs}ms (slightly above 600ms target).`,
+          description: `Synced — response time ~${latencyMs}ms (slightly above 1000ms target).`,
         });
       } else {
         toast({ title: 'Knowledge Bank saved', description: 'Your training content has been synced to the AI.' });
@@ -443,13 +443,13 @@ export default function AIReceptionist() {
       if (latencyStatus === 'warn') {
         toast({
           title: 'Saved — but response time is slow',
-          description: `Estimated ${latencyMs}ms (target <600ms). Try shortening your greeting or knowledge bank.`,
+          description: `Estimated ${latencyMs}ms (target <1000ms). Try shortening your greeting or knowledge bank.`,
           variant: 'destructive',
         });
       } else if (latencyStatus === 'amber') {
         toast({
           title: 'Saved',
-          description: `Response time ~${latencyMs}ms (slightly above 600ms target).`,
+          description: `Response time ~${latencyMs}ms (slightly above 1000ms target).`,
         });
       } else {
         toast({ title: 'Settings saved', description: 'AI Receptionist configuration updated' });
@@ -469,10 +469,10 @@ export default function AIReceptionist() {
     },
     onSuccess: (data: { lastLatencyMs: number; latencyStatus: 'optimal' | 'amber' | 'warn' }) => {
       const label = data.latencyStatus === 'optimal'
-        ? 'Excellent — under 600ms target'
+        ? 'Excellent — under 1000ms target (includes 0.8s anti-interruption pause)'
         : data.latencyStatus === 'amber'
-          ? 'Acceptable, but above 600ms target'
-          : 'Slow — exceeds 700ms ceiling';
+          ? 'Acceptable, but above 1000ms target'
+          : 'Slow — exceeds 1200ms ceiling';
       toast({
         title: `Estimated response time: ${data.lastLatencyMs}ms`,
         description: label,
@@ -904,7 +904,7 @@ export default function AIReceptionist() {
                   >
                     {config.lastLatencyMs}ms · {config.latencyStatus === 'optimal' ? 'Fast' : config.latencyStatus === 'amber' ? 'OK' : 'Slow'}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">target &lt;600ms</span>
+                  <span className="text-xs text-muted-foreground">target &lt;1000ms</span>
                 </div>
               )}
             </CardContent>

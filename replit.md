@@ -58,6 +58,15 @@ Core architectural and design decisions include:
 *   **AI Receptionist (Voice)**: Vapi.ai (enhanced with ElevenLabs)
 *   **Error Tracking**: Sentry
 
+### AI Receptionist Conversational Tuning (May 2026)
+*   **Anti-interruption turn-taking** (`server/vapiService.ts`): After observing the AI cut a caller off mid-spelling ("Aiden. a-y-d-e-n" → "Thanks, Ida."), turn-taking was rebalanced from latency-aggressive to conversational-safe across `createAssistant`, `updateAssistant`, and `updateReceptionistConfigById`:
+    *   `numWordsToInterruptAssistant`: 3 → 5
+    *   `startSpeakingPlan.waitSeconds`: 0.4 → 0.8
+    *   Added `transcriptionEndpointingPlan` { onPunctuationSeconds: 0.2, onNoPunctuationSeconds: 1.6, onNumberSeconds: 0.8 } — gives extra silence allowance when callers spell letters or read digits
+    *   `stopSpeakingPlan`: numWords 3→5, voiceSeconds 0.2→0.4 — back-channels like "yeah", "uh-huh" no longer kill the assistant mid-sentence
+*   **System prompt**: explicit "NEVER interrupt mid-spelling, wait 2s after caller stops" + "do not acknowledge name until full first AND last name received" + "spell name back letter-by-letter to confirm".
+*   **Latency estimator** (`estimateAssistantLatency`): base 230ms → 630ms (includes 800ms intentional wait); thresholds shifted from <600ms/<700ms to <1000ms/<1200ms (optimal/amber/warn). UI toast messages and the "Test Response Time" button label updated to reflect the new realistic targets. The status enum (optimal/amber/warn) is unchanged so the DB schema stays compatible.
+
 ### Mobile Bottom Sheet Migration (May 2026)
 *   **@gorhom/bottom-sheet@^5.2.13**: Installed in `mobile/`. `GestureHandlerRootView` + `BottomSheetModalProvider` mounted at app root in `mobile/app/_layout.tsx`.
 *   **`AppBottomSheet`** (`mobile/src/components/ui/AppBottomSheet.tsx`): Themed wrapper around `BottomSheetModal` with rounded top corners, themed handle/backdrop, `BottomSheetScrollView`, `keyboardBehavior="interactive"`. Exposes both an imperative API (via `useAppBottomSheet()` hook + ref) and a declarative `visible` prop (drives present/dismiss via `useEffect`) so legacy `<Modal visible={x}>` call-sites swap with minimal change. Props: `snapPoints`, `enableDynamicSizing` (default true), `enablePanDownToClose`, `onDismiss`, `title`, `showCloseButton`, `scrollable` (default true), `contentPadding` (default `spacing.lg`), `visible`.
