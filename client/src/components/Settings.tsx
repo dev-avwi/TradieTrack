@@ -2796,12 +2796,15 @@ function BillingTabContent() {
   const { data: businessSettings } = useBusinessSettings();
 
   // Currency formatter
-  const formatPrice = (cents: number) => Math.round(cents / 100);
+  const formatPrice = (cents: number) => {
+    const dollars = cents / 100;
+    return Number.isInteger(dollars) ? String(dollars) : dollars.toFixed(2);
+  };
 
   // Flat pricing in dollars (matches Apple IAP)
-  const proMonthly = formatPrice(PRICING.pro.monthly); // $49
-  const teamMonthly = formatPrice(PRICING.team.monthly); // $99
-  const businessMonthly = formatPrice(PRICING.business.monthly); // $199
+  const proMonthly = formatPrice(PRICING.pro.monthly); // $39.99
+  const teamMonthly = formatPrice(PRICING.team.monthly); // $89.99
+  const businessMonthly = formatPrice(PRICING.business.monthly); // $129.99
 
   // Fetch billing status
   const { data: billingStatus, isLoading: billingLoading } = useQuery<{
@@ -2848,7 +2851,7 @@ function BillingTabContent() {
     }
   });
 
-  // Create Team checkout session mutation (flat $99/mo)
+  // Create Team checkout session mutation (flat $89.99/mo)
   const createTeamCheckoutMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/billing/checkout/team");
@@ -2868,7 +2871,7 @@ function BillingTabContent() {
     }
   });
 
-  // Create Business checkout session mutation (flat $199/mo)
+  // Create Business checkout session mutation (flat $129.99/mo)
   const createBusinessCheckoutMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/billing/checkout/business");
@@ -2952,7 +2955,7 @@ function BillingTabContent() {
     }
   });
 
-  // Upgrade Pro to Team with trial mutation (flat $99/mo)
+  // Upgrade Pro to Team with trial mutation (flat $89.99/mo)
   const upgradeToTeamMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/subscription/upgrade-to-team");
@@ -2974,7 +2977,7 @@ function BillingTabContent() {
     }
   });
 
-  // Upgrade to Business with trial mutation (flat $199/mo)
+  // Upgrade to Business with trial mutation (flat $129.99/mo)
   const upgradeToBusinessMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/subscription/upgrade-to-business");

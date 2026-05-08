@@ -63,7 +63,7 @@ async function getOrCreateStripeCustomer(
 
 async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
   const prices = await stripe.prices.list({
-    lookup_keys: ['jobrunner_pro_monthly'],
+    lookup_keys: ['jobrunner_pro_monthly_v2'],
     active: true,
     limit: 1,
   });
@@ -99,7 +99,7 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
     recurring: {
       interval: 'month',
     },
-    lookup_key: 'jobrunner_pro_monthly',
+    lookup_key: 'jobrunner_pro_monthly_v2',
     metadata: {
       tier: 'pro',
     },
@@ -108,10 +108,10 @@ async function getOrCreateProPrice(stripe: Stripe): Promise<string> {
   return price.id;
 }
 
-// Get or create flat Team monthly price ($99/month, includes up to 5 workers)
+// Get or create flat Team monthly price ($89.99/month, includes up to 5 workers)
 async function getOrCreateTeamPrice(stripe: Stripe): Promise<string> {
   const prices = await stripe.prices.list({
-    lookup_keys: ['jobrunner_team_flat_monthly'],
+    lookup_keys: ['jobrunner_team_flat_monthly_v2'],
     active: true,
     limit: 1,
   });
@@ -136,17 +136,17 @@ async function getOrCreateTeamPrice(stripe: Stripe): Promise<string> {
     unit_amount: PRICING.team.monthly,
     currency: 'aud',
     recurring: { interval: 'month' },
-    lookup_key: 'jobrunner_team_flat_monthly',
+    lookup_key: 'jobrunner_team_flat_monthly_v2',
     metadata: { tier: 'team' },
   });
 
   return price.id;
 }
 
-// Get or create flat Business monthly price ($199/month, includes up to 15 workers)
+// Get or create flat Business monthly price ($129.99/month, includes up to 15 workers)
 async function getOrCreateBusinessPrice(stripe: Stripe): Promise<string> {
   const prices = await stripe.prices.list({
-    lookup_keys: ['jobrunner_business_flat_monthly'],
+    lookup_keys: ['jobrunner_business_flat_monthly_v2'],
     active: true,
     limit: 1,
   });
@@ -171,7 +171,7 @@ async function getOrCreateBusinessPrice(stripe: Stripe): Promise<string> {
     unit_amount: PRICING.business.monthly,
     currency: 'aud',
     recurring: { interval: 'month' },
-    lookup_key: 'jobrunner_business_flat_monthly',
+    lookup_key: 'jobrunner_business_flat_monthly_v2',
     metadata: { tier: 'business' },
   });
 
@@ -244,7 +244,7 @@ export async function createSubscriptionCheckout(
   }
 }
 
-// Create Team subscription checkout (flat $99/mo, includes up to 5 workers)
+// Create Team subscription checkout (flat $89.99/mo, includes up to 5 workers)
 export async function createTeamSubscriptionCheckout(
   userId: string,
   email: string,
@@ -264,7 +264,7 @@ export async function createTeamSubscriptionCheckout(
   );
 }
 
-// Create Business subscription checkout (flat $199/mo, includes up to 15 workers)
+// Create Business subscription checkout (flat $129.99/mo, includes up to 15 workers)
 export async function createBusinessSubscriptionCheckout(
   userId: string,
   email: string,
@@ -984,9 +984,9 @@ export async function initializeStripeProducts(): Promise<{
   }
 }
 
-// DEPRECATED: Old per-seat Team pricing has been replaced with flat $99/mo Team
-// and $199/mo Business tiers. New checkouts use jobrunner_team_flat_monthly /
-// jobrunner_business_flat_monthly lookup keys via initializeStripeProducts().
+// DEPRECATED: Old per-seat Team pricing has been replaced with flat $89.99/mo Team
+// and $129.99/mo Business tiers. New checkouts use jobrunner_team_flat_monthly_v2 /
+// jobrunner_business_flat_monthly_v2 lookup keys via initializeStripeProducts().
 // This stub is kept so the existing /api/admin/fix-team-base-price route still
 // returns something sensible and doesn't 500.
 export async function fixTeamBasePrice(): Promise<{
@@ -997,7 +997,7 @@ export async function fixTeamBasePrice(): Promise<{
 }> {
   return {
     success: false,
-    error: 'Team is now flat $99/month — per-seat migration no longer applies. Run init-stripe-products to create the new flat Team and Business prices.',
+    error: 'Team is now flat $89.99/month — per-seat migration no longer applies. Run init-stripe-products to create the new flat Team and Business prices.',
   };
 }
 
@@ -1095,7 +1095,7 @@ export async function downgradeTeamToPro(userId: string): Promise<DowngradeToPro
 }
 
 /**
- * Upgrades a Pro subscription to flat Team ($99/mo, includes up to 5 workers)
+ * Upgrades a Pro subscription to flat Team ($89.99/mo, includes up to 5 workers)
  * with a trial period.
  */
 export async function upgradeProToTeamTrial(
@@ -1106,7 +1106,7 @@ export async function upgradeProToTeamTrial(
 }
 
 /**
- * Upgrades a Pro or Team subscription to flat Business ($199/mo, includes up to
+ * Upgrades a Pro or Team subscription to flat Business ($129.99/mo, includes up to
  * 15 workers) with a trial period.
  */
 export async function upgradeProToBusinessTrial(

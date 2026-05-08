@@ -295,7 +295,7 @@ export default function ServiceReadinessWidget({
                 className="mt-2 w-full h-7 text-xs"
                 onClick={() => onNavigate?.('/settings?tab=subscription')}
               >
-                Upgrade to Pro - $39/month
+                Upgrade to Pro - $39.99/month
               </Button>
             </div>
           </div>

@@ -58,6 +58,12 @@ Core architectural and design decisions include:
 *   **AI Receptionist (Voice)**: Vapi.ai (enhanced with ElevenLabs)
 *   **Error Tracking**: Sentry
 
+### Subscription Pricing Update (May 2026)
+*   **New AUD pricing**: Pro $39.99/mo (was $49), Team $89.99/mo flat (was $99), Business $129.99/mo flat (was $199). Source of truth: `PRICING` in `shared/schema.ts` (cents: 3999 / 8999 / 12999).
+*   **Stripe lookup keys bumped to `_v2`** in `server/billingService.ts` (`jobrunner_pro_monthly_v2`, `jobrunner_team_flat_monthly_v2`, `jobrunner_business_flat_monthly_v2`) so the get-or-create helpers don't reuse the legacy $49/$99/$199 prices already in the Stripe account. **Action required after deploy**: hit the admin `init-stripe-products` endpoint to materialize the new prices. Existing subscribers stay on their current Stripe price (grandfathered); new checkouts use the new amounts.
+*   **`formatPrice` helper** in `client/src/components/Settings.tsx` now renders `.99` correctly (`Number.isInteger` check + `toFixed(2)`) so dynamic price strings show `$39.99` instead of `$39`.
+*   **All user-visible prices updated** across `LandingPage`, `SubscriptionPage`, `Team`, `AdminDashboard`, `TermsOfService`, `FeatureGate`, `UpgradeToTeamCard`, `ServiceReadinessWidget`, and `mobile/app/more/subscription.tsx` (display strings + `defaultPrices` fallback for IAP).
+
 ### AI Receptionist Conversational Tuning (May 2026)
 *   **Anti-interruption turn-taking** (`server/vapiService.ts`): After observing the AI cut a caller off mid-spelling ("Aiden. a-y-d-e-n" → "Thanks, Ida."), turn-taking was rebalanced from latency-aggressive to conversational-safe across `createAssistant`, `updateAssistant`, and `updateReceptionistConfigById`:
     *   `numWordsToInterruptAssistant`: 3 → 5
