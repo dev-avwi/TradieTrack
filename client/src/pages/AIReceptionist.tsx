@@ -290,6 +290,16 @@ export default function AIReceptionist() {
     enabled: canManageConfig,
   });
 
+  const { data: analytics } = useQuery<{
+    avgMeasuredLatencyMs: number | null;
+    latencySampleSize: number;
+    latencyMismatch: boolean;
+  }>({
+    queryKey: ["/api/ai-receptionist/analytics"],
+    enabled: canManageConfig && !!config?.vapiAssistantId,
+    refetchInterval: 60000,
+  });
+
   const { data: teamAvailability = [], refetch: refetchAvailability } = useQuery<TeamAvailability[]>({
     queryKey: ["/api/ai-receptionist/team/availability"],
     enabled: isTeam && canManageConfig,
@@ -888,9 +898,9 @@ export default function AIReceptionist() {
                 )}
               </div>
               {config?.vapiAssistantId && config?.lastLatencyMs != null && (
-                <div className="flex items-center gap-2 text-sm pt-1">
+                <div className="flex items-center gap-2 text-sm pt-1 flex-wrap">
                   <Zap className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Response time:</span>
+                  <span className="text-muted-foreground">Estimate:</span>
                   <Badge
                     variant="outline"
                     className={
@@ -904,7 +914,39 @@ export default function AIReceptionist() {
                   >
                     {config.lastLatencyMs}ms · {config.latencyStatus === 'optimal' ? 'Fast' : config.latencyStatus === 'amber' ? 'OK' : 'Slow'}
                   </Badge>
+                  {analytics && analytics.avgMeasuredLatencyMs != null && analytics.latencySampleSize > 0 && (
+                    <>
+                      <span className="text-muted-foreground">Real avg (last {analytics.latencySampleSize}):</span>
+                      <Badge
+                        variant="outline"
+                        className={
+                          analytics.avgMeasuredLatencyMs < 1000
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 border-0'
+                            : analytics.avgMeasuredLatencyMs < 1500
+                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border-0'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0'
+                        }
+                        data-testid="badge-measured-latency"
+                      >
+                        {analytics.avgMeasuredLatencyMs}ms
+                      </Badge>
+                    </>
+                  )}
                   <span className="text-xs text-muted-foreground">target &lt;1000ms</span>
+                </div>
+              )}
+              {analytics?.latencyMismatch && (
+                <div
+                  className="flex items-start gap-2 text-sm rounded-md border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 p-3 mt-2"
+                  data-testid="alert-latency-mismatch"
+                >
+                  <AlertTriangle className="h-4 w-4 mt-0.5 text-red-600 dark:text-red-400 shrink-0" />
+                  <div className="text-red-700 dark:text-red-300">
+                    <div className="font-semibold">Estimate vs reality mismatch</div>
+                    <div className="text-xs mt-0.5">
+                      Estimate says "Fast" but real calls are averaging {analytics.avgMeasuredLatencyMs}ms. Tap "Test Response Time" to recalibrate, or try trimming the greeting / knowledge bank.
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>

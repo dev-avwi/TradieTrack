@@ -1743,6 +1743,67 @@ async function handleCreateBooking(args: any, userId: string, callId: string): P
   }
 }
 
+// Best-effort extraction of the real per-call response latency from a Vapi
+// end-of-call-report payload. Tries several known fields first, then falls
+// back to computing the average gap between the user finishing speaking and
+// the assistant starting to reply across the message timeline.
+//
+// Returns null when no signal is available (very short calls, missing
+// timestamps, voicemail-only, etc.) — the analytics endpoint treats null as
+// "no measurement" rather than zero.
+export function extractCallLatencyMs(message: any): number | null {
+  if (!message || typeof message !== 'object') return null;
+  const call = message.call || {};
+  const analysis = message.analysis || call.analysis || {};
+
+  const tryNumber = (v: any): number | null => {
+    if (typeof v === 'number' && isFinite(v) && v > 0 && v < 60000) return Math.round(v);
+    return null;
+  };
+
+  // 1) Direct fields Vapi has been observed to surface on the report or call.
+  const direct =
+    tryNumber(analysis.responseLatencyMs) ||
+    tryNumber(analysis.latencyMs) ||
+    tryNumber(analysis.averageLatencyMs) ||
+    tryNumber((call as any).modelLatencyAverage) ||
+    tryNumber((call as any).responseLatencyAverage) ||
+    tryNumber((message as any).averageLatencyMs);
+  if (direct) return direct;
+
+  // 2) Compute from the messages timeline: for each bot/assistant message
+  //    that immediately follows a user message, latency = bot.secondsFromStart
+  //    - (user.secondsFromStart + user.duration). Average across the call.
+  const messages: any[] = Array.isArray(message.messages)
+    ? message.messages
+    : Array.isArray(call.messages)
+      ? call.messages
+      : [];
+  if (messages.length < 2) return null;
+
+  const samples: number[] = [];
+  for (let i = 1; i < messages.length; i++) {
+    const prev = messages[i - 1];
+    const curr = messages[i];
+    const prevRole = (prev?.role || '').toLowerCase();
+    const currRole = (curr?.role || '').toLowerCase();
+    if (prevRole !== 'user' || (currRole !== 'bot' && currRole !== 'assistant')) continue;
+
+    // Vapi exposes secondsFromStart (sec) and duration (ms). Guard everything.
+    const prevStart = typeof prev.secondsFromStart === 'number' ? prev.secondsFromStart : null;
+    const prevDurMs = typeof prev.duration === 'number' ? prev.duration : 0;
+    const currStart = typeof curr.secondsFromStart === 'number' ? curr.secondsFromStart : null;
+    if (prevStart === null || currStart === null) continue;
+
+    const gapMs = (currStart - prevStart) * 1000 - prevDurMs;
+    if (gapMs > 50 && gapMs < 15000) samples.push(gapMs);
+  }
+  if (samples.length === 0) return null;
+
+  const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
+  return Math.round(avg);
+}
+
 export async function processWebhookEvent(event: any): Promise<any> {
   const eventType = event.message?.type || event.type;
   console.log(`[Vapi Webhook] Event type: ${eventType}`);
@@ -1844,6 +1905,11 @@ async function handleEndOfCallReport(event: any): Promise<any> {
     console.error(`[Vapi] Sentiment analysis error for call ${callId}:`, e.message);
   }
 
+  const measuredLatencyMs = extractCallLatencyMs(message);
+  if (measuredLatencyMs !== null) {
+    console.log(`[Vapi] Measured latency for call ${callId}: ${measuredLatencyMs}ms`);
+  }
+
   const updates: Partial<InsertAiReceptionistCall> = {
     status: 'completed',
     duration: message.durationSeconds || call.duration || null,
@@ -1855,6 +1921,7 @@ async function handleEndOfCallReport(event: any): Promise<any> {
     outcome: callOutcome,
     sentiment: sentimentResult.sentiment,
     sentimentScore: sentimentResult.sentimentScore,
+    latencyMs: measuredLatencyMs,
   };
 
   let callRecord: any;
@@ -1884,6 +1951,7 @@ async function handleEndOfCallReport(event: any): Promise<any> {
       outcome: updates.outcome || null,
       sentiment: updates.sentiment || null,
       sentimentScore: updates.sentimentScore ?? null,
+      latencyMs: updates.latencyMs ?? null,
       phoneNumberId: matchedConfig?.id || null,
       calledNumber,
     };

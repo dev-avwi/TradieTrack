@@ -4705,6 +4705,7 @@ export const aiReceptionistCalls = pgTable("ai_receptionist_calls", {
   cost: decimal("cost", { precision: 8, scale: 4 }), // Vapi call cost
   sentiment: text("sentiment"), // positive, neutral, negative
   sentimentScore: real("sentiment_score"), // 0.0 to 1.0 confidence
+  latencyMs: integer("latency_ms"), // Real measured per-call response latency from Vapi (avg turn time)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

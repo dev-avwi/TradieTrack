@@ -50335,6 +50335,38 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         dailyVolume[day] = (dailyVolume[day] || 0) + 1;
       }
 
+      // Real measured latency: rolling avg over the last 20 completed calls
+      // that have a per-call latency value persisted from the Vapi webhook.
+      const latencyWindow = completedCalls
+        .slice(0, 20)
+        .map((c: any) => (typeof c.latencyMs === 'number' ? c.latencyMs : null))
+        .filter((n: number | null): n is number => n !== null && n > 0);
+      const avgMeasuredLatencyMs = latencyWindow.length > 0
+        ? Math.round(latencyWindow.reduce((a: number, b: number) => a + b, 0) / latencyWindow.length)
+        : null;
+      // When a specific receptionist (phoneNumberId === aiReceptionistConfig.id)
+      // is selected, compare measured latency against THAT config's estimate so
+      // multi-number setups don't get a false mismatch from the default config.
+      let config: any = undefined;
+      if (phoneNumberId) {
+        config = await storage.getAiReceptionistConfigById(phoneNumberId);
+        if (config && config.userId !== userId) config = undefined;
+      }
+      if (!config) {
+        config = await storage.getAiReceptionistConfig(userId);
+      }
+      const estimatedLatencyMs = config?.lastLatencyMs ?? null;
+      const estimatedStatus = config?.latencyStatus ?? null;
+      // Mismatch flag: estimate says fast but reality is well above the
+      // amber ceiling — tells the user their last "Test Response Time"
+      // result no longer matches what callers actually experience.
+      const latencyMismatch = !!(
+        avgMeasuredLatencyMs !== null &&
+        latencyWindow.length >= 3 &&
+        estimatedStatus === 'optimal' &&
+        avgMeasuredLatencyMs > 1500
+      );
+
       res.json({
         totalCalls,
         completedCalls: completedCalls.length,
@@ -50348,6 +50380,11 @@ Give 3-5 short, specific recommendations. Mention client names. Use Australian E
         outcomeBreakdown,
         dailyVolume,
         recentCallCount: recentCalls.length,
+        avgMeasuredLatencyMs,
+        latencySampleSize: latencyWindow.length,
+        estimatedLatencyMs,
+        estimatedLatencyStatus: estimatedStatus,
+        latencyMismatch,
       });
     } catch (error: any) {
       console.error('[AI Receptionist] Analytics error:', error.message);

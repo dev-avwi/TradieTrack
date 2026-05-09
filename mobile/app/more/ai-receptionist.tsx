@@ -113,6 +113,11 @@ interface AnalyticsSummary {
   totalCalls: number;
   avgDuration: number;
   outcomeBreakdown: Record<string, number>;
+  avgMeasuredLatencyMs?: number | null;
+  latencySampleSize?: number;
+  estimatedLatencyMs?: number | null;
+  estimatedLatencyStatus?: 'optimal' | 'amber' | 'warn' | null;
+  latencyMismatch?: boolean;
 }
 
 function formatPhoneDisplay(phone: string): string {
@@ -545,7 +550,7 @@ export default function AIReceptionistScreen() {
       if (response.data) setAnalytics(response.data);
     } catch (e) {
     }
-  }, []);
+  }, [selectedConfigId]);
 
   const handleMeasureLatency = async () => {
     setIsMeasuringLatency(true);
@@ -1157,6 +1162,33 @@ export default function AIReceptionistScreen() {
                     </Text>
                   </View>
                 )}
+                {(() => {
+                  const measured = analytics?.avgMeasuredLatencyMs ?? null;
+                  const sampleSize = analytics?.latencySampleSize ?? 0;
+                  if (measured === null || sampleSize === 0) return null;
+                  const measuredColor = measured < 1000 ? colors.success : measured < 1500 ? '#f59e0b' : '#ef4444';
+                  return (
+                    <View style={{ marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.cardBorder }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs, gap: spacing.sm }}>
+                        <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600' }}>
+                          Real average (last {sampleSize} {sampleSize === 1 ? 'call' : 'calls'})
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+                          <Text style={{ ...typography.body, fontWeight: '800', color: measuredColor }}>{measured}</Text>
+                          <Text style={{ ...typography.caption, color: measuredColor, fontWeight: '600' }}>ms</Text>
+                        </View>
+                      </View>
+                      {analytics?.latencyMismatch && (
+                        <View style={{ backgroundColor: '#ef444418', borderRadius: radius.lg, padding: spacing.sm, marginTop: spacing.xs }}>
+                          <Text style={{ ...typography.caption, color: '#ef4444', fontWeight: '700', marginBottom: 2 }}>Estimate vs reality mismatch</Text>
+                          <Text style={{ ...typography.caption, color: '#ef4444', lineHeight: 16 }}>
+                            Your estimate says "Fast" but real calls average {measured}ms. Tap Test response time again to recalibrate, or trim your greeting/knowledge bank.
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
                 <TouchableOpacity
                   onPress={handleMeasureLatency}
                   disabled={isMeasuringLatency}
