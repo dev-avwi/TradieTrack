@@ -1347,10 +1347,10 @@ function OperationalAlertsCard() {
                   <Feather name={iconName} size={14} color={severityColor} />
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, flexShrink: 1 }} numberOfLines={1}>{alert.title}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground, flexShrink: 1, minWidth: 0 }} numberOfLines={1}>{alert.title}</Text>
                     {alert.timeInfo && (
-                      <Text style={{ fontSize: 11, color: colors.mutedForeground, flexShrink: 0 }}>{alert.timeInfo}</Text>
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, flexShrink: 1, minWidth: 0 }} numberOfLines={1} ellipsizeMode="clip">{alert.timeInfo}</Text>
                     )}
                   </View>
                   <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 1 }} numberOfLines={1}>{alert.message}</Text>
