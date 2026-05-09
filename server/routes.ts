@@ -10183,6 +10183,97 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // Integrations: live "Test Connection" endpoints
+  //
+  // Each endpoint performs a real read against the upstream provider so the
+  // Integrations page can confirm credentials are valid right now (vs. just
+  // checking that we have a token in the DB). All return shape:
+  //   { success: boolean, message: string, detail?: any, error?: string }
+  // ---------------------------------------------------------------------------
+  app.post("/api/integrations/xero/test", requireAuth, async (req: any, res) => {
+    try {
+      if (!xeroService.isXeroConfigured()) {
+        return res.status(503).json({ success: false, error: 'Xero not configured on server', message: 'Xero integration is not configured.' });
+      }
+      const tenants = await xeroService.getTenants(req.userId);
+      res.json({
+        success: true,
+        message: tenants.length === 1
+          ? `Connected to "${tenants[0].tenantName || tenants[0].tenantId}"`
+          : `Connected (${tenants.length} tenant${tenants.length === 1 ? '' : 's'})`,
+        detail: { tenants },
+      });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err?.message || 'Xero test failed', message: err?.message || 'Xero test failed' });
+    }
+  });
+
+  app.post("/api/integrations/quickbooks/test", requireAuth, async (req: any, res) => {
+    try {
+      const result = await quickbooksService.testQuickbooksConnection(req.userId);
+      if (result.success) {
+        res.json({ success: true, message: `Connected to "${result.companyName}"`, detail: { realmId: result.realmId, companyName: result.companyName } });
+      } else {
+        res.status(400).json({ success: false, error: result.error, message: result.error || 'QuickBooks test failed' });
+      }
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message, message: err?.message || 'QuickBooks test failed' });
+    }
+  });
+
+  app.post("/api/integrations/myob/test", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.testMyobConnection(req.userId);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err?.message, message: err?.message || 'MYOB test failed' });
+    }
+  });
+
+  app.post("/api/integrations/google-calendar/test", requireAuth, async (req: any, res) => {
+    try {
+      const { getCalendarClient } = await import('./googleCalendarClient');
+      const calendar = await getCalendarClient(req.userId);
+      const list = await calendar.calendarList.list({ maxResults: 5 });
+      const count = list.data.items?.length || 0;
+      const primary = list.data.items?.find(c => c.primary)?.summary || list.data.items?.[0]?.summary;
+      res.json({
+        success: true,
+        message: primary ? `Connected — primary calendar: "${primary}"` : `Connected (${count} calendars)`,
+        detail: { calendarCount: count, primary },
+      });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err?.message, message: err?.message || 'Google Calendar test failed' });
+    }
+  });
+
+  app.post("/api/integrations/stripe/test", requireAuth, async (req: any, res) => {
+    try {
+      const settings = await storage.getBusinessSettings(req.userId);
+      const accountId = settings?.stripeConnectAccountId;
+      if (!accountId) {
+        return res.status(400).json({ success: false, error: 'No Stripe Connect account', message: 'No Stripe Connect account linked' });
+      }
+      const { getUncachableStripeClient } = await import('./stripeClient');
+      const stripe = await getUncachableStripeClient();
+      if (!stripe) {
+        return res.status(503).json({ success: false, error: 'Stripe not configured', message: 'Stripe credentials not available on server' });
+      }
+      const acct = await stripe.accounts.retrieve(accountId);
+      res.json({
+        success: true,
+        message: `Connected to Stripe (charges_enabled=${acct.charges_enabled}, payouts_enabled=${acct.payouts_enabled})`,
+        detail: { id: acct.id, country: acct.country, charges_enabled: acct.charges_enabled, payouts_enabled: acct.payouts_enabled, details_submitted: acct.details_submitted },
+      });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err?.message, message: err?.message || 'Stripe test failed' });
+    }
+  });
+
   // Aggregate status for the Integrations page — runs all provider status
   // checks in parallel server-side instead of 5 separate round-trips. Each
   // sub-result is wrapped in allSettled so one slow/failing provider can't
@@ -10967,7 +11058,14 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/integrations/myob/void-invoice/:invoiceId", requireAuth, async (req: any, res) => {
     try {
       const result = await myobService.voidInvoiceInMyob(req.userId, req.params.invoiceId);
-      res.json(result);
+      // MYOB does not support API void — surface the structured result so the
+      // client can render the credit-note workaround instead of a generic
+      // "voided" toast that would mislead the tradie.
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(result.voidMethod === 'unsupported' ? 422 : 400).json(result);
+      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -11187,7 +11285,11 @@ Be specific about materials, colors, and features that would be included.`
   app.post("/api/integrations/quickbooks/void-invoice/:invoiceId", requireAuth, async (req: any, res) => {
     try {
       const result = await quickbooksService.voidInvoiceInQuickbooks(req.userId, req.params.invoiceId);
-      res.json(result);
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(result.voidMethod === 'unsupported' ? 422 : 400).json(result);
+      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

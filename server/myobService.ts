@@ -339,6 +339,70 @@ export async function getConnectionStatus(userId: string): Promise<{
   };
 }
 
+/**
+ * Live MYOB upstream probe — actually hits the MYOB AccountRight API
+ * (lists company files) to verify the stored token is still valid right now.
+ * Refreshes the token if it's about to expire. Distinguishes between "not
+ * connected", "token expired/revoked", and "MYOB API unreachable".
+ */
+export async function testMyobConnection(userId: string): Promise<{
+  success: boolean;
+  message: string;
+  detail?: any;
+  error?: string;
+}> {
+  const connection = await storage.getMyobConnection(userId);
+  if (!connection) {
+    return { success: false, message: 'Not connected to MYOB' };
+  }
+  if (connection.status !== 'active') {
+    return { success: false, message: `MYOB connection status: ${connection.status}` };
+  }
+
+  const clientId = process.env.MYOB_CLIENT_ID;
+  if (!clientId) {
+    return { success: false, message: 'MYOB_CLIENT_ID not configured on server' };
+  }
+
+  try {
+    const refreshed = await refreshTokenIfNeeded(connection);
+    const { accessToken } = decryptTokens(refreshed);
+    const response = await axios.get(MYOB_API_BASE, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'x-myobapi-key': clientId,
+        'x-myobapi-version': 'v2',
+      },
+      timeout: 10000,
+    });
+    const companyFiles = Array.isArray(response.data) ? response.data : [];
+    const matching = companyFiles.find((cf: any) => cf.Id === refreshed.businessId);
+    const companyName = matching?.Name || refreshed.companyName || null;
+    return {
+      success: true,
+      message: companyName
+        ? `Connected to "${companyName}" (${companyFiles.length} company file${companyFiles.length === 1 ? '' : 's'} visible)`
+        : `Connected to MYOB (${companyFiles.length} company file${companyFiles.length === 1 ? '' : 's'} visible)`,
+      detail: {
+        companyName,
+        businessId: refreshed.businessId,
+        companyFileCount: companyFiles.length,
+        cfCredentialsSet: !!(refreshed.cfUsername && refreshed.cfPassword),
+        lastSyncAt: refreshed.lastSyncAt,
+      },
+    };
+  } catch (err: any) {
+    const upstream = err?.response?.data || err?.message || 'Unknown error';
+    const status = err?.response?.status;
+    const msg = status === 401
+      ? 'MYOB token rejected (401) — please reconnect'
+      : status === 403
+        ? 'MYOB returned 403 — check API permissions / company file access'
+        : `MYOB API call failed${status ? ` (HTTP ${status})` : ''}: ${typeof upstream === 'string' ? upstream : JSON.stringify(upstream).slice(0, 200)}`;
+    return { success: false, message: msg, error: err?.message };
+  }
+}
+
 export async function setCompanyFileCredentials(
   userId: string,
   cfUsername: string,
@@ -527,17 +591,41 @@ export async function syncPaymentsFromMyob(userId: string): Promise<{ updated: n
   }
 }
 
-export async function voidInvoiceInMyob(userId: string, invoiceId: string): Promise<{ success: boolean; error?: string }> {
+/**
+ * Void semantics for MYOB.
+ *
+ * MYOB AccountRight does NOT support a true "void" on a posted Sale.Invoice
+ * via the public REST API — the supported workflow is to raise a Credit Note
+ * (negative-amount Sale) that offsets the original invoice. This function
+ * therefore does NOT mutate anything in MYOB; it returns a structured result
+ * so the caller can surface the limitation honestly to the user instead of
+ * pretending the void succeeded.
+ *
+ * Returns:
+ *   - voidMethod: 'unsupported' — caller should issue a credit note manually,
+ *                 or call a future raiseCreditNoteInMyob() helper.
+ */
+export async function voidInvoiceInMyob(userId: string, invoiceId: string): Promise<{
+  success: boolean;
+  voidMethod: 'void' | 'credit_note' | 'unsupported';
+  message: string;
+  error?: string;
+}> {
   try {
     const connection = await storage.getMyobConnection(userId);
     if (!connection || connection.status !== "active") {
-      return { success: false, error: "No active MYOB connection" };
+      return { success: false, voidMethod: 'unsupported', message: 'No active MYOB connection', error: "No active MYOB connection" };
     }
 
-    console.log(`[MYOB] Void invoice ${invoiceId} requested - MYOB API does not natively support void, marking as noted`);
-    return { success: true };
+    const message = `MYOB does not support voiding posted invoices via API. Raise a Credit Note in MYOB (or via the MYOB UI) to offset invoice ${invoiceId}.`;
+    console.warn(`[MYOB] ${message}`);
+    return {
+      success: false,
+      voidMethod: 'unsupported',
+      message,
+    };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, voidMethod: 'unsupported', message: error.message, error: error.message };
   }
 }
 

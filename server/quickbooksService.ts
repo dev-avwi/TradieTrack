@@ -132,6 +132,33 @@ async function getCompanyInfo(accessToken: string, realmId: string): Promise<any
   }
 }
 
+/**
+ * Live test of the user's QBO connection — refreshes token if needed, then
+ * pulls CompanyInfo. Returns the company name on success.
+ */
+export async function testQuickbooksConnection(userId: string): Promise<{
+  success: boolean;
+  companyName?: string;
+  realmId?: string;
+  error?: string;
+}> {
+  try {
+    const connection = await storage.getQuickbooksConnection(userId);
+    if (!connection || connection.status !== 'active') {
+      return { success: false, error: 'No active QuickBooks connection' };
+    }
+    const refreshed = await refreshTokenIfNeeded(connection);
+    const tokens = decryptTokens(refreshed);
+    const info = await getCompanyInfo(tokens.accessToken, refreshed.realmId);
+    if (!info) {
+      return { success: false, error: 'QuickBooks API returned no company info' };
+    }
+    return { success: true, companyName: info.CompanyName, realmId: refreshed.realmId };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'QuickBooks connection test failed' };
+  }
+}
+
 function decryptTokens(connection: QuickbooksConnection): { accessToken: string; refreshToken: string } {
   return {
     accessToken: decrypt(connection.accessToken),
@@ -323,6 +350,26 @@ async function createCustomer(accessToken: string, realmId: string, customerData
   return data.Customer;
 }
 
+/**
+ * Resolve the QuickBooks ItemRef the tenant should use when pushing line items.
+ * Reads businessSettings.quickbooksDefaultItemRef. Falls back to the legacy
+ * {value:"1", name:"Services"} (most QBO companies have item id 1) and emits a
+ * one-line warning so the issue is greppable in production logs.
+ */
+async function resolveQbItemRef(userId: string): Promise<{ value: string; name: string }> {
+  try {
+    const settings = await storage.getBusinessSettings(userId);
+    const ref = (settings as any)?.quickbooksDefaultItemRef;
+    if (ref && typeof ref === 'object' && typeof ref.value === 'string' && ref.value) {
+      return { value: ref.value, name: typeof ref.name === 'string' ? ref.name : 'Services' };
+    }
+  } catch (err) {
+    console.warn('[QuickBooks] Failed to read business settings for ItemRef:', err);
+  }
+  console.warn(`[QuickBooks] No quickbooksDefaultItemRef configured for user ${userId} — falling back to legacy ItemRef {value:"1", name:"Services"}. Set businessSettings.quickbooksDefaultItemRef to silence.`);
+  return { value: '1', name: 'Services' };
+}
+
 export async function syncInvoicesToQuickbooks(userId: string): Promise<{ synced: number; skipped: number; errors: string[] }> {
   const connection = await storage.getQuickbooksConnection(userId);
   if (!connection || connection.status !== "active") {
@@ -331,6 +378,7 @@ export async function syncInvoicesToQuickbooks(userId: string): Promise<{ synced
 
   const refreshedConnection = await refreshTokenIfNeeded(connection);
   const tokens = decryptTokens(refreshedConnection);
+  const itemRef = await resolveQbItemRef(userId);
 
   let synced = 0;
   let skipped = 0;
@@ -370,7 +418,7 @@ export async function syncInvoicesToQuickbooks(userId: string): Promise<{ synced
             DetailType: "SalesItemLineDetail",
             Amount: parseFloat(item.unitPrice || "0") * parseFloat(item.quantity || "1"),
             SalesItemLineDetail: {
-              ItemRef: { value: "1", name: "Services" },
+              ItemRef: itemRef,
               Qty: parseFloat(item.quantity || "1"),
               UnitPrice: parseFloat(item.unitPrice || "0"),
             },
@@ -511,6 +559,7 @@ export async function syncSingleInvoiceToQuickbooks(userId: string, invoiceId: s
 
     const refreshedConnection = await refreshTokenIfNeeded(connection);
     const tokens = decryptTokens(refreshedConnection);
+    const itemRef = await resolveQbItemRef(userId);
 
     const clients = await storage.getClients(userId);
     const client = clients.find(c => c.id === invoice.clientId);
@@ -536,7 +585,7 @@ export async function syncSingleInvoiceToQuickbooks(userId: string, invoiceId: s
         DetailType: "SalesItemLineDetail",
         Amount: parseFloat(item.unitPrice || "0") * parseFloat(item.quantity || "1"),
         SalesItemLineDetail: {
-          ItemRef: { value: "1", name: "Services" },
+          ItemRef: itemRef,
           Qty: parseFloat(item.quantity || "1"),
           UnitPrice: parseFloat(item.unitPrice || "0"),
         },
@@ -574,6 +623,7 @@ export async function syncQuotesToQuickbooks(userId: string): Promise<{ synced: 
 
   const refreshedConnection = await refreshTokenIfNeeded(connection);
   const tokens = decryptTokens(refreshedConnection);
+  const itemRef = await resolveQbItemRef(userId);
 
   let synced = 0;
   let skipped = 0;
@@ -607,7 +657,7 @@ export async function syncQuotesToQuickbooks(userId: string): Promise<{ synced: 
             DetailType: "SalesItemLineDetail",
             Amount: parseFloat(item.unitPrice || "0") * parseFloat(item.quantity || "1"),
             SalesItemLineDetail: {
-              ItemRef: { value: "1", name: "Services" },
+              ItemRef: itemRef,
               Qty: parseFloat(item.quantity || "1"),
               UnitPrice: parseFloat(item.unitPrice || "0"),
             },
@@ -649,21 +699,34 @@ export async function syncQuotesToQuickbooks(userId: string): Promise<{ synced: 
   }
 }
 
-export async function voidInvoiceInQuickbooks(userId: string, invoiceId: string): Promise<{ success: boolean; error?: string }> {
+/**
+ * Void an invoice in QuickBooks Online.
+ *
+ * QBO supports a real `?operation=void` POST that flips the invoice total to 0
+ * and stamps it VOIDED in the company's books. We use that here and report
+ * voidMethod: 'void' on success so the caller can distinguish a true void from
+ * a credit-note workaround (see voidInvoiceInMyob for contrast).
+ */
+export async function voidInvoiceInQuickbooks(userId: string, invoiceId: string): Promise<{
+  success: boolean;
+  voidMethod: 'void' | 'credit_note' | 'unsupported';
+  message: string;
+  error?: string;
+}> {
   try {
     const connection = await storage.getQuickbooksConnection(userId);
     if (!connection || connection.status !== "active") {
-      return { success: false, error: "No active QuickBooks connection" };
+      return { success: false, voidMethod: 'unsupported', message: "No active QuickBooks connection", error: "No active QuickBooks connection" };
     }
 
     const invoice = await storage.getInvoice(invoiceId, userId);
     if (!invoice) {
-      return { success: false, error: "Invoice not found" };
+      return { success: false, voidMethod: 'unsupported', message: "Invoice not found", error: "Invoice not found" };
     }
 
     const qbInvoiceId = (invoice as any).quickbooksInvoiceId;
     if (!qbInvoiceId) {
-      return { success: false, error: "Invoice not synced to QuickBooks" };
+      return { success: false, voidMethod: 'unsupported', message: "Invoice not synced to QuickBooks", error: "Invoice not synced to QuickBooks" };
     }
 
     const refreshedConnection = await refreshTokenIfNeeded(connection);
@@ -671,7 +734,7 @@ export async function voidInvoiceInQuickbooks(userId: string, invoiceId: string)
 
     const qbInvoice = await getQuickbooksInvoice(tokens.accessToken, refreshedConnection.realmId, qbInvoiceId);
     if (!qbInvoice) {
-      return { success: false, error: "Invoice not found in QuickBooks" };
+      return { success: false, voidMethod: 'unsupported', message: "Invoice not found in QuickBooks", error: "Invoice not found in QuickBooks" };
     }
 
     const response = await fetch(
@@ -691,13 +754,13 @@ export async function voidInvoiceInQuickbooks(userId: string, invoiceId: string)
     );
 
     if (!response.ok) {
-      const error = await response.text();
-      return { success: false, error: `Failed to void invoice in QuickBooks: ${error}` };
+      const errText = await response.text();
+      return { success: false, voidMethod: 'void', message: `Failed to void invoice in QuickBooks: ${errText}`, error: errText };
     }
 
-    return { success: true };
+    return { success: true, voidMethod: 'void', message: `Invoice ${qbInvoiceId} voided in QuickBooks` };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    return { success: false, voidMethod: 'void', message: error.message, error: error.message };
   }
 }
 

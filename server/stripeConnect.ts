@@ -1,7 +1,8 @@
 import Stripe from 'stripe';
 import { getUncachableStripeClient } from './stripeClient';
+import { STRIPE_CONFIG } from './config/stripe';
 
-const PLATFORM_FEE_PERCENT = 2.5;
+const PLATFORM_FEE_PERCENT = STRIPE_CONFIG.platformFeePercent;
 
 export interface ConnectAccountResult {
   success: boolean;
@@ -34,7 +35,7 @@ export async function createConnectAccount(
   try {
     const account = await stripe.accounts.create({
       type: 'express',
-      country: 'AU',
+      country: STRIPE_CONFIG.country,
       email,
       business_type: 'individual',
       capabilities: {
@@ -43,7 +44,7 @@ export async function createConnectAccount(
       },
       business_profile: {
         name: businessName,
-        mcc: '1711',
+        mcc: STRIPE_CONFIG.mcc,
         url: returnUrl,
       },
       metadata: {
@@ -156,13 +157,12 @@ export async function createPaymentIntentWithFee(
     const amountInCents = Math.round(amount * 100);
     
     // Minimum invoice amount check - must cover platform fee + Stripe fees
-    const minimumAmount = 500; // $5.00 AUD minimum
-    if (amountInCents < minimumAmount) {
-      return { success: false, error: `Minimum payment amount is $5.00 AUD` };
+    if (amountInCents < STRIPE_CONFIG.minimumAmountCents) {
+      return { success: false, error: `Minimum payment amount is $${(STRIPE_CONFIG.minimumAmountCents / 100).toFixed(2)} ${STRIPE_CONFIG.currency.toUpperCase()}` };
     }
     
-    // Calculate platform fee (minimum 50 cents)
-    const platformFeeAmount = Math.max(Math.round(amountInCents * (platformFeePercent / 100)), 50);
+    // Calculate platform fee (with floor to cover Stripe's per-transaction fee)
+    const platformFeeAmount = Math.max(Math.round(amountInCents * (platformFeePercent / 100)), STRIPE_CONFIG.platformFeeMinCents);
     const tradieAmount = amountInCents - platformFeeAmount;
     
     // Validate tradie will receive positive amount
@@ -173,7 +173,7 @@ export async function createPaymentIntentWithFee(
     // Use destination charges - customer pays platform, we transfer to tradie
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
-      currency: 'aud',
+      currency: STRIPE_CONFIG.currency,
       application_fee_amount: platformFeeAmount,
       transfer_data: {
         destination: connectedAccountId,
@@ -219,13 +219,12 @@ export async function createCheckoutSessionWithFee(
     const amountInCents = Math.round(amount * 100);
     
     // Minimum invoice amount check - must cover platform fee + Stripe fees
-    const minimumAmount = 500; // $5.00 AUD minimum
-    if (amountInCents < minimumAmount) {
-      return { error: `Minimum payment amount is $5.00 AUD` };
+    if (amountInCents < STRIPE_CONFIG.minimumAmountCents) {
+      return { error: `Minimum payment amount is $${(STRIPE_CONFIG.minimumAmountCents / 100).toFixed(2)} ${STRIPE_CONFIG.currency.toUpperCase()}` };
     }
     
-    // Calculate platform fee (minimum 50 cents)
-    const platformFeeAmount = Math.max(Math.round(amountInCents * (platformFeePercent / 100)), 50);
+    // Calculate platform fee (with floor to cover Stripe's per-transaction fee)
+    const platformFeeAmount = Math.max(Math.round(amountInCents * (platformFeePercent / 100)), STRIPE_CONFIG.platformFeeMinCents);
     const tradieAmount = amountInCents - platformFeeAmount;
     
     // Validate tradie will receive positive amount
@@ -237,7 +236,7 @@ export async function createCheckoutSessionWithFee(
       line_items: [
         {
           price_data: {
-            currency: 'aud',
+            currency: STRIPE_CONFIG.currency,
             product_data: {
               name: invoiceTitle,
               description: `Invoice payment`,
@@ -311,11 +310,11 @@ export async function getAccountBalance(accountId: string): Promise<{
     });
 
     const available = balance.available
-      .filter(b => b.currency === 'aud')
+      .filter(b => b.currency === STRIPE_CONFIG.currency)
       .reduce((sum, b) => sum + b.amount, 0) / 100;
     
     const pending = balance.pending
-      .filter(b => b.currency === 'aud')
+      .filter(b => b.currency === STRIPE_CONFIG.currency)
       .reduce((sum, b) => sum + b.amount, 0) / 100;
 
     return { available, pending };

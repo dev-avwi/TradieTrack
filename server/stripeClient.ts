@@ -170,7 +170,12 @@ export async function initializeStripe(): Promise<{ stripe: Stripe | null; webho
   try {
     const stripe = await getUncachableStripeClient();
     if (!stripe) {
-      console.log('⚠️ Stripe credentials not available - using mock payment service');
+      const isProductionDeployment = process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production';
+      if (isProductionDeployment) {
+        console.error('🛑 Stripe credentials NOT available in production deployment. Payment endpoints will return 503 until credentials are configured (mock fallback is gated to development only).');
+      } else {
+        console.log('⚠️ Stripe credentials not available - payment endpoints disabled (development mode, no mock fallback).');
+      }
       return { stripe: null, webhookUuid: null };
     }
 

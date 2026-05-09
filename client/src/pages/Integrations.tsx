@@ -191,6 +191,60 @@ interface TwilioSettings {
   platformTwilioPhoneNumber: string | null;
 }
 
+/**
+ * Live "Test Connection" button used across all integration provider cards.
+ * Hits POST /api/integrations/<provider>/test, surfaces a toast with the
+ * upstream tenant/company name on success, or the upstream error on failure.
+ */
+function TestConnectionButton({
+  endpoint,
+  label = 'Test Connection',
+  testId,
+}: {
+  endpoint: string;
+  label?: string;
+  testId?: string;
+}) {
+  const { toast } = useToast();
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', endpoint);
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data?.success ? 'Connection OK' : 'Connection Failed',
+        description: data?.message || (data?.success ? 'Connection verified' : 'Provider returned an error'),
+        variant: data?.success ? 'default' : 'destructive',
+      });
+    },
+    onError: (error: any) => {
+      let description = error?.message || 'Test failed';
+      try {
+        const parsed = JSON.parse(error?.message?.split(': ').slice(1).join(': ') || '{}');
+        if (parsed?.message) description = parsed.message;
+      } catch { /* keep raw */ }
+      toast({ title: 'Connection Failed', description, variant: 'destructive' });
+    },
+  });
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => mutation.mutate()}
+      disabled={mutation.isPending}
+      data-testid={testId}
+    >
+      {mutation.isPending ? (
+        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+      ) : (
+        <CheckCircle className="w-4 h-4 mr-2" />
+      )}
+      {label}
+    </Button>
+  );
+}
+
 export default function Integrations() {
   const { toast } = useToast();
   
@@ -1054,22 +1108,25 @@ export default function Integrations() {
                     <Building2 className="w-4 h-4 inline mr-1" />
                     {stripeConnect?.businessName || 'Your Business'} — payments deposited to your bank account.
                   </p>
-                  <Button 
-                    variant="outline"
-                    onClick={handleOpenDashboard}
-                    disabled={openDashboardMutation.isPending}
-                    data-testid="button-stripe-dashboard"
-                  >
-                    {openDashboardMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Wallet className="w-4 h-4 mr-2" />
-                        View Dashboard
-                        <ExternalLink className="w-3 h-3 ml-2" />
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      variant="outline"
+                      onClick={handleOpenDashboard}
+                      disabled={openDashboardMutation.isPending}
+                      data-testid="button-stripe-dashboard"
+                    >
+                      {openDashboardMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Wallet className="w-4 h-4 mr-2" />
+                          View Dashboard
+                          <ExternalLink className="w-3 h-3 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                    <TestConnectionButton endpoint="/api/integrations/stripe/test" testId="button-test-stripe" />
+                  </div>
                 </>
               ) : stripePartiallyConnected ? (
                 <>
@@ -1565,6 +1622,7 @@ export default function Integrations() {
                       )}
                       Full Sync
                     </Button>
+                    <TestConnectionButton endpoint="/api/integrations/xero/test" testId="button-test-xero" />
                     <Button 
                       variant="outline"
                       size="sm"
@@ -1719,6 +1777,7 @@ export default function Integrations() {
                       )}
                       Full Sync
                     </Button>
+                    <TestConnectionButton endpoint="/api/integrations/quickbooks/test" testId="button-test-quickbooks" />
                     <Button 
                       variant="outline"
                       size="sm"
@@ -1874,6 +1933,7 @@ export default function Integrations() {
                       )}
                       Full Sync
                     </Button>
+                    <TestConnectionButton endpoint="/api/integrations/myob/test" testId="button-test-myob" />
                     <Button 
                       variant="outline"
                       size="sm"
@@ -1978,6 +2038,7 @@ export default function Integrations() {
                       )}
                       Sync All Jobs
                     </Button>
+                    <TestConnectionButton endpoint="/api/integrations/google-calendar/test" testId="button-test-google-calendar" />
                     <Button 
                       variant="outline"
                       onClick={() => disconnectGoogleCalendarMutation.mutate()}

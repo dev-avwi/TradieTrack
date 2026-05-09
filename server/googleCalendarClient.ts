@@ -412,7 +412,20 @@ export async function syncJobToCalendar(
   }
 ): Promise<{ eventId: string; eventLink: string }> {
   const calendar = await getCalendarClient(userId);
-  
+
+  // Resolve business timezone (configurable per-tenant; defaults to Australia/Sydney for legacy parity).
+  let businessTimezone = 'Australia/Sydney';
+  try {
+    const { storage } = await import('./storage');
+    const settings = await storage.getBusinessSettings(userId);
+    const tz = (settings as any)?.timezone;
+    if (tz && typeof tz === 'string' && tz.trim()) {
+      businessTimezone = tz.trim();
+    }
+  } catch (err) {
+    console.warn('[GoogleCalendar] Failed to load business timezone, defaulting to Australia/Sydney:', err);
+  }
+
   const startTime = new Date(job.scheduledAt);
   const endTime = new Date(startTime.getTime() + (job.estimatedDuration || 2) * 60 * 60 * 1000);
   
@@ -422,11 +435,11 @@ export async function syncJobToCalendar(
     location: job.address || undefined,
     start: {
       dateTime: startTime.toISOString(),
-      timeZone: 'Australia/Sydney'
+      timeZone: businessTimezone
     },
     end: {
       dateTime: endTime.toISOString(),
-      timeZone: 'Australia/Sydney'
+      timeZone: businessTimezone
     },
     colorId: STATUS_COLORS[job.status || 'scheduled'] || '1',
     reminders: {
