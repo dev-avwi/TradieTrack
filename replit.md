@@ -87,3 +87,5 @@ Core architectural and design decisions include:
 
 ### Round History
 Dated implementation sub-sections (Subscription pricing, AI Receptionist tuning, Mobile Bottom Sheet Migration, Mobile Polish Audit, Round 10 Android Hardening, Integrations Health Pass, Production Hardening, Mobile TypeScript Check) live in `.local/reports/round-history.md`.
+
+**Mobile Build Readiness 2026-05** — Static config + per-screen audit pass: iOS/Android `app.json` and `eas.json` GREEN (permissions, Privacy Manifest, Android edge-to-edge, ProGuard rules, deep-link intent filters all verified); 100% safe-area coverage across 92 real screens; remaining premium-feel gaps (native `Alert`, slide `Modal`, hardcoded colors) all map to existing follow-up tasks. Live `eas build --profile production` runs and per-screen device walkthroughs require a real macOS/Android workstation and are tracked separately. Full report: `.local/reports/build-readiness-2026-05/SUMMARY.md`.
