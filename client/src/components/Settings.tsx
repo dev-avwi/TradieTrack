@@ -608,6 +608,90 @@ function ImportDataCard() {
   );
 }
 
+const AU_TIMEZONES: { value: string; label: string }[] = [
+  { value: "Australia/Sydney", label: "Sydney (NSW, ACT, TAS, VIC) — AEST/AEDT" },
+  { value: "Australia/Melbourne", label: "Melbourne (VIC) — AEST/AEDT" },
+  { value: "Australia/Brisbane", label: "Brisbane (QLD) — AEST (no DST)" },
+  { value: "Australia/Adelaide", label: "Adelaide (SA) — ACST/ACDT" },
+  { value: "Australia/Perth", label: "Perth (WA) — AWST" },
+  { value: "Australia/Hobart", label: "Hobart (TAS) — AEST/AEDT" },
+  { value: "Australia/Darwin", label: "Darwin (NT) — ACST (no DST)" },
+  { value: "Australia/Broken_Hill", label: "Broken Hill (NSW) — ACST/ACDT" },
+  { value: "Australia/Lord_Howe", label: "Lord Howe Island — LHST/LHDT" },
+  { value: "Australia/Eucla", label: "Eucla (WA) — ACWST" },
+];
+
+function getAllIanaTimezones(): string[] {
+  try {
+    const supported = (Intl as any).supportedValuesOf?.("timeZone") as string[] | undefined;
+    if (Array.isArray(supported) && supported.length) return supported;
+  } catch {}
+  return [
+    "UTC", "Pacific/Auckland", "Pacific/Fiji", "Asia/Singapore", "Asia/Tokyo",
+    "Asia/Hong_Kong", "Asia/Manila", "Asia/Bangkok", "Asia/Kuala_Lumpur",
+    "Asia/Jakarta", "Asia/Dubai", "Europe/London", "Europe/Paris", "Europe/Berlin",
+    "America/Los_Angeles", "America/Denver", "America/Chicago", "America/New_York",
+    "America/Toronto",
+  ];
+}
+
+function TimezoneField({ value, onChange }: { value: string; onChange: (tz: string) => void }) {
+  const auValues = AU_TIMEZONES.map(t => t.value);
+  const isAuValue = auValues.includes(value);
+  const [showOther, setShowOther] = useState<boolean>(!isAuValue);
+  useEffect(() => {
+    if (value && !auValues.includes(value)) {
+      setShowOther(true);
+    }
+  }, [value]);
+  const allTimezones = showOther ? getAllIanaTimezones() : [];
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="timezone">Timezone</Label>
+      <p className="text-sm text-muted-foreground">
+        Used when syncing jobs to Google Calendar so events show at the right local time.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <Select
+          value={isAuValue && !showOther ? value : showOther ? "__other__" : value}
+          onValueChange={(v) => {
+            if (v === "__other__") {
+              setShowOther(true);
+              return;
+            }
+            setShowOther(false);
+            onChange(v);
+          }}
+        >
+          <SelectTrigger data-testid="select-timezone">
+            <SelectValue placeholder="Select your timezone" />
+          </SelectTrigger>
+          <SelectContent>
+            {AU_TIMEZONES.map(tz => (
+              <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+            ))}
+            <SelectItem value="__other__">Other (full list)…</SelectItem>
+          </SelectContent>
+        </Select>
+        {showOther && (
+          <Select value={value} onValueChange={onChange}>
+            <SelectTrigger data-testid="select-timezone-iana">
+              <SelectValue placeholder="Pick an IANA timezone" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {allTimezones.map(tz => (
+                <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">Current: {value || "Australia/Sydney"}</p>
+    </div>
+  );
+}
+
 export default function Settings({
   onSave,
   onUploadLogo,
@@ -657,7 +741,7 @@ export default function Settings({
     email: "",
     address: "",
     gstEnabled: false,
-    timezone: "Australia/Brisbane",
+    timezone: "Australia/Sydney",
     currency: "AUD",
     aiEnabled: true,
     aiPhotoAnalysisEnabled: true,
@@ -920,7 +1004,7 @@ export default function Settings({
         email: businessSettings.email || "",
         address: businessSettings.address || "",
         gstEnabled: businessSettings.gstEnabled || false,
-        timezone: "Australia/Brisbane",
+        timezone: (businessSettings as any).timezone || "Australia/Sydney",
         currency: "AUD",
         aiEnabled: (businessSettings as any).aiEnabled !== false,
         aiPhotoAnalysisEnabled: (businessSettings as any).aiPhotoAnalysisEnabled !== false,
@@ -1085,6 +1169,7 @@ export default function Settings({
       email: businessData.email,
       address: businessData.address,
       gstEnabled: businessData.gstEnabled,
+      timezone: businessData.timezone,
       tradeType: businessData.tradeType,
       primaryColor: brandingData.color,
       invoicePrefix: brandingData.invoicePrefix,
@@ -2029,6 +2114,13 @@ export default function Settings({
                   )}
                 </div>
               </div>
+
+              <Separator />
+
+              <TimezoneField
+                value={businessData.timezone}
+                onChange={(tz) => setBusinessData(prev => ({ ...prev, timezone: tz }))}
+              />
 
               <Separator />
 
