@@ -11188,6 +11188,22 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Task #89: MYOB credit-note workaround. Posts a negative-amount Sale.Invoice
+  // mirroring the original invoice so MYOB users can offset it (since MYOB has
+  // no API void). Surfaced from the void dialog when voidMethod === 'unsupported'.
+  app.post("/api/integrations/myob/credit-note/:invoiceId", requireAuth, async (req: any, res) => {
+    try {
+      const result = await myobService.createCreditNoteInMyob(req.userId, req.params.invoiceId);
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message, error: error.message });
+    }
+  });
+
   app.post("/api/integrations/myob/full-sync", requireAuth, async (req: any, res) => {
     try {
       const result = await myobService.runFullMyobSync(req.userId);

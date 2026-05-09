@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, RefreshCw, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock, Eye, Pencil, History } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
@@ -268,6 +269,55 @@ export default function InvoiceDetailView({
 
   const { data: xeroStatus } = useQuery<{ configured: boolean; connected: boolean }>({
     queryKey: ['/api/integrations/xero/status'],
+  });
+
+  // Task #89: MYOB has no API void; surface the credit-note workaround.
+  const { data: myobStatus } = useQuery<{ connected: boolean; companyName?: string }>({
+    queryKey: ['/api/integrations/myob/status'],
+  });
+  const [showMyobCreditNoteDialog, setShowMyobCreditNoteDialog] = useState(false);
+  const [myobVoidExplanation, setMyobVoidExplanation] = useState<string>('');
+
+  const voidInMyobMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/integrations/myob/void-invoice/${invoiceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(getSessionToken() ? { Authorization: `Bearer ${getSessionToken()}` } : {}) },
+        credentials: 'include',
+      });
+      const body = await res.json().catch(() => ({}));
+      return { status: res.status, body };
+    },
+    onSuccess: ({ status, body }) => {
+      if (status === 422 && body?.voidMethod === 'unsupported') {
+        setMyobVoidExplanation(body.message || 'MYOB AccountRight does not support voiding posted invoices via API.');
+        setShowMyobCreditNoteDialog(true);
+        return;
+      }
+      if (status >= 200 && status < 300 && body?.success) {
+        toast({ title: 'Voided in MYOB', description: body.message || 'Invoice voided in MYOB.' });
+        return;
+      }
+      toast({ title: 'MYOB void failed', description: body?.message || `Request failed (${status})`, variant: 'destructive' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'MYOB void failed', description: error?.message || 'Network error', variant: 'destructive' });
+    },
+  });
+
+  const raiseMyobCreditNoteMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/integrations/myob/credit-note/${invoiceId}`);
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      setShowMyobCreditNoteDialog(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] });
+      toast({ title: 'Credit note raised', description: data?.message || 'Credit note posted to MYOB.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Credit note failed', description: error?.message || 'Could not raise credit note in MYOB.', variant: 'destructive' });
+    },
   });
 
   const pushToXeroMutation = useMutation({
@@ -816,6 +866,21 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                   <SiXero className="h-4 w-4 mr-2" />
                 )}
                 Push to Xero
+              </Button>
+            )}
+            {myobStatus?.connected && invoice.status !== 'paid' && invoice.status !== 'draft' && (
+              <Button
+                variant="outline"
+                onClick={() => voidInMyobMutation.mutate()}
+                disabled={voidInMyobMutation.isPending}
+                data-testid="button-void-in-myob"
+              >
+                {voidInMyobMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                )}
+                Void in MYOB
               </Button>
             )}
 
@@ -2236,6 +2301,36 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showMyobCreditNoteDialog} onOpenChange={setShowMyobCreditNoteDialog}>
+        <AlertDialogContent data-testid="dialog-myob-credit-note">
+          <AlertDialogHeader>
+            <AlertDialogTitle>MYOB can't void this invoice</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">{myobVoidExplanation}</span>
+              <span className="block">
+                MYOB AccountRight has no API to void a posted invoice. The standard accounting workaround is to raise a Credit Note that mirrors the original invoice with negative amounts so the balance nets to zero. We can do that for you in one click.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-myob-credit-note">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                raiseMyobCreditNoteMutation.mutate();
+              }}
+              disabled={raiseMyobCreditNoteMutation.isPending}
+              data-testid="button-raise-myob-credit-note"
+            >
+              {raiseMyobCreditNoteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Raise credit note instead
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

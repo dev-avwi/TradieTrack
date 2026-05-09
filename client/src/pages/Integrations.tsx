@@ -2071,6 +2071,14 @@ export default function Integrations() {
                     <TestConnectionButton endpoint="/api/integrations/myob/test" testId="button-test-myob" />
                   </div>
                   <MappingSection provider="myob" />
+                  <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 p-3 text-xs text-amber-900 dark:text-amber-200">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                      <span>
+                        <strong>Heads up:</strong> MYOB AccountRight doesn't support voiding posted invoices via API. When you tap "Void in MYOB" on an invoice, we'll offer to raise a Credit Note that mirrors the invoice with negative amounts — that's the standard accounting workaround and nets the balance to zero.
+                      </span>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="hidden" />
                     <Button 

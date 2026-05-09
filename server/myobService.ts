@@ -692,6 +692,94 @@ export async function voidInvoiceInMyob(userId: string, invoiceId: string): Prom
   }
 }
 
+/**
+ * Raise a Credit Note in MYOB to offset a posted invoice.
+ *
+ * MYOB AccountRight has no API "void" — the supported workflow is to post
+ * a negative-amount Sale.Invoice.Service that mirrors the original lines.
+ * This is the credit-note workaround surfaced to tradies after a void
+ * attempt returns voidMethod === 'unsupported'. (Task #89)
+ */
+export async function createCreditNoteInMyob(
+  userId: string,
+  invoiceId: string
+): Promise<{ success: boolean; message: string; error?: string }> {
+  try {
+    const connection = await storage.getMyobConnection(userId);
+    if (!connection || connection.status !== "active") {
+      return { success: false, message: "No active MYOB connection", error: "No active MYOB connection" };
+    }
+
+    const invoice = await storage.getInvoice(invoiceId, userId);
+    if (!invoice) {
+      return { success: false, message: "Invoice not found", error: "Invoice not found" };
+    }
+
+    const refreshed = await refreshTokenIfNeeded(connection);
+    const tokens = decryptTokens(refreshed);
+    const cfToken = getCfToken(refreshed);
+    if (!cfToken) {
+      return {
+        success: false,
+        message: "Company file credentials not configured. Set your MYOB company file username and password first.",
+        error: "cf_credentials_missing",
+      };
+    }
+
+    const client = await storage.getClientById(invoice.clientId);
+    if (!client) {
+      return { success: false, message: "Client not found", error: "Client not found" };
+    }
+
+    const lineItems = await storage.getInvoiceLineItems(invoice.id);
+    const settings: any = await storage.getBusinessSettings(userId);
+    const incomeAcct = settings?.myobIncomeAccountId;
+    const taxCode = settings?.myobTaxCodeId;
+    const defaultItem = settings?.myobDefaultItemId;
+
+    const originalNumber = (invoice as any).number || (invoice as any).invoiceNumber || invoiceId;
+    const creditNote = {
+      Number: `CN-${originalNumber}`.slice(0, 13),
+      Customer: { Name: client.name },
+      Lines: lineItems.map((item) => ({
+        Description: `Credit note for ${originalNumber}: ${item.description}`,
+        Total: -Math.abs(parseFloat(item.total || "0")),
+        ...(incomeAcct ? { Account: { UID: incomeAcct } } : {}),
+        ...(taxCode ? { TaxCode: { UID: taxCode } } : {}),
+        ...(defaultItem ? { Item: { UID: defaultItem } } : {}),
+      })),
+      Date: new Date().toISOString().split("T")[0],
+      Comment: `Credit note offsetting invoice ${originalNumber}`,
+    };
+
+    const headers = getApiHeaders(tokens.accessToken, cfToken);
+    headers["Content-Type"] = "application/json";
+    await axios.post(
+      `${MYOB_API_BASE}/${refreshed.businessId}/Sale/Invoice/Service`,
+      creditNote,
+      { headers }
+    );
+
+    return {
+      success: true,
+      message: `Credit note CN-${originalNumber} raised in MYOB to offset invoice ${originalNumber}.`,
+    };
+  } catch (error: any) {
+    const upstream = error?.response?.data;
+    const detail = upstream
+      ? typeof upstream === "string"
+        ? upstream
+        : JSON.stringify(upstream).slice(0, 300)
+      : error?.message || "Unknown error";
+    console.error("[MYOB] Failed to raise credit note:", detail);
+    return {
+      success: false,
+      message: `Failed to raise credit note in MYOB: ${detail}`,
+      error: error?.message || "credit_note_failed",
+    };
+  }
+}
+
 export async function runFullMyobSync(userId: string): Promise<{
   contacts: { synced: number; errors: string[] };
   invoices: { synced: number; errors: string[] };
