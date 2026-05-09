@@ -13,7 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
@@ -104,14 +104,40 @@ export default function OnboardingSetupScreen() {
 
   const [demoDataSeeded, setDemoDataSeeded] = useState(false);
 
+  const searchParams = useLocalSearchParams<{ resume?: string }>();
+  const isResuming = searchParams?.resume === '1';
+
   useEffect(() => {
     const checkOnboardingStatus = async () => {
       try {
         await fetchBusinessSettings();
         const settings = useAuthStore.getState().businessSettings;
-        
-        if (settings?.onboardingCompleted) {
+
+        // Honor `?resume=1` from the dashboard reminder banner — owners who
+        // skipped onboarding need to be allowed back into the wizard even
+        // though `onboardingCompleted=true`.
+        if (settings?.onboardingCompleted && !isResuming) {
           router.replace('/(tabs)');
+          return;
+        }
+        if (isResuming) {
+          // Pre-seed the wizard with whatever the owner has so far.
+          if (settings) {
+            setBusinessData(prev => ({
+              ...prev,
+              teamSize: settings.teamSize || '',
+              businessName: settings.businessName || '',
+              tradeType: settings.tradeType || '',
+              abn: settings.abn || '',
+              phone: settings.phone || '',
+              gstEnabled: settings.gstEnabled ?? true,
+              defaultHourlyRate: String(settings.defaultHourlyRate || '120'),
+              calloutFee: String(settings.calloutFee || '90'),
+            }));
+            setSelectedRole('owner');
+            setOwnerStep(settings.businessName ? 'trade' : 'business');
+          }
+          setIsCheckingSettings(false);
           return;
         }
 
@@ -424,6 +450,41 @@ export default function OnboardingSetupScreen() {
 
   const handleComplete = () => {
     router.replace('/(tabs)');
+  };
+
+  const handleSkipOnboarding = () => {
+    Alert.alert(
+      'Skip setup?',
+      "You can finish your business profile any time from Settings. We'll keep a quick reminder on your dashboard.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Skip for now',
+          style: 'destructive',
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              const res = await api.post('/api/onboarding/complete', {});
+              if (res.error) {
+                Alert.alert("Couldn't skip setup", res.error || 'Please check your connection and try again.');
+                return;
+              }
+              try { await fetchBusinessSettings(); } catch {}
+              const bs = useAuthStore.getState().businessSettings;
+              if (!bs?.onboardingCompleted) {
+                Alert.alert("Couldn't skip setup", 'We saved your progress but could not confirm with the server. Please try again.');
+                return;
+              }
+              router.replace('/(tabs)');
+            } catch (e: any) {
+              Alert.alert("Couldn't skip setup", e?.message || 'Please check your connection and try again.');
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const getCurrentStep = () => {
@@ -1154,7 +1215,9 @@ export default function OnboardingSetupScreen() {
               </View>
             )}
 
-            <View style={{ width: 40 }} />
+            <TouchableOpacity onPress={handleSkipOnboarding} disabled={isLoading} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="button-skip-onboarding">
+              <Text style={styles.skipTopText}>Skip for now</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1433,6 +1496,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: 14,
     color: colors.mutedForeground,
     fontWeight: '500',
+  },
+  skipTopText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    fontWeight: '500',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
 
   codeInputWrap: {

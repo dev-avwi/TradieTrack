@@ -18,7 +18,7 @@ import "../global.css";
 import { useNotifications, useOfflineStorage, useLocationTracking, useStripeTerminal } from '../src/hooks/useServices';
 import { isTapToPayAvailable } from '../src/lib/stripe-terminal';
 import notificationService from '../src/lib/notifications';
-import { router, usePathname, useSegments } from 'expo-router';
+import { router, usePathname, useSegments, useGlobalSearchParams } from 'expo-router';
 import { ThemeProvider, useTheme } from '../src/lib/theme';
 import { BottomNav, getBottomNavHeight } from '../src/components/BottomNav';
 import { SidebarNav, getSidebarWidth } from '../src/components/SidebarNav';
@@ -557,7 +557,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const { fetchNotifications } = useNotificationsStore();
-  const { isAuthenticated, isOwner, isStaff, hasActiveTeam, user, logout } = useAuthStore();
+  const { isAuthenticated, isOwner, isStaff, hasActiveTeam, user, logout, businessSettings } = useAuthStore();
   const { colors } = useTheme();
   const { isOnline, isInitialized: offlineInitialized } = useOfflineStore();
   const isTabletDevice = useIsTablet();
@@ -587,10 +587,29 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   
   const pathname = usePathname();
   const segments = useSegments();
+  const globalSearchParams = useGlobalSearchParams<{ resume?: string }>();
   const isChatScreen = pathname?.includes('/chat') || pathname?.includes('/direct-messages') || pathname?.includes('/sms-conversation') || pathname?.includes('/team-chat');
   const isOnboardingScreen = segments.includes('(onboarding)' as never) || pathname === '/setup';
   const firstSegment = segments[0] as string || '';
   const isAuthScreen = firstSegment === '(auth)' || (firstSegment === '' && !isAuthenticated);
+
+  // Global guard: an authenticated user who has already finished (or skipped)
+  // onboarding must NEVER end up on the (onboarding) stack via deep-link,
+  // cold start, or token refresh. The wizard's own effect handles the same
+  // case while it's mounting; this catches any race where the wizard mounts
+  // before settings have been fetched.
+  // Exception: if the user explicitly opts in via `?resume=1` (the dashboard
+  // reminder banner does this) we let them back into the wizard so they can
+  // finish their business profile. We read the param via
+  // `useGlobalSearchParams` because `usePathname()` strips the query string.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (!isOnboardingScreen) return;
+    if (globalSearchParams?.resume === '1') return;
+    if (businessSettings?.onboardingCompleted) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, isOnboardingScreen, globalSearchParams?.resume, businessSettings?.onboardingCompleted]);
   const showFab = !isChatScreen && !isOnboardingScreen;
   const isTeamOwner = isOwner() && hasActiveTeam();
 

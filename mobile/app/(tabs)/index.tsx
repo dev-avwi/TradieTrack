@@ -33,6 +33,7 @@ import { NotificationBell, NotificationsPanel } from '../../src/components/Notif
 import { getAvatarColor } from '../../src/lib/avatar-colors';
 import { TeamAvatar } from '../../src/components/TeamAvatar';
 import { TrustBanner } from '../../src/components/ui/TrustBanner';
+import { OnboardingReminderBanner } from '../../src/components/ui/OnboardingReminderBanner';
 import { useScrollToTop } from '../../src/contexts/ScrollContext';
 import UsageLimitBanner from '../../src/components/UsageLimitBanner';
 import { SubcontractorDashboard } from '../../src/components/SubcontractorDashboard';
@@ -3107,6 +3108,9 @@ function OwnerDashboardScreen() {
           </View>
         </View>
       )}
+
+      {/* Onboarding skip reminder - shown until owner finishes business profile */}
+      <OnboardingReminderBanner />
 
       {/* Trust Banner - Dismissible */}
       <TrustBanner />
