@@ -135,7 +135,11 @@
       "newArchEnabled": true,
       "runtimeVersion": {
         "policy": "appVersion"
-      }
+      },
+      "associatedDomains": [
+        "applinks:jobrunner.com.au",
+        "webcredentials:jobrunner.com.au"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -171,12 +175,25 @@
       "intentFilters": [
         {
           "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "jobrunner.com.au", "pathPrefix": "/verify-email" },
+            { "scheme": "https", "host": "jobrunner.com.au", "pathPrefix": "/accept-invite" },
+            { "scheme": "https", "host": "jobrunner.com.au", "pathPrefix": "/reset-password" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        },
+        {
+          "action": "VIEW",
           "autoVerify": false,
           "data": [
             { "scheme": "jobrunner", "host": "verify-email" },
             { "scheme": "jobrunner", "host": "accept-invite" },
             { "scheme": "jobrunner", "host": "reset-password" },
-            { "scheme": "jobrunner", "host": "xero-callback" }
+            { "scheme": "jobrunner", "host": "xero-callback" },
+            { "scheme": "jobrunner", "host": "myob-callback" },
+            { "scheme": "jobrunner", "host": "quickbooks-callback" },
+            { "scheme": "jobrunner", "host": "google-calendar-callback" }
           ],
           "category": ["BROWSABLE", "DEFAULT"]
         }

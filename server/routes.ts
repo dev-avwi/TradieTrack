@@ -5001,7 +5001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let smsSent = false;
       if (tokenRow.contactPhone) {
         try {
-          const smartLink = `${baseUrl}/open-app/accept-invite/${inviteToken}`;
+          const smartLink = `${baseUrl}/accept-invite/${inviteToken}`;
           const firstWord = inviteeName ? ' ' + inviteeName.split(' ')[0] : '';
           const smsBody = `G'day${firstWord}! ${businessNameStr} has upgraded your JobRunner access. Tap to set up your account: ${smartLink}`;
           const r = await sendSMS({ to: tokenRow.contactPhone, message: smsBody });
@@ -32321,7 +32321,7 @@ Respond with JSON in this format:
       let smsError: string | undefined;
       if (inviteData.phone) {
         try {
-          const smartLink = `${baseUrl}/open-app/accept-invite/${inviteToken}`;
+          const smartLink = `${baseUrl}/accept-invite/${inviteToken}`;
           const smsBody = `G'day${inviteeName ? ' ' + inviteeName.split(' ')[0] : ''}! You've been invited to join ${businessNameStr} on JobRunner as a ${roleNameStr}. Tap to accept: ${smartLink}`;
           const smsResult = await sendSMS({ to: inviteData.phone, message: smsBody });
           smsSent = smsResult.success;
@@ -32402,7 +32402,7 @@ Respond with JSON in this format:
       let smsSent = false;
       if (member.phone) {
         try {
-          const smartLink = `${baseUrl}/open-app/accept-invite/${member.inviteToken}`;
+          const smartLink = `${baseUrl}/accept-invite/${member.inviteToken}`;
           const firstName = member.firstName || member.name?.split(' ')[0] || '';
           const smsBody = `G'day${firstName ? ' ' + firstName : ''}! Reminder: You've been invited to join ${businessNameStr} on JobRunner as a ${roleNameStr}. Tap to accept: ${smartLink}`;
           const smsResult = await sendSMS({ to: member.phone, message: smsBody });

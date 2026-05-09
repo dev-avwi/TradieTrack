@@ -456,6 +456,11 @@ if (process.env.DATABASE_URL) {
   // Serve static public assets (logo, etc.) for emails
   app.use('/public', express.static('public'));
 
+  // Universal / App Links discovery files (iOS AASA, Android assetlinks)
+  // Must be served as application/json over HTTPS with no redirects.
+  const { registerWellKnownRoutes } = await import('./wellKnown');
+  registerWellKnownRoutes(app);
+
   // Detect if running on Replit (served via HTTPS even in development)
   const isReplit = !!process.env.REPL_ID;
   const isProduction = process.env.NODE_ENV === 'production';

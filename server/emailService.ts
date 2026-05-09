@@ -1201,8 +1201,10 @@ export const createJobConfirmationEmailHtml = (job: any, client: any, business: 
 // Email template for email verification
 const createEmailVerificationEmail = (user: any, verificationToken: string) => {
   const baseUrl = getBaseUrl();
-  // Use API endpoint which supports mobile deep linking detection
-  const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
+  // Direct https Universal Link / App Link — opens the app on iOS/Android if
+  // installed (verified via /.well-known/{apple-app-site-association,assetlinks.json}),
+  // otherwise the web /verify-email page handles it.
+  const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
   const logoUrl = `${baseUrl}/logo.png`;
 
   return {
@@ -1863,8 +1865,11 @@ export async function sendTeamInviteEmail(
 ): Promise<{ success: boolean; error?: string; mock?: boolean }> {
 
   const displayName = inviteeName || inviteeEmail.split('@')[0];
+  // Direct https Universal Link / App Link — opens the app on iOS/Android if
+  // installed (verified via /.well-known/{apple-app-site-association,assetlinks.json}),
+  // otherwise the web /accept-invite/:token page handles it.
   const acceptUrl = `${baseUrl}/accept-invite/${inviteToken}`;
-  const smartAppLink = `${baseUrl}/open-app/accept-invite/${inviteToken}`;
+  const smartAppLink = acceptUrl;
   const logoUrl = `${baseUrl}/logo.png`;
 
   const emailData = {
