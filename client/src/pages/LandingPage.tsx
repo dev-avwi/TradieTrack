@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { LandingShell } from "@/components/LandingShell";
 import { trackEvent } from "@/lib/analytics";
 
 // Custom hook for scroll-triggered animations
@@ -207,7 +208,7 @@ export default function LandingPage() {
           ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100" 
           : "bg-white/80 backdrop-blur-sm"
       }`}>
-        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
+        <LandingShell>
           <div className="flex items-center justify-between h-14 lg:h-16">
             {/* Logo */}
             <button 
@@ -310,7 +311,7 @@ export default function LandingPage() {
               </button>
             </div>
           </div>
-        </div>
+        </LandingShell>
       </nav>
 
       {/* Mobile Menu - Slide from right with blur */}
@@ -433,7 +434,7 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="pt-16 lg:pt-20 pb-12 lg:pb-20 px-5 lg:px-8">
-        <div className="max-w-[1600px] mx-auto">
+        <LandingShell padded={false}>
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in">
@@ -531,12 +532,12 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-        </div>
+        </LandingShell>
       </section>
 
       {/* Social Proof Bar */}
       <section className="py-8 border-y border-gray-100 bg-gray-50/50">
-        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
+        <LandingShell>
           <AnimatedSection>
             <p className="text-center text-xs text-gray-500 mb-5">Built for trade businesses across Australia</p>
             <div className="flex flex-wrap justify-center items-center gap-5 lg:gap-10">
@@ -551,12 +552,12 @@ export default function LandingPage() {
               ))}
             </div>
           </AnimatedSection>
-        </div>
+        </LandingShell>
       </section>
 
       {/* Work From Anywhere - Mockup Showcase with Toggle */}
       <section className="py-16 lg:py-24 bg-gradient-to-b from-white to-gray-50/50">
-        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
+        <LandingShell>
           <AnimatedSection className="text-center mb-10 lg:mb-14">
             <span className="inline-block text-xs font-semibold text-brand uppercase tracking-wider mb-3">Work From Anywhere</span>
             <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold tracking-tight mb-4">
@@ -661,12 +662,12 @@ export default function LandingPage() {
               </div>
             </div>
           </AnimatedSection>
-        </div>
+        </LandingShell>
       </section>
 
       {/* Features Section */}
       <section id="features" className="py-16 lg:py-24 scroll-mt-16">
-        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
+        <LandingShell>
           {/* Section Header */}
           <AnimatedSection className="text-center mb-12 lg:mb-16">
             <span className="inline-block text-xs font-semibold text-brand-accent uppercase tracking-wider mb-3">Features</span>
@@ -772,12 +773,12 @@ export default function LandingPage() {
               </ul>
             </AnimatedSection>
           </div>
-        </div>
+        </LandingShell>
       </section>
 
       {/* How It Works */}
       <section id="how-it-works" className="py-16 lg:py-24 bg-gray-50 scroll-mt-16">
-        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
+        <LandingShell>
           <AnimatedSection className="text-center mb-12">
             <span className="inline-block text-xs font-semibold text-brand-accent uppercase tracking-wider mb-3">How It Works</span>
             <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold tracking-tight mb-4">
@@ -814,12 +815,12 @@ export default function LandingPage() {
               />
             </AnimatedSection>
           </div>
-        </div>
+        </LandingShell>
       </section>
 
       {/* Pricing Section */}
       <section id="pricing" className="py-16 lg:py-24 scroll-mt-16">
-        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
+        <LandingShell>
           <AnimatedSection className="text-center mb-12">
             <span className="inline-block text-xs font-semibold text-brand-accent uppercase tracking-wider mb-3">Pricing</span>
             <h2 className="text-2xl sm:text-3xl lg:text-[2.25rem] font-bold tracking-tight mb-4">
@@ -1007,7 +1008,7 @@ export default function LandingPage() {
             </div>
             <p className="text-sm text-gray-500">No credit card required to get started.</p>
           </AnimatedSection>
-        </div>
+        </LandingShell>
       </section>
 
       {/* Download Section - Web & Mobile Apps */}
@@ -1132,7 +1133,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-400 py-10 lg:py-14">
-        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
+        <LandingShell>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
             <div>
               <button 
@@ -1218,7 +1219,7 @@ export default function LandingPage() {
             <p>&copy; {new Date().getFullYear()} LinkUp2Care Pty Ltd trading as JobRunner. All rights reserved.</p>
             <p className="mt-2 text-gray-500">Made with love in Australia</p>
           </div>
-        </div>
+        </LandingShell>
       </footer>
 
       {/* Global Styles for animations */}

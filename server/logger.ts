@@ -46,14 +46,20 @@ class Logger {
       const adminEmail = process.env.ADMIN_ALERT_EMAIL || 'admin@avwebinnovation.com';
       const errorMsg = entry.error instanceof Error ? entry.error.message : String(entry.error || '');
       const stack = entry.error instanceof Error ? entry.error.stack : '';
+      // Defensive: callers occasionally pass non-strings (Error objects, arrays
+      // built from console.error spreads). Coerce so .substring/template literals
+      // don't blow up the alerter and silently drop the alert.
+      const safeMessage = typeof entry.message === 'string'
+        ? entry.message
+        : (entry.message == null ? '' : String(entry.message));
 
       await sendEmail({
         to: adminEmail,
-        subject: `[JobRunner ${entry.level.toUpperCase()}] ${entry.category}: ${entry.message.substring(0, 80)}`,
+        subject: `[JobRunner ${entry.level.toUpperCase()}] ${entry.category}: ${safeMessage.substring(0, 80)}`,
         html: `
           <h2 style="color: #dc2626;">JobRunner ${entry.level.toUpperCase()} Alert</h2>
           <p><strong>Category:</strong> ${entry.category}</p>
-          <p><strong>Message:</strong> ${entry.message}</p>
+          <p><strong>Message:</strong> ${safeMessage}</p>
           ${entry.userId ? `<p><strong>User:</strong> ${entry.userId}</p>` : ''}
           ${errorMsg ? `<p><strong>Error:</strong> ${errorMsg}</p>` : ''}
           ${stack ? `<pre style="background:#f3f4f6;padding:12px;border-radius:6px;font-size:12px;overflow:auto;">${stack}</pre>` : ''}

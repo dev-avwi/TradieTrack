@@ -20,4 +20,48 @@ psql "$DATABASE_URL" -c "ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS 
 psql "$DATABASE_URL" -c "ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS qbo_last_webhook_at timestamp;" 2>/dev/null || true
 psql "$DATABASE_URL" -c "ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS myob_tax_code_id text;" 2>/dev/null || true
 psql "$DATABASE_URL" -c "ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS myob_default_item_id text;" 2>/dev/null || true
+
+# Task #108 (E2E audit): drift discovered against shared/schema.ts.
+# ai_receptionist_calls — Vapi call telemetry columns
+psql "$DATABASE_URL" -c "ALTER TABLE ai_receptionist_calls ADD COLUMN IF NOT EXISTS called_number text;" 2>/dev/null || true
+psql "$DATABASE_URL" -c "ALTER TABLE ai_receptionist_calls ADD COLUMN IF NOT EXISTS latency_ms integer;" 2>/dev/null || true
+# xero_sync_state — sync run start timestamp
+psql "$DATABASE_URL" -c "ALTER TABLE xero_sync_state ADD COLUMN IF NOT EXISTS started_at timestamp;" 2>/dev/null || true
+# worker_states — per-worker live status
+psql "$DATABASE_URL" -c "CREATE TABLE IF NOT EXISTS worker_states (
+  id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  business_owner_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  state text NOT NULL DEFAULT 'available',
+  job_id varchar,
+  note text,
+  updated_at timestamp DEFAULT now(),
+  created_at timestamp DEFAULT now(),
+  CONSTRAINT uq_worker_states_biz_user UNIQUE (business_owner_id, user_id)
+);" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_worker_states_user ON worker_states (user_id);" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_worker_states_business ON worker_states (business_owner_id);" 2>/dev/null || true
+# number_port_requests — BYOD number-port admin workflow
+psql "$DATABASE_URL" -c "CREATE TABLE IF NOT EXISTS number_port_requests (
+  id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  phone_number text NOT NULL,
+  current_carrier text NOT NULL,
+  account_number text NOT NULL,
+  authorisation_agreed boolean NOT NULL DEFAULT false,
+  status text NOT NULL DEFAULT 'submitted',
+  admin_notes text,
+  estimated_completion_date timestamp,
+  completed_at timestamp,
+  created_at timestamp DEFAULT now(),
+  updated_at timestamp DEFAULT now()
+);" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_port_requests_user ON number_port_requests (user_id);" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_port_requests_status ON number_port_requests (status);" 2>/dev/null || true
+
+# Drift guard rail (Task #108): refuse to deploy if schema.ts and the live DB
+# disagree after the ALTERs above. Logs the diff and exits non-zero.
+echo "Verifying schema is in sync with shared/schema.ts..."
+node scripts/check-schema-drift.mjs
+
 echo "Schema changes applied."
