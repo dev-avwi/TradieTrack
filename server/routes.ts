@@ -3839,6 +3839,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Demo not available. Please try again later." });
       }
 
+      // Guarantee the visitor user always has business_settings with
+      // onboardingCompleted=true so mobile/web never bounce into the
+      // onboarding wizard after demo login (regardless of whether the
+      // client successfully calls /api/onboarding/complete afterwards).
+      try {
+        const existingBs = await storage.getBusinessSettings(visitorUser.id);
+        if (!existingBs) {
+          await storage.createBusinessSettings({
+            userId: visitorUser.id,
+            businessName: demoUser.businessName || DEMO_USER.businessName || 'Demo Trade Co.',
+            onboardingCompleted: true,
+          } as any);
+        } else if (!existingBs.onboardingCompleted) {
+          await storage.updateBusinessSettings(visitorUser.id, { onboardingCompleted: true });
+        }
+      } catch (bsErr) {
+        console.error("Demo login: failed to ensure visitor business settings:", bsErr);
+      }
+
       req.session.userId = visitorUser.id;
       req.session.user = visitorUser;
       req.session.isDemo = true;

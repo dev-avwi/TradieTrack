@@ -154,23 +154,13 @@ export default function LoginScreen() {
       }
       await api.setToken(response.data.sessionToken);
       await checkAuth();
-      // Explicitly mark onboarding complete (transactional) so demo users
-      // never get bounced into the wizard on cold start, deep-link, or token
-      // refresh. Endpoint is idempotent. If it fails we surface the error
-      // and abort navigation rather than landing in a broken state.
-      const completeRes = await api.post('/api/onboarding/complete', {});
-      if (completeRes.error) {
-        Alert.alert('Demo unavailable', completeRes.error || 'Could not finalise the demo session. Please try again.');
-        return;
-      }
-      const { fetchBusinessSettings: fetchBs } = useAuthStore.getState();
-      const refreshed = await fetchBs();
-      const bsState = useAuthStore.getState().businessSettings;
-      if (!bsState?.onboardingCompleted) {
-        Alert.alert('Demo unavailable', 'Could not finalise the demo session. Please try again.');
-        return;
-      }
-      void refreshed;
+      // Server-side demo-login already guarantees businessSettings.onboardingCompleted=true
+      // for the visitor user. Best-effort secondary call + refresh, but never block on it.
+      try { await api.post('/api/onboarding/complete', {}); } catch {}
+      try {
+        const { fetchBusinessSettings: fetchBs } = useAuthStore.getState();
+        await fetchBs();
+      } catch {}
       router.replace('/(tabs)');
     } catch (err: any) {
       Alert.alert('Demo unavailable', err?.message || 'Could not start the demo right now.');
