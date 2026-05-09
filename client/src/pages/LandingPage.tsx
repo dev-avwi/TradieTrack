@@ -207,7 +207,7 @@ export default function LandingPage() {
           ? "bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100" 
           : "bg-white/80 backdrop-blur-sm"
       }`}>
-        <div className="max-w-7xl mx-auto px-5 lg:px-10">
+        <div className="max-w-[1600px] mx-auto px-5 lg:px-8">
           <div className="flex items-center justify-between h-14 lg:h-16">
             {/* Logo */}
             <button 
@@ -432,8 +432,8 @@ export default function LandingPage() {
       </div>
 
       {/* Hero Section */}
-      <section className="pt-16 lg:pt-20 pb-12 lg:pb-20 px-5 lg:px-10">
-        <div className="max-w-7xl mx-auto">
+      <section className="pt-16 lg:pt-20 pb-12 lg:pb-20 px-5 lg:px-8">
+        <div className="max-w-[1600px] mx-auto">
           <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
             {/* Left: Content */}
             <div className="text-center lg:text-left animate-fade-in">
