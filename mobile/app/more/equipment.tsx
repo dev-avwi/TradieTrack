@@ -18,6 +18,7 @@ import { Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../src/lib/theme';
 import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -587,7 +588,7 @@ export default function EquipmentScreen() {
             )}
           </PressableRow>
         </View>
-        <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <BottomSheetScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.fieldLabel}>Name *</Text>
           <TextInput
             style={styles.textInput}
@@ -690,7 +691,7 @@ export default function EquipmentScreen() {
             textAlignVertical="top"
             placeholderTextColor={colors.mutedForeground}
           />
-        </ScrollView>
+        </BottomSheetScrollView>
       </KeyboardAvoidingView>
       {renderPickerModal(
         showStatusPicker,
@@ -734,7 +735,7 @@ export default function EquipmentScreen() {
               <Feather name="edit-2" size={20} color={colors.primary} />
             </PressableRow>
           </View>
-          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
+          <BottomSheetScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
             <View style={styles.detailStatusRow}>
               <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
                 <View style={[styles.statusBadgeDot, { backgroundColor: statusConfig.color }]} />
@@ -868,7 +869,7 @@ export default function EquipmentScreen() {
                 </View>
               )}
             </View>
-          </ScrollView>
+          </BottomSheetScrollView>
         </View>
       </AppBottomSheet>
     );
@@ -899,7 +900,7 @@ export default function EquipmentScreen() {
             )}
           </PressableRow>
         </View>
-        <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <BottomSheetScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.fieldLabel}>Title *</Text>
           <TextInput
             style={styles.textInput}
@@ -960,7 +961,7 @@ export default function EquipmentScreen() {
             placeholder="YYYY-MM-DD"
             placeholderTextColor={colors.mutedForeground}
           />
-        </ScrollView>
+        </BottomSheetScrollView>
       </KeyboardAvoidingView>
       {renderPickerModal(
         showTypePicker,

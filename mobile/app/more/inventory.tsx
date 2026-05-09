@@ -21,6 +21,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/lib/theme';
 import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
@@ -898,7 +899,7 @@ export default function InventoryScreen() {
             <Text style={styles.modalTitle} numberOfLines={1}>{selectedItem.name}</Text>
             <View style={{ width: 24 }} />
           </View>
-          <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
+          <BottomSheetScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }}>
             <View style={styles.detailStatusRow}>
               <View style={styles.cardStockRow}>
                 <Text style={[styles.detailStockValue, { color: stockColor }]}>{stock}</Text>
@@ -1046,7 +1047,7 @@ export default function InventoryScreen() {
                 </View>
               )}
             </View>
-          </ScrollView>
+          </BottomSheetScrollView>
         </View>
       </AppBottomSheet>
     );
@@ -1071,7 +1072,7 @@ export default function InventoryScreen() {
             )}
           </TouchableOpacity>
         </View>
-        <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <BottomSheetScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.fieldLabel}>Name *</Text>
           <TextInput
             style={styles.textInput}
@@ -1194,7 +1195,7 @@ export default function InventoryScreen() {
             multiline
             numberOfLines={3}
           />
-        </ScrollView>
+        </BottomSheetScrollView>
       </KeyboardAvoidingView>
     </AppBottomSheet>
   );
@@ -1224,7 +1225,7 @@ export default function InventoryScreen() {
             )}
           </TouchableOpacity>
         </View>
-        <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <BottomSheetScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.fieldLabel}>Type</Text>
           <TouchableOpacity
             style={[styles.textInput, styles.pickerTrigger]}
@@ -1266,7 +1267,7 @@ export default function InventoryScreen() {
             multiline
             numberOfLines={3}
           />
-        </ScrollView>
+        </BottomSheetScrollView>
       </KeyboardAvoidingView>
     </AppBottomSheet>
   );
@@ -1333,7 +1334,7 @@ export default function InventoryScreen() {
             )}
           </TouchableOpacity>
         </View>
-        <ScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <BottomSheetScrollView style={styles.modalContent} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
           <Text style={styles.fieldLabel}>Supplier *</Text>
           <TouchableOpacity
             style={[styles.textInput, styles.pickerTrigger]}
@@ -1374,7 +1375,7 @@ export default function InventoryScreen() {
             multiline
             numberOfLines={3}
           />
-        </ScrollView>
+        </BottomSheetScrollView>
       </KeyboardAvoidingView>
     </AppBottomSheet>
   );

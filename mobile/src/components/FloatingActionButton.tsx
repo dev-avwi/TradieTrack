@@ -149,12 +149,16 @@ const createStyles = (colors: ThemeColors, isTabletStyle: boolean) => StyleSheet
   menuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: spacing.sm,
+    justifyContent: isTabletStyle ? 'center' : 'space-between',
+    gap: isTabletStyle ? spacing.sm : 0,
+    rowGap: spacing.xs,
   },
   menuItem: {
     alignItems: 'center',
-    width: isTabletStyle ? 85 : 76, // 25% larger for tablet (was 68)
+    // Phone: flex-based so 4 items always fit one row at any screen width
+    // (fixed 76dp + gaps overflowed on 360dp Android, causing 3+1 wrap).
+    // Tablet: keep fixed width so the 6-item popup grid stays tidy.
+    ...(isTabletStyle ? { width: 85 } : { flex: 1, minWidth: 0 }),
     paddingVertical: isTabletStyle ? spacing.sm : spacing.xs,
   },
   menuItemIcon: {

@@ -144,7 +144,7 @@
         "monochromeImage": "./assets/adaptive-icon-monochrome.png"
       },
       "package": "com.jobrunner.app",
-      "versionCode": 36,
+      "versionCode": 37,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
       "softwareKeyboardLayoutMode": "resize",

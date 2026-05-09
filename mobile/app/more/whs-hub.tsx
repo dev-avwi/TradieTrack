@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, componentStyles, iconSizes, typographySizes, sizes } from '../../src/lib/design-tokens';
 
@@ -719,7 +720,7 @@ export default function WhsHubScreen() {
               <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>Submit</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalBody}>
+          <BottomSheetScrollView style={styles.modalBody}>
             <Text style={styles.inputLabel}>Title *</Text>
             <TextInput style={styles.input} value={incidentForm.title} onChangeText={v => setIncidentForm(p => ({ ...p, title: v }))} placeholder="What happened?" placeholderTextColor={colors.mutedForeground} />
 
@@ -762,7 +763,7 @@ export default function WhsHubScreen() {
               <Feather name={incidentForm.isNotifiable ? 'check-square' : 'square'} size={20} color={incidentForm.isNotifiable ? colors.primary : colors.mutedForeground} />
               <Text style={{ fontSize: 14, color: colors.foreground }}>This is a notifiable incident</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </BottomSheetScrollView>
         </KeyboardAvoidingView>
       </AppBottomSheet>
     );
@@ -787,7 +788,7 @@ export default function WhsHubScreen() {
               <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>Save</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalBody}>
+          <BottomSheetScrollView style={styles.modalBody}>
             <Text style={styles.inputLabel}>Site Name *</Text>
             <TextInput style={styles.input} value={emergencyForm.siteName} onChangeText={v => setEmergencyForm(p => ({ ...p, siteName: v }))} placeholder="e.g. 42 Smith St Build" placeholderTextColor={colors.mutedForeground} />
 
@@ -811,7 +812,7 @@ export default function WhsHubScreen() {
 
             <Text style={styles.inputLabel}>Nearest Hospital</Text>
             <TextInput style={styles.input} value={emergencyForm.nearestHospital} onChangeText={v => setEmergencyForm(p => ({ ...p, nearestHospital: v }))} placeholder="Hospital name" placeholderTextColor={colors.mutedForeground} />
-          </ScrollView>
+          </BottomSheetScrollView>
         </KeyboardAvoidingView>
       </AppBottomSheet>
     );
@@ -836,7 +837,7 @@ export default function WhsHubScreen() {
               <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>Create</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalBody}>
+          <BottomSheetScrollView style={styles.modalBody}>
             <Text style={styles.inputLabel}>Title *</Text>
             <TextInput style={styles.input} value={jsaForm.title} onChangeText={v => setJsaForm(p => ({ ...p, title: v }))} placeholder="e.g. Roof Repair" placeholderTextColor={colors.mutedForeground} />
 
@@ -875,7 +876,7 @@ export default function WhsHubScreen() {
             <TouchableOpacity style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center', marginTop: spacing.sm, borderStyle: 'dashed' }} onPress={() => setJsaForm(p => ({ ...p, steps: [...p.steps, { taskDescription: '', hazards: '', riskLevel: 'medium', controlMeasures: '', responsiblePerson: '' }] }))}>
               <Text style={{ color: colors.foreground, fontSize: 14, fontWeight: '600' }}>+ Add Step</Text>
             </TouchableOpacity>
-          </ScrollView>
+          </BottomSheetScrollView>
         </KeyboardAvoidingView>
       </AppBottomSheet>
     );
@@ -901,7 +902,7 @@ export default function WhsHubScreen() {
               <Text style={{ fontSize: 16, fontWeight: '600', color: selectedEnvType ? colors.primary : colors.mutedForeground }}>Add</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalBody}>
+          <BottomSheetScrollView style={styles.modalBody}>
             <Text style={styles.inputLabel}>Select Environment Type</Text>
             <View style={{ gap: spacing.xs }}>
               {envTypes.map((t: any) => (
@@ -925,7 +926,7 @@ export default function WhsHubScreen() {
                 </View>
               </View>
             )}
-          </ScrollView>
+          </BottomSheetScrollView>
         </View>
       </AppBottomSheet>
     );
@@ -950,7 +951,7 @@ export default function WhsHubScreen() {
               <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>Add</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalBody}>
+          <BottomSheetScrollView style={styles.modalBody}>
             <Text style={styles.inputLabel}>Category</Text>
             {signTypes.map((cat: any) => (
               <View key={cat.category} style={{ marginBottom: spacing.md }}>
@@ -973,7 +974,7 @@ export default function WhsHubScreen() {
             ))}
             <Text style={styles.inputLabel}>Location</Text>
             <TextInput style={styles.input} value={signForm.location} onChangeText={v => setSignForm(p => ({ ...p, location: v }))} placeholder="Where should this sign be?" placeholderTextColor={colors.mutedForeground} />
-          </ScrollView>
+          </BottomSheetScrollView>
         </View>
       </AppBottomSheet>
     );
@@ -1214,7 +1215,7 @@ export default function WhsHubScreen() {
             <TouchableOpacity onPress={submitPpeChecklist}><Text style={[styles.saveButton, { color: colors.primary }]}>Save</Text></TouchableOpacity>
           </View>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <ScrollView style={styles.modalBody}>
+            <BottomSheetScrollView style={styles.modalBody}>
               <Text style={styles.inputLabel}>Worker Name *</Text>
               <TextInput style={styles.input} value={ppeForm.workerName} onChangeText={(t) => setPpeForm({ ...ppeForm, workerName: t })} placeholder="Worker name" placeholderTextColor={colors.mutedForeground} />
 
@@ -1239,7 +1240,7 @@ export default function WhsHubScreen() {
               <TextInput style={[styles.input, styles.textArea]} value={ppeForm.notes} onChangeText={(t) => setPpeForm({ ...ppeForm, notes: t })} placeholder="Issues or observations..." placeholderTextColor={colors.mutedForeground} multiline />
 
               <View style={{ height: 60 }} />
-            </ScrollView>
+            </BottomSheetScrollView>
           </KeyboardAvoidingView>
         </View>
       </AppBottomSheet>
@@ -1308,7 +1309,7 @@ export default function WhsHubScreen() {
             <TouchableOpacity onPress={submitTrainingRecord}><Text style={[styles.saveButton, { color: colors.primary }]}>Save</Text></TouchableOpacity>
           </View>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-            <ScrollView style={styles.modalBody}>
+            <BottomSheetScrollView style={styles.modalBody}>
               <Text style={styles.inputLabel}>Worker Name *</Text>
               <TextInput style={styles.input} value={trainingForm.workerName} onChangeText={(t) => setTrainingForm({ ...trainingForm, workerName: t })} placeholder="Worker name" placeholderTextColor={colors.mutedForeground} />
 
@@ -1354,7 +1355,7 @@ export default function WhsHubScreen() {
               <TextInput style={[styles.input, styles.textArea]} value={trainingForm.notes} onChangeText={(t) => setTrainingForm({ ...trainingForm, notes: t })} placeholder="Additional notes..." placeholderTextColor={colors.mutedForeground} multiline />
 
               <View style={{ height: 60 }} />
-            </ScrollView>
+            </BottomSheetScrollView>
           </KeyboardAvoidingView>
         </View>
       </AppBottomSheet>
