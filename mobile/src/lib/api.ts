@@ -23,6 +23,10 @@ function assertProdHostAllowed(url: string): void {
   }
 }
 
+// Hard fallback so OTA updates pushed without EXPO_PUBLIC_API_URL set in the
+// shell never crash the app at boot. JobRunner production API is fixed.
+const PROD_FALLBACK_API_URL = 'https://jobrunner.com.au';
+
 const getApiBaseUrl = (): string => {
   const extras = getExpoExtras();
   const fromExtra = extras.apiUrl;
@@ -32,13 +36,9 @@ const getApiBaseUrl = (): string => {
     : (typeof fromEnv === 'string' && fromEnv.length > 0 ? fromEnv : undefined);
 
   if (!__DEV__) {
-    if (!explicit) {
-      throw new Error(
-        '[API] No API base URL configured for this build. Set EXPO_PUBLIC_API_URL in the matching eas.json profile.'
-      );
-    }
-    assertProdHostAllowed(explicit);
-    return explicit;
+    const resolved = explicit || PROD_FALLBACK_API_URL;
+    assertProdHostAllowed(resolved);
+    return resolved;
   }
 
   if (explicit) return explicit;
