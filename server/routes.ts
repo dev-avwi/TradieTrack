@@ -10191,18 +10191,61 @@ Be specific about materials, colors, and features that would be included.`
   // checking that we have a token in the DB). All return shape:
   //   { success: boolean, message: string, detail?: any, error?: string }
   // ---------------------------------------------------------------------------
+  // ─── Task #91 helper: mapping/webhook freshness for /test responses ────
+  // Returns { mappingConfigured, lastWebhookAgeMs } so the UI can confirm
+  // the user finished mapping AND that webhooks are still arriving (vs the
+  // common "I connected but nothing's syncing" support thread).
+  const buildIntegrationTestExtra = async (
+    userId: string,
+    provider: 'xero' | 'qbo' | 'myob',
+  ): Promise<{ mappingConfigured: boolean; lastWebhookAgeMs: number | null }> => {
+    try {
+      const s: any = await storage.getBusinessSettings(userId);
+      if (!s) return { mappingConfigured: false, lastWebhookAgeMs: null };
+      let mappingConfigured = false;
+      let last: Date | null = null;
+      // Task #91: require all three mapping selections per provider so the
+      // "configured" badge can't be a false positive.
+      if (provider === 'xero') {
+        mappingConfigured =
+          !!(s.xeroSalesAccountId || s.xeroSalesAccountCode) &&
+          !!(s.xeroTaxRateId || s.xeroTaxType) &&
+          !!s.xeroDefaultItemCode;
+        last = s.xeroLastWebhookAt ? new Date(s.xeroLastWebhookAt) : null;
+      } else if (provider === 'qbo') {
+        mappingConfigured =
+          !!s.qboSalesAccountId &&
+          !!s.qboTaxRateId &&
+          !!(s.qboDefaultItemId || s.quickbooksDefaultItemRef?.value);
+        last = s.qboLastWebhookAt ? new Date(s.qboLastWebhookAt) : null;
+      } else if (provider === 'myob') {
+        mappingConfigured =
+          !!s.myobIncomeAccountId &&
+          !!s.myobTaxCodeId &&
+          !!s.myobDefaultItemId;
+        last = null; // MYOB has no webhook surface
+      }
+      return { mappingConfigured, lastWebhookAgeMs: last ? Date.now() - last.getTime() : null };
+    } catch {
+      return { mappingConfigured: false, lastWebhookAgeMs: null };
+    }
+  };
+
   app.post("/api/integrations/xero/test", requireAuth, async (req: any, res) => {
     try {
       if (!xeroService.isXeroConfigured()) {
         return res.status(503).json({ success: false, error: 'Xero not configured on server', message: 'Xero integration is not configured.' });
       }
       const tenants = await xeroService.getTenants(req.userId);
+      const extra = await buildIntegrationTestExtra(req.userId, 'xero');
       res.json({
         success: true,
         message: tenants.length === 1
           ? `Connected to "${tenants[0].tenantName || tenants[0].tenantId}"`
           : `Connected (${tenants.length} tenant${tenants.length === 1 ? '' : 's'})`,
-        detail: { tenants },
+        detail: { tenants, ...extra },
+        mappingConfigured: extra.mappingConfigured,
+        lastWebhookAgeMs: extra.lastWebhookAgeMs,
       });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err?.message || 'Xero test failed', message: err?.message || 'Xero test failed' });
@@ -10213,7 +10256,8 @@ Be specific about materials, colors, and features that would be included.`
     try {
       const result = await quickbooksService.testQuickbooksConnection(req.userId);
       if (result.success) {
-        res.json({ success: true, message: `Connected to "${result.companyName}"`, detail: { realmId: result.realmId, companyName: result.companyName } });
+        const extra = await buildIntegrationTestExtra(req.userId, 'qbo');
+        res.json({ success: true, message: `Connected to "${result.companyName}"`, detail: { realmId: result.realmId, companyName: result.companyName, ...extra }, mappingConfigured: extra.mappingConfigured, lastWebhookAgeMs: extra.lastWebhookAgeMs });
       } else {
         res.status(400).json({ success: false, error: result.error, message: result.error || 'QuickBooks test failed' });
       }
@@ -10228,10 +10272,53 @@ Be specific about materials, colors, and features that would be included.`
       if (!result.success) {
         return res.status(400).json(result);
       }
-      res.json(result);
+      const extra = await buildIntegrationTestExtra(req.userId, 'myob');
+      res.json({ ...result, mappingConfigured: extra.mappingConfigured, lastWebhookAgeMs: extra.lastWebhookAgeMs, detail: { ...(result as any).detail, ...extra } });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err?.message, message: err?.message || 'MYOB test failed' });
     }
+  });
+
+  // ─── Task #91: mapping list endpoints (cached 60s, per-userId) ───────────
+  // GET /api/integrations/<provider>/(accounts|tax-rates|items) — feeds the
+  // Integrations mapping UI dropdowns. Returns 503 if not connected, never
+  // throws. Backed by HotCaches in server/cache.ts so the UI can refetch
+  // safely on each render without hammering the upstream API.
+  app.get("/api/integrations/xero/accounts", requireAuth, async (req: any, res) => {
+    try { res.json(await xeroService.getCachedAccounts(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load Xero accounts' }); }
+  });
+  app.get("/api/integrations/xero/tax-rates", requireAuth, async (req: any, res) => {
+    try { res.json(await xeroService.getCachedTaxRates(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load Xero tax rates' }); }
+  });
+  app.get("/api/integrations/xero/items", requireAuth, async (req: any, res) => {
+    try { res.json(await xeroService.getCachedItems(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load Xero items' }); }
+  });
+  app.get("/api/integrations/quickbooks/accounts", requireAuth, async (req: any, res) => {
+    try { res.json(await quickbooksService.getCachedAccounts(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load QuickBooks accounts' }); }
+  });
+  app.get("/api/integrations/quickbooks/tax-rates", requireAuth, async (req: any, res) => {
+    try { res.json(await quickbooksService.getCachedTaxRates(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load QuickBooks tax rates' }); }
+  });
+  app.get("/api/integrations/quickbooks/items", requireAuth, async (req: any, res) => {
+    try { res.json(await quickbooksService.getCachedItems(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load QuickBooks items' }); }
+  });
+  app.get("/api/integrations/myob/accounts", requireAuth, async (req: any, res) => {
+    try { res.json(await myobService.getCachedAccounts(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load MYOB accounts' }); }
+  });
+  app.get("/api/integrations/myob/tax-codes", requireAuth, async (req: any, res) => {
+    try { res.json(await myobService.getCachedTaxCodes(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load MYOB tax codes' }); }
+  });
+  app.get("/api/integrations/myob/items", requireAuth, async (req: any, res) => {
+    try { res.json(await myobService.getCachedItems(req.userId)); }
+    catch (err: any) { res.status(400).json({ error: err?.message || 'Failed to load MYOB items' }); }
   });
 
   app.post("/api/integrations/google-calendar/test", requireAuth, async (req: any, res) => {
@@ -10438,20 +10525,50 @@ Be specific about materials, colors, and features that would be included.`
   // ENHANCED XERO INTEGRATION ROUTES - Matching ServiceM8/Tradify capabilities
   // ============================================================================
 
-  // Push a quote to Xero as draft invoice
+  // Push a quote to Xero using the *real* Xero Quotes API (Task #91).
+  // syncQuoteToXero (legacy fallback that creates a DRAFT invoice) is kept
+  // available at /push-quote-legacy/:quoteId for backwards-compat.
+  app.post("/api/integrations/xero/push-quote-real/:quoteId", requireAuth, async (req: any, res) => {
+    try {
+      const result = await xeroService.pushQuoteToXero(req.userId, req.params.quoteId);
+      if (result.success) {
+        res.json({ success: true, xeroQuoteId: result.xeroQuoteId, message: result.xeroQuoteId ? 'Quote pushed to Xero (Quotes API)' : 'No Xero connection' });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (err: any) {
+      console.error('Error pushing Xero quote:', err);
+      res.status(500).json({ error: err?.message || 'Failed to push quote to Xero' });
+    }
+  });
+
+  // Push a quote to Xero. Task #91: prefer the real Xero Quotes API
+  // (pushQuoteToXero); only fall back to the legacy syncQuoteToXero (DRAFT
+  // invoice) if the Quotes API call fails AND the user has no quote ID yet.
   app.post("/api/integrations/xero/push-quote/:quoteId", requireAuth, async (req: any, res) => {
     try {
       const { quoteId } = req.params;
+      const real = await xeroService.pushQuoteToXero(req.userId, quoteId);
+      if (real.success) {
+        return res.json({
+          success: true,
+          xeroQuoteId: real.xeroQuoteId,
+          method: 'quotes_api',
+          message: real.xeroQuoteId ? 'Quote pushed to Xero (Quotes API)' : 'No Xero connection',
+        });
+      }
+      // Fallback: try legacy DRAFT-invoice path.
+      console.warn('[Xero] pushQuoteToXero failed, falling back to syncQuoteToXero:', real.error);
       const result = await xeroService.syncQuoteToXero(req.userId, quoteId);
-      
       if (result.success) {
         res.json({ 
           success: true, 
           xeroInvoiceId: result.xeroInvoiceId,
-          message: result.xeroInvoiceId ? "Quote pushed to Xero as draft invoice" : "No Xero connection"
+          method: 'legacy_draft_invoice',
+          message: result.xeroInvoiceId ? 'Quote pushed to Xero as draft invoice (fallback)' : 'No Xero connection'
         });
       } else {
-        res.status(400).json({ success: false, error: result.error });
+        res.status(400).json({ success: false, error: result.error || real.error });
       }
     } catch (error: any) {
       console.error("Error pushing quote to Xero:", error);

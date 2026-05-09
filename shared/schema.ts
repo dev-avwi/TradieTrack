@@ -549,6 +549,22 @@ export const businessSettings = pgTable("business_settings", {
   // QuickBooks Online — default ItemRef to use when pushing invoice/quote line items.
   // Shape: { value: string, name: string }. Falls back to {value:"1", name:"Services"} (legacy hardcode).
   quickbooksDefaultItemRef: json("quickbooks_default_item_ref"),
+  // ─── Round 2 mapping by upstream ID (Task #91) ───
+  // Xero: optional Account UUID (preferred over xeroSalesAccountCode when set), TaxRate TaxType code, Item Code
+  xeroSalesAccountId: text("xero_sales_account_id"),
+  xeroTaxRateId: text("xero_tax_rate_id"), // e.g. "OUTPUT", "OUTPUT2", "BASEXCLUDED" — overrides xeroTaxType when set
+  xeroDefaultItemCode: text("xero_default_item_code"),
+  xeroActiveTenantId: text("xero_active_tenant_id"), // multi-tenant selector — currently-selected Xero org
+  xeroLastWebhookAt: timestamp("xero_last_webhook_at"),
+  // QuickBooks Online: Account Id (Income), TaxCodeRef value, Item Id (preferred over quickbooksDefaultItemRef when set)
+  qboSalesAccountId: text("qbo_sales_account_id"),
+  qboTaxRateId: text("qbo_tax_rate_id"),
+  qboDefaultItemId: text("qbo_default_item_id"),
+  qboLastWebhookAt: timestamp("qbo_last_webhook_at"),
+  // MYOB AccountRight: Income Account Uid, TaxCode Uid, Item Uid
+  myobIncomeAccountId: text("myob_income_account_id"),
+  myobTaxCodeId: text("myob_tax_code_id"),
+  myobDefaultItemId: text("myob_default_item_id"),
   // Outlook/Microsoft 365 Integration
   outlookConnected: boolean("outlook_connected").default(false),
   outlookAccessToken: text("outlook_access_token"),

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, type UseQueryResult } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useBusinessSettings, useUpdateBusinessSettings } from "@/hooks/use-business-settings";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 import { 
   CreditCard, 
@@ -212,9 +214,21 @@ function TestConnectionButton({
       return response.json();
     },
     onSuccess: (data: any) => {
+      // Task #91: surface mapping completeness + last webhook freshness so
+      // tradies can self-diagnose "I connected but nothing's syncing".
+      const parts: string[] = [data?.message || 'Connection verified'];
+      if (typeof data?.mappingConfigured === 'boolean') {
+        parts.push(`Mapping: ${data.mappingConfigured ? 'configured' : 'incomplete — finish in Sync mapping section'}`);
+      }
+      if (data?.lastWebhookAgeMs != null) {
+        const min = Math.round(data.lastWebhookAgeMs / 60000);
+        parts.push(`Last webhook: ${min < 1 ? '< 1 min ago' : min < 60 ? `${min} min ago` : `${Math.round(min / 60)} h ago`}`);
+      } else if (data?.lastWebhookAgeMs === null && data?.success) {
+        parts.push('Last webhook: never received');
+      }
       toast({
         title: data?.success ? 'Connection OK' : 'Connection Failed',
-        description: data?.message || (data?.success ? 'Connection verified' : 'Provider returned an error'),
+        description: parts.join(' • '),
         variant: data?.success ? 'default' : 'destructive',
       });
     },
@@ -242,6 +256,118 @@ function TestConnectionButton({
       )}
       {label}
     </Button>
+  );
+}
+
+/**
+ * Task #91 mapping section. One unified component, used per provider, that
+ * loads accounts/tax-rates/items via the GET /api/integrations/<p>/* endpoints
+ * (cached server-side 60s) and persists the chosen IDs back to
+ * businessSettings via PATCH /api/business-settings.
+ */
+function MappingSection({ provider }: { provider: 'xero' | 'quickbooks' | 'myob' }) {
+  const { data: settings } = useBusinessSettings();
+  const updateSettings = useUpdateBusinessSettings();
+  const { toast } = useToast();
+  const taxPath = provider === 'myob' ? 'tax-codes' : 'tax-rates';
+  const accountField = provider === 'xero' ? 'xeroSalesAccountId' : provider === 'quickbooks' ? 'qboSalesAccountId' : 'myobIncomeAccountId';
+  const taxField = provider === 'xero' ? 'xeroTaxRateId' : provider === 'quickbooks' ? 'qboTaxRateId' : 'myobTaxCodeId';
+  const itemField = provider === 'xero' ? 'xeroDefaultItemCode' : provider === 'quickbooks' ? 'qboDefaultItemId' : 'myobDefaultItemId';
+
+  const accountsQ = useQuery<any[]>({ queryKey: [`/api/integrations/${provider}/accounts`], retry: false });
+  const taxesQ = useQuery<any[]>({ queryKey: [`/api/integrations/${provider}/${taxPath}`], retry: false });
+  const itemsQ = useQuery<any[]>({ queryKey: [`/api/integrations/${provider}/items`], retry: false });
+
+  const save = (field: string, value: string) => {
+    updateSettings.mutate({ [field]: value || null }, {
+      onSuccess: () => toast({ title: 'Mapping saved' }),
+      onError: (e: Error) => toast({ title: 'Save failed', description: e?.message || 'Could not save', variant: 'destructive' }),
+    });
+  };
+
+  const selectVal = (s: Record<string, unknown> | undefined, f: string) =>
+    (s?.[f] != null ? String(s[f]) : '');
+  const accValue = selectVal(settings as Record<string, unknown> | undefined, accountField);
+  const taxValue = selectVal(settings as Record<string, unknown> | undefined, taxField);
+  const itemValue = selectVal(settings as Record<string, unknown> | undefined, itemField);
+
+  const renderSelect = (
+    label: string,
+    field: string,
+    value: string,
+    q: UseQueryResult<any[]>,
+    optionLabel: (o: any) => string,
+    optionValue: (o: any) => string,
+  ) => (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {q.isLoading ? (
+        <div className="text-xs text-muted-foreground"><Loader2 className="w-3 h-3 inline animate-spin mr-1" /> Loading…</div>
+      ) : q.isError ? (
+        <div className="text-xs text-destructive">Failed to load</div>
+      ) : (
+        <Select value={value} onValueChange={(v) => save(field, v)}>
+          <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+          <SelectContent>
+            {(q.data || []).map((o: any) => (
+              <SelectItem key={optionValue(o)} value={optionValue(o)}>{optionLabel(o)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="rounded-md border p-3 space-y-3" data-testid={`mapping-${provider}`}>
+      <div className="flex items-center gap-2">
+        <Settings className="w-4 h-4 text-muted-foreground" />
+        <span className="text-sm font-medium">Sync mapping</span>
+        <span className="text-xs text-muted-foreground">— used when pushing invoices &amp; quotes</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Task #91 (review fix): Xero invoice/quote payloads use accountCode +
+            itemCode + taxType (string slugs), NOT UUIDs. So for Xero we persist
+            the `code` / `taxType` field. QBO + MYOB persist `id` since their
+            payloads take Refs. The UI option value accessor reflects this. */}
+        {renderSelect('Sales account', accountField, accValue, accountsQ,
+          (a) => provider === 'xero' ? `${a.code || ''} ${a.name || ''}`.trim() : (a.name || a.displayId || a.id),
+          (a) => provider === 'xero' ? (a.code || a.id) : a.id)}
+        {renderSelect(provider === 'myob' ? 'Tax code' : 'Tax rate', taxField, taxValue, taxesQ,
+          (t) => provider === 'myob' ? `${t.code} (${t.rate}%)` : `${t.name} (${t.rate ?? t.effectiveRate ?? ''}%)`,
+          (t) => provider === 'xero' ? (t.taxType || t.id) : (t.id || t.code))}
+        {renderSelect('Default item', itemField, itemValue, itemsQ,
+          (i) => i.name || i.number || i.id,
+          (i) => provider === 'xero' ? (i.code || i.id) : i.id)}
+      </div>
+    </div>
+  );
+}
+
+function XeroTenantSelector() {
+  const { data: settings } = useBusinessSettings();
+  const updateSettings = useUpdateBusinessSettings();
+  const { toast } = useToast();
+  const tenantsQ = useQuery<any>({ queryKey: ['/api/integrations/xero/tenants'], retry: false });
+  const tenants: Array<{ tenantId: string; tenantName?: string }> =
+    tenantsQ.data?.tenants || tenantsQ.data || [];
+  if (!Array.isArray(tenants) || tenants.length <= 1) return null;
+  const settingsRec = settings as Record<string, unknown> | undefined;
+  const value = (settingsRec?.xeroActiveTenantId as string) || tenants[0]?.tenantId || '';
+  return (
+    <div className="rounded-md border p-3 space-y-1" data-testid="xero-tenant-selector">
+      <Label className="text-xs text-muted-foreground">Active Xero organisation</Label>
+      <Select value={value} onValueChange={(v) => updateSettings.mutate({ xeroActiveTenantId: v }, {
+        onSuccess: () => toast({ title: 'Active organisation updated' }),
+      })}>
+        <SelectTrigger className="h-9"><SelectValue placeholder="Select organisation…" /></SelectTrigger>
+        <SelectContent>
+          {tenants.map((t: any) => (
+            <SelectItem key={t.tenantId} value={t.tenantId}>{t.tenantName || t.tenantId}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -1623,6 +1749,11 @@ export default function Integrations() {
                       Full Sync
                     </Button>
                     <TestConnectionButton endpoint="/api/integrations/xero/test" testId="button-test-xero" />
+                  </div>
+                  <XeroTenantSelector />
+                  <MappingSection provider="xero" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="hidden" />
                     <Button 
                       variant="outline"
                       size="sm"
@@ -1778,6 +1909,10 @@ export default function Integrations() {
                       Full Sync
                     </Button>
                     <TestConnectionButton endpoint="/api/integrations/quickbooks/test" testId="button-test-quickbooks" />
+                  </div>
+                  <MappingSection provider="quickbooks" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="hidden" />
                     <Button 
                       variant="outline"
                       size="sm"
@@ -1934,6 +2069,10 @@ export default function Integrations() {
                       Full Sync
                     </Button>
                     <TestConnectionButton endpoint="/api/integrations/myob/test" testId="button-test-myob" />
+                  </div>
+                  <MappingSection provider="myob" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="hidden" />
                     <Button 
                       variant="outline"
                       size="sm"

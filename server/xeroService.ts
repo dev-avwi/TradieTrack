@@ -3,8 +3,37 @@ import { storage } from "./storage";
 import type { XeroConnection, InsertClient, XeroSyncState } from "@shared/schema";
 import { encrypt, decrypt } from "./encryption";
 import crypto from "crypto";
+import { xeroAccountsCache, xeroTaxRatesCache, xeroItemsCache } from "./cache";
 
 const XERO_SCOPES = "openid profile email accounting.transactions accounting.contacts offline_access";
+
+/**
+ * Task #91: build a PDF buffer for an invoice using the same generator the
+ * email/send-invoice flow uses. Returns null on any failure so callers can
+ * silently skip the auto-attach step (best-effort).
+ */
+async function buildInvoicePdfBuffer(userId: string, invoiceId: string): Promise<Buffer | null> {
+  try {
+    const invoice = await storage.getInvoiceWithLineItems(invoiceId, userId);
+    if (!invoice) return null;
+    const client = await storage.getClientById(invoice.clientId);
+    if (!client) return null;
+    const business = await storage.getBusinessSettings(userId);
+    if (!business) return null;
+    const { generateInvoicePDF, generatePDFBuffer, resolveBusinessLogoForPdf } = await import('./pdfService');
+    const businessForPdf = await resolveBusinessLogoForPdf(business as any);
+    const html = generateInvoicePDF({
+      invoice: invoice as any,
+      lineItems: (invoice as any).lineItems || [],
+      client: client as any,
+      business: businessForPdf as any,
+    } as any);
+    return await generatePDFBuffer(html);
+  } catch (err) {
+    console.warn('[Xero] buildInvoicePdfBuffer failed:', err);
+    return null;
+  }
+}
 
 function getRedirectUri(): string {
   // Priority: VITE_APP_URL (production domain) > REPLIT_DEV_DOMAIN > REPLIT_DOMAINS > localhost
@@ -283,6 +312,20 @@ async function getRefreshedClientAndConnection(userId: string): Promise<{ xero: 
     throw new Error("Xero connection needs to be reconnected. Please reconnect your Xero account from the Integrations page.");
   }
   const refreshedConnection = await refreshTokenIfNeeded(connection);
+  // Task #91: honour the multi-tenant selector. If the user picked a specific
+  // organisation in Settings (xeroActiveTenantId), all push/pull calls must
+  // target THAT tenant — not whichever tenant happened to be saved on the
+  // connection row at OAuth time. We mutate a shallow copy so the original
+  // DB row is untouched.
+  try {
+    const settings: any = await storage.getBusinessSettings(userId);
+    const activeTenant = settings?.xeroActiveTenantId;
+    if (activeTenant && activeTenant !== refreshedConnection.tenantId) {
+      const overridden = { ...refreshedConnection, tenantId: activeTenant } as XeroConnection;
+      const xero = prepareXeroClient(overridden);
+      return { xero, connection: overridden };
+    }
+  } catch { /* fall through to default tenant */ }
   const xero = prepareXeroClient(refreshedConnection);
   return { xero, connection: refreshedConnection };
 }
@@ -437,8 +480,10 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
         const lineItems = await storage.getInvoiceLineItems(invoice.id);
         
         const businessSettings = await storage.getBusinessSettings(userId);
-        const salesAccountCode = businessSettings?.xeroSalesAccountCode || "200";
-        const taxType = businessSettings?.xeroTaxType || "OUTPUT";
+        // Task #91: prefer the new mapping IDs; legacy code/type kept as fallback.
+        const salesAccountCode = businessSettings?.xeroSalesAccountId || businessSettings?.xeroSalesAccountCode || "200";
+        const taxType = businessSettings?.xeroTaxRateId || businessSettings?.xeroTaxType || "OUTPUT";
+        const itemCode = businessSettings?.xeroDefaultItemCode;
         
         const invoiceDate = (invoice as any).issueDate || invoice.createdAt;
         const xeroInvoice = {
@@ -453,6 +498,7 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
             unitAmount: parseFloat(item.unitPrice || "0"),
             accountCode: salesAccountCode,
             taxType: taxType,
+            itemCode: itemCode || undefined,
           })),
           date: invoiceDate ? new Date(invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : undefined,
@@ -470,6 +516,12 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
             xeroInvoiceId: createdXeroInvoice.invoiceID,
             xeroSyncedAt: new Date(),
           });
+          // Task #91 (review fix): bulk push parity — best-effort PDF attach.
+          const _invId = invoice.id;
+          buildInvoicePdfBuffer(userId, _invId)
+            .then(buf => buf && attachInvoicePdfToXero(userId, _invId, buf, `Invoice-${invoice.number || _invId}.pdf`))
+            .then(r => r && !r.success && xeroLog('attachInvoicePdf', { userId, invoiceId: _invId, status: 'warn', error: r.error }))
+            .catch(err => xeroLog('attachInvoicePdf', { userId, invoiceId: _invId, status: 'error', error: String(err) }));
         }
         
         synced++;
@@ -520,8 +572,10 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
     const lineItems = await storage.getInvoiceLineItems(invoice.id);
     
     const businessSettings = await storage.getBusinessSettings(userId);
-    const salesAccountCode = businessSettings?.xeroSalesAccountCode || "200";
-    const taxType = businessSettings?.xeroTaxType || "OUTPUT";
+    // Task #91: prefer the new mapping IDs; legacy code/type kept as fallback.
+    const salesAccountCode = businessSettings?.xeroSalesAccountId || businessSettings?.xeroSalesAccountCode || "200";
+    const taxType = businessSettings?.xeroTaxRateId || businessSettings?.xeroTaxType || "OUTPUT";
+    const itemCode = businessSettings?.xeroDefaultItemCode;
     
     const invoiceDate = (invoice as any).issueDate || invoice.createdAt;
     const xeroInvoice = {
@@ -536,6 +590,7 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
         unitAmount: parseFloat(item.unitPrice || "0"),
         accountCode: salesAccountCode,
         taxType: taxType,
+        itemCode: itemCode || undefined,
       })),
       date: invoiceDate ? new Date(invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       dueDate: invoice.dueDate ? new Date(invoice.dueDate).toISOString().split('T')[0] : undefined,
@@ -554,6 +609,16 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
         xeroSyncedAt: new Date(),
       });
       xeroLog("syncSingleInvoice", { userId, invoiceId, xeroInvoiceId: createdXeroInvoice.invoiceID, status: "success" });
+      // Task #91: best-effort PDF auto-attach so the customer always sees the
+      // same PDF the tradie sent. Non-blocking — failures are logged but do
+      // not roll back the push.
+      buildInvoicePdfBuffer(userId, invoiceId)
+        .then(buf => {
+          if (!buf) return;
+          return attachInvoicePdfToXero(userId, invoiceId, buf, `Invoice-${invoice.number || invoice.id}.pdf`);
+        })
+        .then(r => r && !r.success && xeroLog('attachInvoicePdf', { userId, invoiceId, status: 'warn', error: r.error }))
+        .catch(err => xeroLog('attachInvoicePdf', { userId, invoiceId, status: 'error', error: String(err) }));
       return { success: true, xeroInvoiceId: createdXeroInvoice.invoiceID };
     }
 
@@ -729,8 +794,10 @@ export async function syncQuoteToXero(userId: string, quoteId: string): Promise<
     const lineItems = await storage.getQuoteLineItems(quoteId);
     
     const businessSettings = await storage.getBusinessSettings(userId);
-    const salesAccountCode = businessSettings?.xeroSalesAccountCode || "200";
-    const taxType = businessSettings?.xeroTaxType || "OUTPUT";
+    // Task #91: prefer the new mapping IDs; legacy code/type kept as fallback.
+    const salesAccountCode = businessSettings?.xeroSalesAccountId || businessSettings?.xeroSalesAccountCode || "200";
+    const taxType = businessSettings?.xeroTaxRateId || businessSettings?.xeroTaxType || "OUTPUT";
+    const itemCode = businessSettings?.xeroDefaultItemCode;
     
     const xeroInvoice = {
       type: "ACCREC" as any,
@@ -744,6 +811,7 @@ export async function syncQuoteToXero(userId: string, quoteId: string): Promise<
         unitAmount: parseFloat(item.unitPrice || "0"),
         accountCode: salesAccountCode,
         taxType: taxType,
+        itemCode: itemCode || undefined,
       })),
       date: new Date().toISOString().split('T')[0],
       reference: `Quote: ${quote.number || (quote as any).quoteNumber}`,
@@ -767,6 +835,94 @@ export async function syncQuoteToXero(userId: string, quoteId: string): Promise<
     return { success: true };
   } catch (err) {
     xeroLog("syncQuote", { userId, quoteId, status: "error", error: String(err) });
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
+ * Push a quote to Xero using the *real* Xero Quotes API (vs syncQuoteToXero
+ * above which creates a DRAFT invoice — kept for backwards-compat). Persists
+ * the new Xero Quote ID on quotes.xeroQuoteId so we don't double-push.
+ */
+export async function pushQuoteToXero(userId: string, quoteId: string): Promise<{ success: boolean; xeroQuoteId?: string; error?: string }> {
+  try {
+    const connection = await storage.getXeroConnection(userId);
+    if (!connection || connection.status !== "active") {
+      return { success: true };
+    }
+
+    const quote = await storage.getQuote(quoteId, userId);
+    if (!quote) return { success: false, error: "Quote not found" };
+    if ((quote as any).xeroQuoteId) {
+      return { success: true, xeroQuoteId: (quote as any).xeroQuoteId };
+    }
+
+    // Task #91: route through getRefreshedClientAndConnection so the
+    // multi-tenant selector (xeroActiveTenantId) is honoured.
+    const { xero, connection: refreshedConnection } = await getRefreshedClientAndConnection(userId);
+
+    const clients = await storage.getClients(userId);
+    const client = clients.find(c => c.id === quote.clientId);
+    if (!client) return { success: false, error: "Client not found" };
+
+    const lineItems = await storage.getQuoteLineItems(quoteId);
+    const settings = await storage.getBusinessSettings(userId);
+    const salesAccountCode = settings?.xeroSalesAccountId || settings?.xeroSalesAccountCode || "200";
+    const taxType = settings?.xeroTaxRateId || settings?.xeroTaxType || "OUTPUT";
+    const itemCode = settings?.xeroDefaultItemCode;
+
+    const xeroQuote: any = {
+      contact: { name: client.name, emailAddress: client.email || undefined, contactID: client.xeroContactId || undefined },
+      lineItems: lineItems.map(item => ({
+        description: item.description,
+        quantity: parseFloat(item.quantity || "1"),
+        unitAmount: parseFloat(item.unitPrice || "0"),
+        accountCode: salesAccountCode,
+        taxType,
+        itemCode: itemCode || undefined,
+      })),
+      date: new Date().toISOString().split('T')[0],
+      expiryDate: (quote as any).expiryDate ? new Date((quote as any).expiryDate).toISOString().split('T')[0] : undefined,
+      quoteNumber: quote.number || (quote as any).quoteNumber || undefined,
+      reference: quote.number || (quote as any).quoteNumber || undefined,
+      status: quote.status === 'accepted' ? 'ACCEPTED' : quote.status === 'sent' ? 'SENT' : 'DRAFT',
+    };
+
+    const response = await xeroApiCall(refreshedConnection, "createQuote", () =>
+      (xero.accountingApi as any).createQuotes(refreshedConnection.tenantId, { quotes: [xeroQuote] })
+    );
+    const created = (response as any).body.quotes?.[0];
+    if (created?.quoteID) {
+      await storage.updateQuote(quote.id, userId, { xeroQuoteId: created.quoteID, xeroSyncedAt: new Date() } as any);
+      xeroLog("pushQuote", { userId, quoteId, xeroQuoteId: created.quoteID, status: "success" });
+      return { success: true, xeroQuoteId: created.quoteID };
+    }
+    return { success: true };
+  } catch (err) {
+    xeroLog("pushQuote", { userId, quoteId, status: "error", error: String(err) });
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
+ * Attach a generated invoice PDF to the matching Xero invoice. Best-effort —
+ * returns success:false but never throws so it can be fired-and-forgotten
+ * after a successful invoice push.
+ */
+export async function attachInvoicePdfToXero(userId: string, invoiceId: string, pdfBuffer: Buffer, fileName: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const invoice = await storage.getInvoice(invoiceId, userId);
+    if (!invoice?.xeroInvoiceId) return { success: false, error: "Invoice not synced to Xero" };
+    const { xero, connection } = await getRefreshedClientAndConnection(userId);
+    await xeroApiCall(connection, "attachInvoicePdf", () =>
+      (xero.accountingApi as any).createInvoiceAttachmentByFileName(
+        connection.tenantId, invoice.xeroInvoiceId!, fileName, pdfBuffer, true
+      )
+    );
+    xeroLog("attachInvoicePdf", { userId, invoiceId, fileName, status: "success" });
+    return { success: true };
+  } catch (err) {
+    xeroLog("attachInvoicePdf", { userId, invoiceId, status: "error", error: String(err) });
     return { success: false, error: String(err) };
   }
 }
@@ -831,19 +987,53 @@ export async function pushClientToXero(userId: string, clientId: string): Promis
   }
 }
 
-export async function getChartOfAccounts(userId: string): Promise<Array<{ code: string; name: string; type: string }>> {
+export async function getChartOfAccounts(userId: string): Promise<Array<{ id: string; code: string; name: string; type: string }>> {
   const { xero, connection } = await getRefreshedClientAndConnection(userId);
 
   const response = await xeroApiCall(connection, "getAccounts", () =>
     xero.accountingApi.getAccounts(connection.tenantId)
   );
   const accounts = response.body.accounts || [];
-  
+
+  // Task #91 (review fix): normalize to a consistent { id, code, name, type }
+  // contract so the mapping UI can use a single value accessor across providers.
   return accounts.map(acc => ({
+    id: acc.accountID || '',
     code: acc.code || '',
     name: acc.name || '',
     type: acc.type || '',
   }));
+}
+
+// Cached pull (60s TTL) — used by the Integrations mapping UI, which
+// re-renders frequently. The cache is per-user.
+export async function getCachedAccounts(userId: string) {
+  return xeroAccountsCache.getOrLoad(userId, () => getChartOfAccounts(userId));
+}
+export async function getCachedTaxRates(userId: string) {
+  return xeroTaxRatesCache.getOrLoad(userId, () => getTaxRates(userId));
+}
+export async function getCachedItems(userId: string) {
+  return xeroItemsCache.getOrLoad(userId, async () => {
+    const { xero, connection } = await getRefreshedClientAndConnection(userId);
+    const response = await xeroApiCall(connection, "getItems", () =>
+      xero.accountingApi.getItems(connection.tenantId)
+    );
+    const items = response.body.items || [];
+    // Task #91 (review fix): normalized DTO shape — `id` is always populated;
+    // `code` is what Xero invoice payloads expect for itemCode.
+    return items.map((it: any) => ({
+      id: it.itemID || '',
+      code: it.code || '',
+      name: it.name || '',
+      description: it.description || '',
+    }));
+  });
+}
+export function invalidateXeroMappingCache(userId: string) {
+  xeroAccountsCache.invalidate(userId);
+  xeroTaxRatesCache.invalidate(userId);
+  xeroItemsCache.invalidate(userId);
 }
 
 export async function getBankAccounts(userId: string): Promise<Array<{ accountId: string; code: string; name: string }>> {
@@ -1747,6 +1937,26 @@ async function processSingleWebhookEvent(
         );
       }
     }
+
+    // INVOICE DELETE — Xero treats DELETE as "removed from the org"; mark local as cancelled.
+    if (eventCategory === "INVOICE" && eventType === "DELETE") {
+      const invoices = await storage.getInvoices(userId);
+      const localInvoice = invoices.find(inv => inv.xeroInvoiceId === resourceId);
+      if (localInvoice && localInvoice.status !== "cancelled") {
+        await storage.updateInvoice(localInvoice.id, userId, { status: "cancelled", xeroSyncedAt: new Date() });
+        xeroLog("webhookInvoiceDeleted", { userId, invoiceId: localInvoice.id });
+      }
+    }
+
+    // Stamp lastWebhookAt — used by Integrations /test endpoint to surface "last
+    // webhook X seconds ago" so the user knows webhooks are actually arriving.
+    try {
+      const { storage: s } = await import('./storage');
+      const settings = await s.getBusinessSettings(userId);
+      if (settings) {
+        await s.updateBusinessSettings(userId, { xeroLastWebhookAt: new Date() } as any);
+      }
+    } catch { /* best-effort */ }
   } catch (err) {
     xeroLog("webhookProcessing", { userId, tenantId, eventCategory, eventType, status: "error", error: String(err) });
   }

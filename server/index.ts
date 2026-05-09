@@ -233,8 +233,13 @@ if (process.env.DATABASE_URL) {
   );
   console.log('✅ SendGrid webhook route configured');
 
+  // Task #91 (review fix): per-IP rate limiter on Xero webhook for parity with
+  // the QBO route. Mounted before raw-body parser so blocked requests don't
+  // even consume body buffers; HMAC verify still happens inside the handler.
+  const { webhookRateLimiter: xeroWebhookLimiter } = await import('./routes/middleware');
   app.post(
     '/api/webhooks/xero',
+    xeroWebhookLimiter,
     express.raw({ type: 'application/json' }),
     async (req, res) => {
       const startedAt = Date.now();
@@ -276,6 +281,50 @@ if (process.env.DATABASE_URL) {
     }
   );
   console.log('✅ Xero webhook route configured');
+
+  // QuickBooks Online webhook — HMAC-SHA256(rawBody, QBO_WEBHOOK_VERIFIER_TOKEN)
+  // base64-compared against the `intuit-signature` header. Forged/unsigned
+  // requests get a fast 401 before any storage call. Mounted BEFORE
+  // express.json() so the raw buffer is intact for HMAC.
+  app.post(
+    '/api/webhooks/quickbooks',
+    xeroWebhookLimiter,
+    express.raw({ type: 'application/json' }),
+    async (req, res) => {
+      const startedAt = Date.now();
+      try {
+        const qbo = await import('./quickbooksService');
+        const signature = req.headers['intuit-signature'] as string | undefined;
+
+        if (!Buffer.isBuffer(req.body)) {
+          console.warn(JSON.stringify({ provider: 'quickbooks', signatureValid: false, eventType: null, latencyMs: Date.now() - startedAt, error: 'body_not_buffer' }));
+          return res.status(401).send();
+        }
+        const rawBody = req.body.toString('utf8');
+
+        if (!qbo.verifyQboWebhookSignature(rawBody, signature)) {
+          console.warn(JSON.stringify({ provider: 'quickbooks', signatureValid: false, eventType: null, latencyMs: Date.now() - startedAt }));
+          return res.status(401).send();
+        }
+
+        res.status(200).send();
+
+        const payload = JSON.parse(rawBody);
+        const count = (payload?.eventNotifications || []).reduce(
+          (acc: number, n: any) => acc + (n.dataChangeEvent?.entities?.length || 0), 0
+        );
+        console.log(JSON.stringify({ provider: 'quickbooks', signatureValid: true, eventType: 'batch', count, latencyMs: Date.now() - startedAt }));
+
+        qbo.processQboWebhookPayload(payload).catch(err =>
+          console.error('[QBO Webhook] Processing error:', err?.message || err)
+        );
+      } catch (error: any) {
+        console.error('[QBO Webhook] Error:', error);
+        if (!res.headersSent) res.status(200).send();
+      }
+    }
+  );
+  console.log('✅ QuickBooks webhook route configured');
 
   // Apple App Store Server Notifications V2 webhook.
   // Registered BEFORE express.json() so the raw JWS body is captured. The JWS

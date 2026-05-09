@@ -139,6 +139,19 @@ export const rateCardCache = new HotCache<any>("rateCards", { ttlMs: 60_000, max
 export const userCache = new HotCache<any>("user", { ttlMs: 30_000, max: 1000 });
 export const aggregateDashboardCache = new HotCache<any>("aggregateDashboard", { ttlMs: 15_000, max: 500 });
 
+// Accounting integration metadata caches (Task #91 — pull-and-cache for mapping UI)
+// 60s TTL keeps the Integrations page snappy without serving stale data when a
+// tenant adds a new account/tax-rate. Per-userId keys.
+export const xeroAccountsCache = new HotCache<any>("xeroAccounts", { ttlMs: 60_000, max: 200 });
+export const xeroTaxRatesCache = new HotCache<any>("xeroTaxRates", { ttlMs: 60_000, max: 200 });
+export const xeroItemsCache = new HotCache<any>("xeroItems", { ttlMs: 60_000, max: 200 });
+export const qboAccountsCache = new HotCache<any>("qboAccounts", { ttlMs: 60_000, max: 200 });
+export const qboTaxRatesCache = new HotCache<any>("qboTaxRates", { ttlMs: 60_000, max: 200 });
+export const qboItemsCache = new HotCache<any>("qboItems", { ttlMs: 60_000, max: 200 });
+export const myobAccountsCache = new HotCache<any>("myobAccounts", { ttlMs: 60_000, max: 200 });
+export const myobTaxCodesCache = new HotCache<any>("myobTaxCodes", { ttlMs: 60_000, max: 200 });
+export const myobItemsCache = new HotCache<any>("myobItems", { ttlMs: 60_000, max: 200 });
+
 export function getCacheStats() {
   const out: Record<string, CacheStat & { size: number }> = {};
   const caches: Record<string, HotCache<any>> = {

@@ -2,6 +2,42 @@ import axios from "axios";
 import { storage } from "./storage";
 import type { MyobConnection } from "@shared/schema";
 import { encrypt, decrypt } from "./encryption";
+import { myobAccountsCache, myobTaxCodesCache, myobItemsCache } from "./cache";
+
+// ─── Pull-and-cache helpers (Task #91) ─────────────────────────────────────
+async function myobGet(userId: string, path: string): Promise<any[]> {
+  const connection = await storage.getMyobConnection(userId);
+  if (!connection || connection.status !== 'active') throw new Error('No active MYOB connection');
+  const refreshed = await refreshTokenIfNeeded(connection);
+  const tokens = decryptTokens(refreshed);
+  const cfToken = getCfToken(refreshed);
+  if (!cfToken) throw new Error('Company file credentials not configured');
+  const r = await axios.get(`${MYOB_API_BASE}/${refreshed.businessId}/${path}`, { headers: getApiHeaders(tokens.accessToken, cfToken) });
+  return r.data?.Items || [];
+}
+export async function getCachedAccounts(userId: string) {
+  return myobAccountsCache.getOrLoad(userId, async () => {
+    const accs = await myobGet(userId, 'GeneralLedger/Account');
+    return accs.map((a: any) => ({ id: a.UID, displayId: a.DisplayID, name: a.Name, type: a.Type, classification: a.Classification }));
+  });
+}
+export async function getCachedTaxCodes(userId: string) {
+  return myobTaxCodesCache.getOrLoad(userId, async () => {
+    const codes = await myobGet(userId, 'GeneralLedger/TaxCode');
+    return codes.map((t: any) => ({ id: t.UID, code: t.Code, description: t.Description, rate: t.Rate }));
+  });
+}
+export async function getCachedItems(userId: string) {
+  return myobItemsCache.getOrLoad(userId, async () => {
+    const items = await myobGet(userId, 'Inventory/Item');
+    return items.map((i: any) => ({ id: i.UID, number: i.Number, name: i.Name, sellingPrice: i.SellingDetails?.BaseSellingPrice }));
+  });
+}
+export function invalidateMyobMappingCache(userId: string) {
+  myobAccountsCache.invalidate(userId);
+  myobTaxCodesCache.invalidate(userId);
+  myobItemsCache.invalidate(userId);
+}
 
 const MYOB_SCOPES = "sme-company-file sme-customer sme-invoice sme-sales";
 const MYOB_AUTH_URL = "https://secure.myob.com/oauth2/account/authorize";
@@ -267,6 +303,14 @@ export async function syncInvoicesToMyob(userId: string): Promise<{ synced: numb
   try {
     const invoices = await storage.getInvoices(userId);
     const clients = await storage.getClients(userId);
+    // Task #91: enrich line payload with the user's configured income
+    // account, tax code and default item if mapping has been completed.
+    // Falls back to the original minimal MYOB Invoice/Service shape when
+    // mapping is unset, so this is purely additive.
+    const settings: any = await storage.getBusinessSettings(userId);
+    const incomeAcct = settings?.myobIncomeAccountId;
+    const taxCode = settings?.myobTaxCodeId;
+    const defaultItem = settings?.myobDefaultItemId;
     
     for (const invoice of invoices) {
       try {
@@ -285,6 +329,9 @@ export async function syncInvoicesToMyob(userId: string): Promise<{ synced: numb
           Lines: lineItems.map(item => ({
             Description: item.description,
             Total: parseFloat(item.total || "0"),
+            ...(incomeAcct ? { Account: { UID: incomeAcct } } : {}),
+            ...(taxCode ? { TaxCode: { UID: taxCode } } : {}),
+            ...(defaultItem ? { Item: { UID: defaultItem } } : {}),
           })),
           Date: invoice.createdAt ? new Date(invoice.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         };
@@ -450,6 +497,11 @@ export async function syncSingleInvoiceToMyob(userId: string, invoiceId: string)
     }
 
     const lineItems = await storage.getInvoiceLineItems(invoice.id);
+    // Task #91: enrich with mapping refs (income account / tax code / item).
+    const settingsForLines: any = await storage.getBusinessSettings(userId);
+    const incomeAcct = settingsForLines?.myobIncomeAccountId;
+    const taxCode = settingsForLines?.myobTaxCodeId;
+    const defaultItem = settingsForLines?.myobDefaultItemId;
     
     const myobInvoice = {
       Number: invoice.number || (invoice as any).invoiceNumber,
@@ -457,6 +509,9 @@ export async function syncSingleInvoiceToMyob(userId: string, invoiceId: string)
       Lines: lineItems.map(item => ({
         Description: item.description,
         Total: parseFloat(item.total || "0"),
+        ...(incomeAcct ? { Account: { UID: incomeAcct } } : {}),
+        ...(taxCode ? { TaxCode: { UID: taxCode } } : {}),
+        ...(defaultItem ? { Item: { UID: defaultItem } } : {}),
       })),
       Date: invoice.createdAt ? new Date(invoice.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     };
@@ -496,6 +551,11 @@ export async function syncQuotesToMyob(userId: string): Promise<{ synced: number
   try {
     const quotes = await storage.getQuotes(userId);
     const clients = await storage.getClients(userId);
+    // Task #91: enrich quote lines with mapping refs as well.
+    const settingsForQuotes: any = await storage.getBusinessSettings(userId);
+    const qIncomeAcct = settingsForQuotes?.myobIncomeAccountId;
+    const qTaxCode = settingsForQuotes?.myobTaxCodeId;
+    const qDefaultItem = settingsForQuotes?.myobDefaultItemId;
 
     for (const quote of quotes) {
       try {
@@ -512,6 +572,9 @@ export async function syncQuotesToMyob(userId: string): Promise<{ synced: number
           Lines: lineItems.map(item => ({
             Description: item.description,
             Total: parseFloat(item.total || "0"),
+            ...(qIncomeAcct ? { Account: { UID: qIncomeAcct } } : {}),
+            ...(qTaxCode ? { TaxCode: { UID: qTaxCode } } : {}),
+            ...(qDefaultItem ? { Item: { UID: qDefaultItem } } : {}),
           })),
           Date: quote.createdAt ? new Date(quote.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           Comment: `Quote ${quote.number || ''} - ${quote.title || ''}`.trim(),

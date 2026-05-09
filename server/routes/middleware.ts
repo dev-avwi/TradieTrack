@@ -111,6 +111,19 @@ export const transcribePerUserLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Task #91: per-IP rate limit for inbound provider webhooks (QBO/Xero/etc).
+// Webhooks are unauthenticated by design (we verify HMAC inside the handler),
+// so we key by IP — keeping the bound generous since legitimate batches can
+// burst, but tight enough to blunt brute-force signature guessing or abuse.
+export const webhookRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  keyGenerator: (req: any) => ipKeyGenerator(req.ip || '', 56),
+  message: { error: 'Too many webhook requests' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /**
  * Express error-handling middleware that converts a `BackpressureError`
  * thrown anywhere in the request lifecycle into a polite HTTP 429 with a

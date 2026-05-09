@@ -954,6 +954,7 @@ export interface IStorage {
   createQuickbooksConnection(data: InsertQuickbooksConnection): Promise<QuickbooksConnection>;
   updateQuickbooksConnection(id: string, data: Partial<QuickbooksConnection>): Promise<QuickbooksConnection | undefined>;
   deleteQuickbooksConnection(userId: string): Promise<boolean>;
+  getAllQuickbooksConnections(): Promise<QuickbooksConnection[]>;
 
   // Job Documents (uploaded PDFs, external quotes/invoices)
   getJobDocuments(jobId: string, userId: string): Promise<JobDocument[]>;
@@ -5512,6 +5513,10 @@ export class PostgresStorage implements IStorage {
 
   async getAllXeroConnections(): Promise<XeroConnection[]> {
     return await db.select().from(xeroConnections);
+  }
+
+  async getAllQuickbooksConnections(): Promise<QuickbooksConnection[]> {
+    return await db.select().from(quickbooksConnections);
   }
 
   // MYOB Integration
