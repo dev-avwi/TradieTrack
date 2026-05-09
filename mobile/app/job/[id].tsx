@@ -49,6 +49,7 @@ import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { MobileSendModal } from '../../src/components/MobileSendModal';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { getAvatarColor } from '../../src/lib/avatar-colors';
@@ -10648,7 +10649,7 @@ export default function JobDetailScreen() {
                 </Text>
               </View>
             )}
-            <ScrollView style={{ maxHeight: 400 }}>
+            <BottomSheetScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
               {teamMembers.map((member) => {
                 const memberId = member.memberId || member.userId || member.id;
                 const isSelected = selectedWorkerIds.has(memberId);
@@ -10873,7 +10874,7 @@ export default function JobDetailScreen() {
                   </View>
                 )}
               </View>
-            </ScrollView>
+            </BottomSheetScrollView>
             <View style={[styles.modalFooter, { gap: spacing.sm }]}>
               <TouchableOpacity
                 style={{

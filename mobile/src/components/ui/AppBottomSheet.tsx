@@ -182,7 +182,10 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             <>{children}</>
           </BottomSheetScrollView>
         ) : (
-          <View style={[innerStyle, { backgroundColor: colors.card }]}>{children}</View>
+          // flex:1 so children with their own ScrollView (or list) get room
+          // to render — without this, on Android the inner content collapses
+          // to intrinsic height and the sheet appears empty.
+          <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>{children}</View>
         )}
       </BottomSheetModal>
     );

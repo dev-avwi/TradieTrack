@@ -60,12 +60,14 @@ const createStyles = (colors: ThemeColors, isTabletStyle: boolean) => StyleSheet
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...(isIOS ? {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-    } : shadows.lg),
+    // Match iOS shadow visually on Android via elevation. Both platforms
+    // get the same shadow* props so the FAB renders identically — RN ignores
+    // shadow* on Android and elevation on iOS, so this is safe to set both.
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
     zIndex: 1000,
   },
   fabButtonActive: {

@@ -172,10 +172,10 @@ export function Header({
   const advancedMode = useAdvancedThemeStore(state => state.mode);
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  // On narrow phones the brand wordmark "JobRunner" can squeeze the page
-  // title into "Jo..". Hide the wordmark on tight widths so the page title
-  // gets full breathing room. The logo image stays as the brand mark.
-  const isNarrowPhone = windowWidth < 380;
+  // On very narrow phones the brand wordmark "JobRunner" can squeeze the page
+  // title. Most Androids are 360dp+ (Galaxy S, Pixel) so we keep it visible
+  // there. Only hide on truly tiny screens (<340dp = small/legacy Android).
+  const isNarrowPhone = windowWidth < 340;
   const styles = useMemo(() => createStyles(colors, insets.top), [colors, insets.top]);
   const { unreadCount } = useNotificationsStore();
   const pathname = usePathname();
