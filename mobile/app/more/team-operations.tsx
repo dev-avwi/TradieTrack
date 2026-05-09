@@ -1224,7 +1224,7 @@ export default function TeamOperationsScreen() {
         onRequestClose={() => { setShowAssignModal(false); setAssigningToMember(null); }}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.assignModalContainer}>
+          <View style={[styles.assignModalContainer, { paddingBottom: 24 + insets.bottom }]}>
             <View style={styles.assignModalHandle} />
             <View style={styles.modalHeader}>
               <View>
@@ -2016,7 +2016,6 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     borderTopLeftRadius: radius['2xl'],
     borderTopRightRadius: radius['2xl'],
     maxHeight: '70%',
-    paddingBottom: 40,
   },
   assignModalHandle: {
     width: 36,

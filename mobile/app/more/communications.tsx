@@ -773,7 +773,7 @@ export default function CommunicationsScreen() {
               tintColor={colors.primary}
             />
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: spacing.xl + insets.bottom }]}
         >
           {filteredCommunications.map(renderItem)}
         </ScrollView>

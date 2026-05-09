@@ -1425,7 +1425,7 @@ export default function FormBuilderScreen() {
           />
         )
       ) : (
-        <ScrollView contentContainerStyle={{ padding: responsiveShell.paddingHorizontal, paddingBottom: spacing.lg }}>
+        <ScrollView contentContainerStyle={{ padding: responsiveShell.paddingHorizontal, paddingBottom: spacing.lg + insets.bottom }}>
           <Text style={{ ...typography.caption, color: colors.mutedForeground, marginBottom: spacing.md }}>
             Start with a pre-built template and customize it to your needs.
           </Text>
