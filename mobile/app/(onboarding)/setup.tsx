@@ -1215,8 +1215,16 @@ export default function OnboardingSetupScreen() {
               </View>
             )}
 
-            <TouchableOpacity onPress={handleSkipOnboarding} disabled={isLoading} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} testID="button-skip-onboarding">
-              <Text style={styles.skipTopText}>Skip for now</Text>
+            <TouchableOpacity
+              onPress={handleSkipOnboarding}
+              disabled={isLoading}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              testID="button-skip-onboarding"
+              style={styles.skipChip}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.skipChipText}>Skip</Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.primary} />
             </TouchableOpacity>
           </View>
         )}
@@ -1233,6 +1241,19 @@ export default function OnboardingSetupScreen() {
           {selectedRole === 'subcontractor' && subStep === 'privacy' && renderSubPrivacy()}
           {currentStep === 'complete' && renderComplete()}
         </View>
+
+        {currentStep !== 'complete' && (
+          <TouchableOpacity
+            onPress={handleSkipOnboarding}
+            disabled={isLoading}
+            style={styles.skipFooter}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            testID="button-skip-onboarding-footer"
+            activeOpacity={0.7}
+          >
+            <Text style={styles.skipFooterText}>Skip setup for now</Text>
+          </TouchableOpacity>
+        )}
       </Animated.View>
     </SafeAreaView>
   );
@@ -1503,6 +1524,33 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontWeight: '500',
     paddingHorizontal: 8,
     paddingVertical: 6,
+  },
+  skipChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.primary + '15',
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+  },
+  skipChipText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  skipFooter: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  skipFooterText: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
 
   codeInputWrap: {
