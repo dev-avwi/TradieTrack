@@ -1,6 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../lib/theme';
-import { fontSizes } from '../lib/design-tokens';
 
 interface XeroRibbonProps {
   size?: 'small' | 'medium';

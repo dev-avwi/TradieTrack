@@ -27,6 +27,7 @@ export const spacing = {
   lg: 16,     // 4 tailwind units - gap-4, p-4 - PRIMARY SPACING
   xl: 20,     // 5 tailwind units - p-5
   '2xl': 24,  // 6 tailwind units - space-y-6
+  xxl: 24,    // alias for '2xl' (callers using dotted access)
   '3xl': 32,  // 8 tailwind units
   '4xl': 40,  // 10 tailwind units
 } as const;
@@ -357,6 +358,35 @@ export const typography = {
     lineHeight: 28,
     letterSpacing: -0.4,
   },
+  // Aliases used by various screens (kept here so they stay typed)
+  bodySmall: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    fontWeight: '400' as const,
+    lineHeight: 18,
+    letterSpacing: -0.05,
+  },
+  title: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 22,
+    fontWeight: '700' as const,
+    lineHeight: 28,
+    letterSpacing: -0.4,
+  },
+  sectionHeader: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    lineHeight: 18,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+  },
+  // sizes is attached below; declared here so callers see typography.sizes.<x>
+  sizes: undefined as unknown as {
+    readonly xs: 11; readonly sm: 13; readonly md: 15; readonly lg: 17;
+    readonly xl: 20; readonly '2xl': 22; readonly xxl: 24;
+    readonly '3xl': 28; readonly '4xl': 32;
+  },
 } as const;
 
 // === TYPOGRAPHY SIZES (for direct fontSize access) ===
@@ -368,11 +398,15 @@ export const typographySizes = {
   lg: 17,
   xl: 20,
   '2xl': 22,
+  xxl: 24,
   '3xl': 28,
   '4xl': 32,
 } as const;
 
-// Attach sizes to typography for backwards compatibility
+// Backwards-compatible alias for callers importing { fontSizes }
+export const fontSizes = typographySizes;
+
+// Attach sizes to typography at runtime (declared above for type visibility).
 (typography as any).sizes = typographySizes;
 
 // === ICON SIZES (matches web lucide icons) ===

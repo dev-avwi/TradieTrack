@@ -41,7 +41,7 @@ export function VoiceRecorder({ onSave, onCancel, isUploading }: VoiceRecorderPr
   const [isPaused, setIsPaused] = useState(false);
   const [sound, setSound] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const durationInterval = useRef<NodeJS.Timeout | null>(null);
+  const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const recordingRef = useRef<any>(null);
   const soundRef = useRef<any>(null);

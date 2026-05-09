@@ -337,7 +337,7 @@ export default function ReceiptDetailScreen() {
       const receiptNumber = receipt.receiptNumber || receipt.id?.slice(0, 8);
       const businessName = businessSettings?.businessName || user?.name || 'Your tradie';
       const amount = formatCurrency(receipt.amount);
-      const paidDate = receipt.paidAt ? formatDate(new Date(receipt.paidAt)) : formatDate(new Date());
+      const paidDate = receipt.paidAt ? format(new Date(receipt.paidAt), 'PP') : format(new Date(), 'PP');
       
       const subject = `Payment Receipt ${receiptNumber} from ${businessName}`;
       const body = `Hi ${client?.name || 'there'},
@@ -1647,20 +1647,5 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 2,
     marginBottom: 0,
-  },
-  logo: {
-    width: 80,
-    height: 40,
-    marginBottom: 8,
-  },
-  businessName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1a1a1a',
-  },
-  businessDetail: {
-    fontSize: 11,
-    color: '#6b7280',
-    marginTop: 2,
   },
 });

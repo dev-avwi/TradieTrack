@@ -35,6 +35,8 @@ export interface ThemeColors {
   warningForeground: string;
   warningLight: string;
   warningDark: string;
+  // Alias of `destructive` so legacy callers using `colors.error` still type.
+  error: string;
   destructive: string;
   destructiveForeground: string;
   destructiveLight: string;
@@ -373,6 +375,7 @@ const lightColors: ThemeColors = {
   warningForeground: '#1a1a1a',
   warningLight: '#fef5e0',
   warningDark: '#c98204',
+  error: '#e94444',
   destructive: '#e94444',
   destructiveForeground: '#fafafa',
   destructiveLight: '#fce8e8',
@@ -432,6 +435,7 @@ const darkColors: ThemeColors = {
   warningForeground: '#1a1a1a',
   warningLight: '#3d2e15',
   warningDark: '#c98204',
+  error: '#e94444',
   destructive: '#e94444',
   destructiveForeground: '#fafafa',
   destructiveLight: '#3d1a1a',

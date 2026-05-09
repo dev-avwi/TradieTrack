@@ -691,7 +691,7 @@ export default function MapScreen() {
   // Real-time location tracking state
   const [isLive, setIsLive] = useState(true);
   const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
-  const locationPollRef = useRef<NodeJS.Timeout | null>(null);
+  const locationPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Map ready state - prevents rendering markers until MapView is ready
   const [isMapReady, setIsMapReady] = useState(false);

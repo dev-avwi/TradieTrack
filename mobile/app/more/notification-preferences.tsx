@@ -16,7 +16,7 @@ import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography, iconSizes } from '../../src/lib/design-tokens';
 import haptics from '../../src/lib/haptics';
-import { apiClient } from '../../src/lib/api';
+import apiClient from '../../src/lib/api';
 
 interface NotificationPreference {
   key: string;

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Keyboard,
+  Modal,
 } from 'react-native';
 import { PressableRow } from './ui/PressableRow';
 import { Feather } from '@expo/vector-icons';

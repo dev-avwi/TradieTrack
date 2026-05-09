@@ -203,7 +203,6 @@ export default function PhoneNumbersPage() {
               if (response.error) {
                 if (response.error.includes('not available') || response.error.includes('not found')) {
                   showToast({ type: 'info', message: 'Number Unavailable', description: `${formatPhone(lastOwnedNumber)} is no longer available. You can search for a new number instead.` });
-                  AsyncStorage.removeItem(storageKey);
                   setLastOwnedNumber(null);
                 } else if (response.error.includes('address') || response.error.includes('Address')) {
                   Alert.alert(

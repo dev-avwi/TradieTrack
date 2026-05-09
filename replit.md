@@ -154,3 +154,27 @@ Consolidated audit of 14 small mobile-polish drafts (#50, #52, #53, #56, #59, #6
     *   `server/routes/middleware.ts` — `requireAuth`, `requireProSubscription`, `requirePaidTierForSms`, `requireDevelopment`, `setupOnboardingGuard`, and rate limiters (`authLimiter`, `loginLimiter`, `passwordResetLimiter`, `registrationLimiter`, `smsLimiter`).
     *   `server/routes/helpers.ts` — Reusable utility functions: `dbCheckRateLimit`, `checkIdempotency`/`setIdempotency`, `logActivity`, `normalizeAuPhone`, `resolveAssigneeUserId`, `autoUpdateWorkerState`, `gatherAIContext`, `verifyInvoiceCalculation`, `validateAustralianCoords`, `formatCurrency`, `getNextJobNumber`, `getNextInvoiceNumber`, `getNextQuoteNumber`.
     *   Both modules are imported at the top of `routes.ts` and used throughout. Inline middleware definitions and helper functions that were duplicated inside `registerRoutes` have been removed.
+
+### Mobile TypeScript Check (May 2026, Task #84)
+Running `tsc --noEmit` inside `mobile/` previously surfaced 392 errors. iOS-blocking runtime risks have been fixed; type drift is catalogued at `mobile/scripts/typecheck-baseline.txt` (305 remaining, all type-only) and enforced by `mobile/scripts/typecheck.sh` (fails when the count regresses).
+*   **Real runtime bugs fixed**:
+    *   `mobile/app/more/phone-numbers.tsx` — undefined `storageKey` reference (would have ReferenceError'd at runtime when re-acquiring an unavailable number).
+    *   `mobile/app/more/receipt/[id].tsx` — undefined `formatDate` (would have crashed PDF email flow); switched to `format(... , 'PP')` from existing `date-fns` import. Also removed 3 duplicate StyleSheet keys (`logo`, `businessName`, `businessDetail`).
+    *   `mobile/app/job/[id].tsx` — duplicate `addPhotoButton` StyleSheet key.
+    *   `mobile/app/job/chat.tsx` — undefined `fetchChat` in retry handler → `loadMessages()`. Also fixed wrong style ref (`contactClientBtnText` → `contactClientText`).
+    *   `mobile/src/components/PhotoAnnotationEditor.tsx` — undefined `onClose` prop on Modal `onRequestClose` → `onCancel` (matches actual prop).
+    *   `mobile/src/components/GlobalSearch.tsx` — missing `Modal` import from `react-native`.
+    *   `mobile/app/more/sms-conversation.tsx` — `msg.mediaUrls` possibly null in length comparison.
+    *   `mobile/app/more/notification-preferences.tsx` — wrong `apiClient` named import (the module only has a default export).
+    *   `mobile/src/lib/store-review.ts` — installed missing `expo-store-review` package (review prompts would have crashed on first invocation).
+*   **Foundational typing fixes** (clear ~80 errors at once, no runtime change):
+    *   `mobile/src/lib/design-tokens.ts` — added `bodySmall`, `title`, `sectionHeader` to `typography`; added `xxl` alias to both `spacing` and `typographySizes`; declared `typography.sizes` field for the runtime attachment so callers see the type; exported `fontSizes` alias.
+    *   `mobile/src/lib/theme.tsx` — added `error` field on `ThemeColors` (alias of `destructive`) for both light and dark palettes.
+    *   `mobile/src/lib/notifications.ts` — extended `NotificationPayload['type']` union to cover all push types actually dispatched (`job_scheduled`, `job_started`, `job_completed`, `recurring_job_created`, `geofence_checkin`/`checkout`/`geofence`, `running_late`, `payment_failed`, `quote_sent`, `quote_expiring`).
+    *   `NodeJS.Timeout` → `ReturnType<typeof setInterval>` / `setTimeout` across 7 ref/let declarations (`(tabs)/index.tsx`, `(tabs)/map.tsx`, `job/[id].tsx`, `more/invoice/[id].tsx`, `more/quote/[id].tsx`, `SubcontractorDashboard.tsx`, `VoiceRecorder.tsx`).
+*   **Catalogued (waived) type drift**: 305 errors remain, all type-only (won't crash iOS):
+    *   ~155 expo-router `href` narrowing errors (string literals not in the generated route map — pre-existing; routes work at runtime via expo-router's permissive matcher).
+    *   ~80 schema drift errors where mobile data shapes have more fields than their TS types declare (e.g. `Job.geofenceEnabled`, `Quote.archived`, `User.name`, `User.profileImageUrl`, `CachedJob` fields, IAP `Subscription.localizedPrice`).
+    *   ~30 `ApiResponse<unknown>` generic narrowing errors at call sites that haven't been re-typed since the api wrapper changed.
+    *   ~12 switch-case literal mismatches and other minor unions.
+*   **Regression guard**: `mobile/scripts/typecheck.sh` runs `tsc --noEmit`, compares the error count against `scripts/typecheck-baseline.txt`, and exits non-zero if any new error is introduced. Run with `--update` after intentionally fixing baseline errors. Wire this into CI / pre-push hooks for the mobile app on the next CI pass.

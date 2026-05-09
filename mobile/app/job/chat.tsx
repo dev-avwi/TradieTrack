@@ -1159,7 +1159,7 @@ export default function JobChatScreen() {
           {client?.phone && (
             <PressableRow style={[styles.contactClientBtn, { marginTop: 12 }]} onPress={handleContactClient} >
               <Feather name="smartphone" size={14} color={colors.primaryForeground} />
-              <Text style={[styles.contactClientBtnText, { fontSize: 13 }]}>Text Client Instead</Text>
+              <Text style={[styles.contactClientText, { fontSize: 13 }]}>Text Client Instead</Text>
             </PressableRow>
           )}
           <View style={styles.emptyHint}>
@@ -1292,7 +1292,7 @@ export default function JobChatScreen() {
                 )}
               </View>
               {(msg as any).sendStatus === 'failed' && (
-                <PressableRow onPress={async () => { const { offlineStorage } = await import('@/lib/offline-storage'); const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id); if (ok) fetchChat(); }} style={{ marginTop: 4 }} >
+                <PressableRow onPress={async () => { const { offlineStorage } = await import('@/lib/offline-storage'); const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id); if (ok) loadMessages(); }} style={{ marginTop: 4 }} >
                   <Text style={{ color: colors.destructive, fontSize: 11, fontWeight: '600' }}>
                     Failed to send · tap to retry
                   </Text>

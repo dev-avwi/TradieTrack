@@ -85,7 +85,7 @@ export function SubcontractorDashboard() {
   const [showEarningsBreakdown, setShowEarningsBreakdown] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   interface UnbilledWorkItem {
     jobId: string;
     jobTitle: string;

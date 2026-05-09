@@ -510,7 +510,7 @@ function TimeTrackingWidget() {
   
   // Local state only for UI concerns
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [totalMinutesToday, setTotalMinutesToday] = useState(0);
   const [todayEntries, setTodayEntries] = useState<any[]>([]);
   const [todaysJobs, setTodaysJobs] = useState<any[]>([]);

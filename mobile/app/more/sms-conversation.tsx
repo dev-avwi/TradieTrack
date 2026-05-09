@@ -596,7 +596,7 @@ export default function SmsConversationScreen() {
                             <PressableRow key={`media-${i}`} onPress={() => Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open image'))} >
                               <Image
                                 source={{ uri: url }}
-                                style={{ width: 200, height: 200, borderRadius: 8, marginBottom: i < msg.mediaUrls.length - 1 ? 4 : 0 }}
+                                style={{ width: 200, height: 200, borderRadius: 8, marginBottom: i < (msg.mediaUrls?.length ?? 0) - 1 ? 4 : 0 }}
                                 resizeMode="cover"
                               />
                             </PressableRow>

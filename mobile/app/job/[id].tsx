@@ -1383,14 +1383,6 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     width: '100%',
     height: '100%',
   },
-  addPhotoButton: {
-    backgroundColor: colors.muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-  },
   photosEmpty: {
     alignItems: 'center',
     paddingVertical: spacing.xl,
@@ -2307,7 +2299,7 @@ export default function JobDetailScreen() {
   }, [timerError]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: ReturnType<typeof setInterval> | null = null;
     
     if (isTimerForThisJob && activeTimer) {
       setElapsedTime(getElapsedMinutes());
