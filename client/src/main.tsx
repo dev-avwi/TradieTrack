@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/react";
 import { createRoot } from "react-dom/client";
+import "@fontsource-variable/inter";
 import App from "./App";
 import "./index.css";
 import { trackEvent } from "@/lib/analytics";
