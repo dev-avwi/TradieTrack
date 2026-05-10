@@ -918,6 +918,37 @@ export async function isXeroConnected(userId: string): Promise<boolean> {
 }
 
 // Get the connected Xero organisation details
+// Cache the tenant short code per userId — getOrganisations is rate-sensitive
+// and the short code rarely changes for a connection.
+const tenantInfoCache = new Map<string, { shortCode: string | null; tenantName: string | null; cachedAt: number }>();
+const TENANT_INFO_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+export async function getXeroTenantInfo(
+  userId: string,
+): Promise<{ shortCode: string | null; tenantName: string | null; tenantId: string } | null> {
+  const connection = await storage.getXeroConnection(userId);
+  if (!connection || connection.status !== "active") return null;
+
+  const cached = tenantInfoCache.get(userId);
+  if (cached && Date.now() - cached.cachedAt < TENANT_INFO_TTL_MS) {
+    return { shortCode: cached.shortCode, tenantName: cached.tenantName, tenantId: connection.tenantId };
+  }
+
+  try {
+    const { xero, connection: refreshed } = await getRefreshedClientAndConnection(userId);
+    const resp: any = await xeroApiCall(refreshed, "getOrganisations.tenantInfo", () =>
+      xero.accountingApi.getOrganisations(refreshed.tenantId)
+    );
+    const org = resp.body?.organisations?.[0];
+    const shortCode = (org?.shortCode as string | undefined) ?? null;
+    const tenantName = org?.name || refreshed.tenantName || null;
+    tenantInfoCache.set(userId, { shortCode, tenantName, cachedAt: Date.now() });
+    return { shortCode, tenantName, tenantId: refreshed.tenantId };
+  } catch (err) {
+    return { shortCode: null, tenantName: connection.tenantName || null, tenantId: connection.tenantId };
+  }
+}
+
 export async function getXeroOrganisation(userId: string): Promise<{ name: string | null; tenantId: string } | null> {
   const connection = await storage.getXeroConnection(userId);
   if (!connection || connection.status !== "active") {
@@ -2243,14 +2274,39 @@ function toIsoDate(v: any): string | null {
   } catch { return null; }
 }
 
+function parseIsoDateForXero(v: string | undefined): { y: number; m: number; d: number } | null {
+  if (!v) return null;
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() };
+}
+
+function buildInvoiceWhereClause(opts: { status?: string; from?: string; to?: string }): string | undefined {
+  const parts: string[] = [];
+  if (opts.status) {
+    const statuses = opts.status.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    if (statuses.length === 1) {
+      parts.push(`Status=="${statuses[0]}"`);
+    } else if (statuses.length > 1) {
+      parts.push(`(${statuses.map(s => `Status=="${s}"`).join(' OR ')})`);
+    }
+  }
+  const from = parseIsoDateForXero(opts.from);
+  if (from) parts.push(`Date >= DateTime(${from.y},${from.m},${from.d})`);
+  const to = parseIsoDateForXero(opts.to);
+  if (to) parts.push(`Date <= DateTime(${to.y},${to.m},${to.d})`);
+  return parts.length ? parts.join(' AND ') : undefined;
+}
+
 /**
  * List Xero invoices for the picker. Pages through results; capped at 200
  * (2 pages) to keep the UI snappy. Status filter is optional and matches Xero
- * status values (DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED).
+ * status values (DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED). Supports a
+ * comma-separated multi-status list and an optional from/to ISO date range.
  */
 export async function listXeroInvoices(
   userId: string,
-  opts: { status?: string; max?: number } = {},
+  opts: { status?: string; max?: number; from?: string; to?: string } = {},
 ): Promise<XeroBrowseRow[]> {
   const { xero, connection } = await getRefreshedClientAndConnection(userId);
   const max = Math.min(opts.max ?? 200, 500);
@@ -2259,10 +2315,10 @@ export async function listXeroInvoices(
     localInvoices.map(i => i.xeroInvoiceId).filter(Boolean) as string[]
   );
 
+  const where = buildInvoiceWhereClause(opts);
   const rows: XeroBrowseRow[] = [];
   let page = 1;
   while (rows.length < max && page <= 5) {
-    const where = opts.status ? `Status=="${opts.status.toUpperCase()}"` : undefined;
     const resp: any = await xeroApiCall(connection, `getInvoices.page${page}`, () =>
       xero.accountingApi.getInvoices(
         connection.tenantId,
@@ -2302,7 +2358,7 @@ export async function listXeroInvoices(
 
 export async function listXeroQuotes(
   userId: string,
-  opts: { status?: string; max?: number } = {},
+  opts: { status?: string; max?: number; from?: string; to?: string } = {},
 ): Promise<XeroBrowseRow[]> {
   const { xero, connection } = await getRefreshedClientAndConnection(userId);
   const max = Math.min(opts.max ?? 200, 500);
@@ -2311,43 +2367,57 @@ export async function listXeroQuotes(
     localQuotes.map(q => q.xeroQuoteId).filter(Boolean) as string[]
   );
 
+  const statuses = opts.status
+    ? opts.status.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+    : [];
+  const statusList: Array<string | undefined> = statuses.length === 0 ? [undefined] : statuses;
+  const dateFrom = opts.from ? new Date(opts.from) : undefined;
+  const dateTo = opts.to ? new Date(opts.to) : undefined;
+  const validFrom = dateFrom && !isNaN(dateFrom.getTime()) ? dateFrom : undefined;
+  const validTo = dateTo && !isNaN(dateTo.getTime()) ? dateTo : undefined;
+
+  const seen = new Set<string>();
   const rows: XeroBrowseRow[] = [];
-  let page = 1;
-  while (rows.length < max && page <= 5) {
-    const status = opts.status ? opts.status.toUpperCase() : undefined;
-    const resp: any = await xeroApiCall(connection, `getQuotes.page${page}`, () =>
-      xero.accountingApi.getQuotes(
-        connection.tenantId,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        status as any,
-        page,
-        'DateString DESC',
-      )
-    );
-    const batch = resp.body?.quotes || [];
-    if (batch.length === 0) break;
-    for (const q of batch) {
-      if (!q.quoteID) continue;
-      rows.push({
-        xeroId: q.quoteID,
-        number: q.quoteNumber || null,
-        reference: q.reference || null,
-        status: q.status || null,
-        contactName: q.contact?.name || null,
-        contactId: q.contact?.contactID || null,
-        date: toIsoDate(q.date) || toIsoDate(q.dateString),
-        total: toNum(q.total),
-        currency: q.currencyCode || null,
-        alreadyImported: importedSet.has(q.quoteID),
-      });
-      if (rows.length >= max) break;
+  for (const status of statusList) {
+    let page = 1;
+    while (rows.length < max && page <= 5) {
+      const resp: any = await xeroApiCall(connection, `getQuotes.page${page}`, () =>
+        xero.accountingApi.getQuotes(
+          connection.tenantId,
+          undefined,
+          validFrom as any,
+          validTo as any,
+          undefined,
+          undefined,
+          undefined,
+          status as any,
+          page,
+          'DateString DESC',
+        )
+      );
+      const batch = resp.body?.quotes || [];
+      if (batch.length === 0) break;
+      for (const q of batch) {
+        if (!q.quoteID || seen.has(q.quoteID)) continue;
+        seen.add(q.quoteID);
+        rows.push({
+          xeroId: q.quoteID,
+          number: q.quoteNumber || null,
+          reference: q.reference || null,
+          status: q.status || null,
+          contactName: q.contact?.name || null,
+          contactId: q.contact?.contactID || null,
+          date: toIsoDate(q.date) || toIsoDate(q.dateString),
+          total: toNum(q.total),
+          currency: q.currencyCode || null,
+          alreadyImported: importedSet.has(q.quoteID),
+        });
+        if (rows.length >= max) break;
+      }
+      if (batch.length < 100) break;
+      page++;
     }
-    if (batch.length < 100) break;
-    page++;
+    if (rows.length >= max) break;
   }
   return rows;
 }

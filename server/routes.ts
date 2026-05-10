@@ -10805,11 +10805,24 @@ Be specific about materials, colors, and features that would be included.`
 
   // ─── Pick-and-choose Xero sync (browse / preview / pull / push selected) ───
 
+  app.get("/api/integrations/xero/tenant-info", requireAuth, async (req: any, res) => {
+    try {
+      const info = await xeroService.getXeroTenantInfo(req.userId);
+      if (!info) return res.status(404).json({ error: "Not connected" });
+      res.json(info);
+    } catch (error: any) {
+      console.error("Error fetching Xero tenant info:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch tenant info" });
+    }
+  });
+
   app.get("/api/integrations/xero/browse/invoices", requireAuth, async (req: any, res) => {
     try {
       const status = typeof req.query.status === 'string' ? req.query.status : undefined;
       const max = req.query.max ? parseInt(String(req.query.max), 10) : undefined;
-      const rows = await xeroService.listXeroInvoices(req.userId, { status, max });
+      const from = typeof req.query.from === 'string' ? req.query.from : undefined;
+      const to = typeof req.query.to === 'string' ? req.query.to : undefined;
+      const rows = await xeroService.listXeroInvoices(req.userId, { status, max, from, to });
       res.json({ rows });
     } catch (error: any) {
       console.error("Error browsing Xero invoices:", error);
@@ -10821,7 +10834,9 @@ Be specific about materials, colors, and features that would be included.`
     try {
       const status = typeof req.query.status === 'string' ? req.query.status : undefined;
       const max = req.query.max ? parseInt(String(req.query.max), 10) : undefined;
-      const rows = await xeroService.listXeroQuotes(req.userId, { status, max });
+      const from = typeof req.query.from === 'string' ? req.query.from : undefined;
+      const to = typeof req.query.to === 'string' ? req.query.to : undefined;
+      const rows = await xeroService.listXeroQuotes(req.userId, { status, max, from, to });
       res.json({ rows });
     } catch (error: any) {
       console.error("Error browsing Xero quotes:", error);
