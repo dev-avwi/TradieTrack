@@ -963,7 +963,7 @@ function TimeTrackingWidget() {
         {/* Job list to start timer */}
         {availableJobs.length > 0 && (
           <View style={styles.timerJobListContainer}>
-            <Text style={styles.timerJobListLabel}>Start Job</Text>
+            <Text style={styles.timerJobListLabel}>Start Timer</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -3034,10 +3034,9 @@ function OwnerDashboardScreen() {
               )}
             </View>
             <Text style={styles.headerSubtitle}>
-              {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
-              {todaysJobs.length > 0 
-                ? ` \u00b7 ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} today`
-                : ''}
+              {todaysJobs.length > 0
+                ? `You have ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} scheduled today`
+                : 'No jobs scheduled today'}
             </Text>
           </View>
           <View style={styles.headerRight}>
@@ -3204,10 +3203,10 @@ function OwnerDashboardScreen() {
         <GettingStartedChecklist />
       )}
 
-      {/* Operational Alerts - Managers */}
-      {roleResolved && !isStaffUser && (
-        <OperationalAlertsCard />
-      )}
+      {/* Weather Widget - Quick glance before jumping into the day */}
+      <View style={styles.section}>
+        <WeatherWidget />
+      </View>
 
       {/* Time Tracking Widget - All Users */}
       {roleResolved && (
@@ -3216,10 +3215,11 @@ function OwnerDashboardScreen() {
         </View>
       )}
 
-      {/* Weather Widget - Quick glance before jumping into the day */}
-      <View style={styles.section}>
-        <WeatherWidget />
-      </View>
+      {/* Operational Alerts - Managers (hidden from default dashboard view per user request;
+           still available via the dedicated Action Center if needed in future) */}
+      {false && roleResolved && !isStaffUser && (
+        <OperationalAlertsCard />
+      )}
 
       {/* Quick Stats - Compact KPI overview */}
       <View style={styles.section}>
