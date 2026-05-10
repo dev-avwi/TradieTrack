@@ -87,7 +87,6 @@ export function ObjectUploader({
       };
 
       xhr.open(method, url);
-      xhr.setRequestHeader('Content-Type', selectedFile.type);
       xhr.send(selectedFile);
 
     } catch (err) {

@@ -999,6 +999,8 @@ export default function Integrations() {
     const urlParams = new URLSearchParams(window.location.search);
     const success = urlParams.get('success');
     const error = urlParams.get('error');
+    const xeroParam = urlParams.get('xero');
+    const xeroMessage = urlParams.get('message');
     
     if (success === 'google_calendar_connected') {
       setUrlParamsHandled(true);
@@ -1008,13 +1010,21 @@ export default function Integrations() {
       });
       refetchGoogleCalendar();
       window.history.replaceState({}, '', '/integrations');
-    } else if (success === 'xero_connected') {
+    } else if (success === 'xero_connected' || xeroParam === 'connected') {
       setUrlParamsHandled(true);
       toast({
         title: "Xero Connected",
         description: "Your Xero account has been successfully linked.",
       });
       refetchXero();
+      window.history.replaceState({}, '', '/integrations');
+    } else if (xeroParam === 'error') {
+      setUrlParamsHandled(true);
+      toast({
+        title: "Xero Connection Failed",
+        description: xeroMessage || "Failed to connect to Xero. Please try again.",
+        variant: "destructive",
+      });
       window.history.replaceState({}, '', '/integrations');
     } else if (success === 'quickbooks_connected' || urlParams.get('quickbooks') === 'connected') {
       setUrlParamsHandled(true);

@@ -56,7 +56,7 @@ function getRedirectUri(): string {
   return redirectUri;
 }
 
-function createXeroClient(): XeroClient {
+function createXeroClient(state?: string): XeroClient {
   const clientId = process.env.XERO_CLIENT_ID;
   const clientSecret = process.env.XERO_CLIENT_SECRET;
   
@@ -69,18 +69,19 @@ function createXeroClient(): XeroClient {
     clientSecret,
     redirectUris: [getRedirectUri()],
     scopes: XERO_SCOPES.split(" "),
-  });
+    state,
+  } as any);
 }
 
 export async function getAuthUrl(state: string): Promise<string> {
-  const xero = createXeroClient();
+  const xero = createXeroClient(state);
   const consentUrl = await xero.buildConsentUrl();
-  const separator = consentUrl.includes('?') ? '&' : '?';
-  return `${consentUrl}${separator}state=${encodeURIComponent(state)}`;
+  return consentUrl;
 }
 
 export async function handleCallback(url: string, userId: string): Promise<XeroConnection> {
-  const xero = createXeroClient();
+  const stateFromUrl = new URL(url).searchParams.get('state') || undefined;
+  const xero = createXeroClient(stateFromUrl);
   
   const tokenSet = await xero.apiCallback(url);
   
