@@ -10803,6 +10803,211 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // ─── Pick-and-choose Xero sync (browse / preview / pull / push selected) ───
+
+  app.get("/api/integrations/xero/browse/invoices", requireAuth, async (req: any, res) => {
+    try {
+      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const max = req.query.max ? parseInt(String(req.query.max), 10) : undefined;
+      const rows = await xeroService.listXeroInvoices(req.userId, { status, max });
+      res.json({ rows });
+    } catch (error: any) {
+      console.error("Error browsing Xero invoices:", error);
+      res.status(500).json({ error: error.message || "Failed to browse Xero invoices" });
+    }
+  });
+
+  app.get("/api/integrations/xero/browse/quotes", requireAuth, async (req: any, res) => {
+    try {
+      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const max = req.query.max ? parseInt(String(req.query.max), 10) : undefined;
+      const rows = await xeroService.listXeroQuotes(req.userId, { status, max });
+      res.json({ rows });
+    } catch (error: any) {
+      console.error("Error browsing Xero quotes:", error);
+      res.status(500).json({ error: error.message || "Failed to browse Xero quotes" });
+    }
+  });
+
+  app.get("/api/integrations/xero/preview/invoice/:xeroId", requireAuth, async (req: any, res) => {
+    try {
+      const detail = await xeroService.getXeroInvoiceDetail(req.userId, req.params.xeroId);
+      if (!detail) return res.status(404).json({ error: "Not found" });
+      res.json(detail);
+    } catch (error: any) {
+      console.error("Error fetching Xero invoice detail:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch invoice" });
+    }
+  });
+
+  app.get("/api/integrations/xero/preview/quote/:xeroId", requireAuth, async (req: any, res) => {
+    try {
+      const detail = await xeroService.getXeroQuoteDetail(req.userId, req.params.xeroId);
+      if (!detail) return res.status(404).json({ error: "Not found" });
+      res.json(detail);
+    } catch (error: any) {
+      console.error("Error fetching Xero quote detail:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch quote" });
+    }
+  });
+
+  app.post("/api/integrations/xero/pull-invoices", requireAuth, async (req: any, res) => {
+    try {
+      const ids = Array.isArray(req.body?.ids) ? (req.body.ids as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+      if (ids.length === 0) return res.status(400).json({ error: "No invoice ids provided" });
+      if (ids.length > 200) return res.status(400).json({ error: "Too many invoices selected (max 200)" });
+      const result = await xeroService.pullSelectedInvoicesFromXero(req.userId, ids);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error pulling Xero invoices:", error);
+      res.status(500).json({ error: error.message || "Failed to pull invoices" });
+    }
+  });
+
+  app.post("/api/integrations/xero/pull-quotes", requireAuth, async (req: any, res) => {
+    try {
+      const ids = Array.isArray(req.body?.ids) ? (req.body.ids as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+      if (ids.length === 0) return res.status(400).json({ error: "No quote ids provided" });
+      if (ids.length > 200) return res.status(400).json({ error: "Too many quotes selected (max 200)" });
+      const result = await xeroService.pullSelectedQuotesFromXero(req.userId, ids);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error pulling Xero quotes:", error);
+      res.status(500).json({ error: error.message || "Failed to pull quotes" });
+    }
+  });
+
+  app.post("/api/integrations/xero/push-selected-invoices", requireAuth, async (req: any, res) => {
+    try {
+      const ids = Array.isArray(req.body?.ids) ? (req.body.ids as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+      if (ids.length === 0) return res.status(400).json({ error: "No invoice ids provided" });
+      if (ids.length > 200) return res.status(400).json({ error: "Too many invoices selected (max 200)" });
+      const result = await xeroService.pushSelectedInvoicesToXero(req.userId, ids);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error pushing invoices to Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to push invoices" });
+    }
+  });
+
+  // Local doc lists (for Push picker) and local previews
+  app.get("/api/integrations/xero/local/invoices", requireAuth, async (req: any, res) => {
+    try {
+      const [invoices, clients] = await Promise.all([
+        storage.getInvoices(req.userId),
+        storage.getClients(req.userId),
+      ]);
+      const clientById = new Map(clients.map(c => [c.id, c.name]));
+      const rows = invoices
+        .filter(i => !i.archivedAt)
+        .map(i => ({
+          id: i.id,
+          number: i.number || null,
+          status: i.status || null,
+          clientName: clientById.get(i.clientId) || null,
+          total: parseFloat(i.total || '0'),
+          date: (i.createdAt as any) || null,
+          alreadyPushed: !!i.xeroInvoiceId,
+        }));
+      res.json({ rows });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to list invoices" });
+    }
+  });
+
+  app.get("/api/integrations/xero/local/quotes", requireAuth, async (req: any, res) => {
+    try {
+      const [quotes, clients] = await Promise.all([
+        storage.getQuotes(req.userId),
+        storage.getClients(req.userId),
+      ]);
+      const clientById = new Map(clients.map(c => [c.id, c.name]));
+      const rows = quotes.map(q => ({
+        id: q.id,
+        number: q.number || null,
+        status: q.status || null,
+        clientName: clientById.get(q.clientId) || null,
+        total: parseFloat(q.total || '0'),
+        date: (q.createdAt as any) || null,
+        alreadyPushed: !!q.xeroQuoteId,
+      }));
+      res.json({ rows });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to list quotes" });
+    }
+  });
+
+  app.get("/api/integrations/xero/local-preview/invoice/:id", requireAuth, async (req: any, res) => {
+    try {
+      const inv = await storage.getInvoiceWithLineItems(req.params.id, req.userId);
+      if (!inv) return res.status(404).json({ error: "Not found" });
+      const client = await storage.getClientById(inv.clientId);
+      res.json({
+        id: inv.id,
+        number: inv.number || null,
+        status: inv.status || null,
+        clientName: client?.name || null,
+        date: (inv.createdAt as any) || null,
+        dueDate: inv.dueDate || null,
+        total: parseFloat(inv.total || '0'),
+        subtotal: parseFloat(inv.subtotal || '0'),
+        gstAmount: parseFloat(inv.gstAmount || '0'),
+        lineItems: ((inv as any).lineItems || []).map((li: any) => ({
+          description: li.description,
+          quantity: parseFloat(li.quantity || '1'),
+          unitPrice: parseFloat(li.unitPrice || '0'),
+          total: parseFloat(li.total || '0'),
+        })),
+        alreadyPushed: !!inv.xeroInvoiceId,
+        pushedAt: inv.xeroSyncedAt || null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch invoice" });
+    }
+  });
+
+  app.get("/api/integrations/xero/local-preview/quote/:id", requireAuth, async (req: any, res) => {
+    try {
+      const q = await storage.getQuoteWithLineItems(req.params.id, req.userId);
+      if (!q) return res.status(404).json({ error: "Not found" });
+      const client = await storage.getClientById(q.clientId);
+      res.json({
+        id: q.id,
+        number: q.number || null,
+        status: q.status || null,
+        clientName: client?.name || null,
+        date: (q.createdAt as any) || null,
+        expiryDate: q.validUntil || null,
+        total: parseFloat(q.total || '0'),
+        subtotal: parseFloat(q.subtotal || '0'),
+        gstAmount: parseFloat(q.gstAmount || '0'),
+        lineItems: ((q as any).lineItems || []).map((li: any) => ({
+          description: li.description,
+          quantity: parseFloat(li.quantity || '1'),
+          unitPrice: parseFloat(li.unitPrice || '0'),
+          total: parseFloat(li.total || '0'),
+        })),
+        alreadyPushed: !!q.xeroQuoteId,
+        pushedAt: q.xeroSyncedAt || null,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch quote" });
+    }
+  });
+
+  app.post("/api/integrations/xero/push-selected-quotes", requireAuth, async (req: any, res) => {
+    try {
+      const ids = Array.isArray(req.body?.ids) ? (req.body.ids as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+      if (ids.length === 0) return res.status(400).json({ error: "No quote ids provided" });
+      if (ids.length > 200) return res.status(400).json({ error: "Too many quotes selected (max 200)" });
+      const result = await xeroService.pushSelectedQuotesToXero(req.userId, ids);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error pushing quotes to Xero:", error);
+      res.status(500).json({ error: error.message || "Failed to push quotes" });
+    }
+  });
+
   // Get detailed sync status with feature flags
   app.get("/api/integrations/xero/detailed-status", requireAuth, async (req: any, res) => {
     try {

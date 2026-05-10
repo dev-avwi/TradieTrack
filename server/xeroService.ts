@@ -2181,3 +2181,512 @@ async function findConnectionsByTenant(tenantId: string): Promise<XeroConnection
 export async function getSyncHistory(userId: string, limit: number = 50): Promise<XeroSyncState[]> {
   return await storage.getXeroSyncHistory(userId, limit);
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Pick-and-choose browse / preview / pull / push (selection-based sync)
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface XeroBrowseRow {
+  xeroId: string;
+  number: string | null;
+  reference: string | null;
+  status: string | null;
+  contactName: string | null;
+  contactId: string | null;
+  date: string | null;
+  total: number;
+  currency: string | null;
+  alreadyImported: boolean;
+}
+
+export interface XeroPreviewLineItem {
+  description: string | null;
+  quantity: number;
+  unitAmount: number;
+  lineAmount: number;
+  taxAmount: number;
+  accountCode: string | null;
+}
+
+export interface XeroPreviewDoc {
+  xeroId: string;
+  type: 'invoice' | 'quote';
+  number: string | null;
+  reference: string | null;
+  status: string | null;
+  contactName: string | null;
+  contactId: string | null;
+  date: string | null;
+  dueDate: string | null;
+  expiryDate: string | null;
+  subtotal: number;
+  totalTax: number;
+  total: number;
+  currency: string | null;
+  lineItems: XeroPreviewLineItem[];
+  alreadyImported: boolean;
+  localDocId: string | null;
+}
+
+function toNum(v: any, fallback = 0): number {
+  if (v == null) return fallback;
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function toIsoDate(v: any): string | null {
+  if (!v) return null;
+  try {
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch { return null; }
+}
+
+/**
+ * List Xero invoices for the picker. Pages through results; capped at 200
+ * (2 pages) to keep the UI snappy. Status filter is optional and matches Xero
+ * status values (DRAFT, SUBMITTED, AUTHORISED, PAID, VOIDED).
+ */
+export async function listXeroInvoices(
+  userId: string,
+  opts: { status?: string; max?: number } = {},
+): Promise<XeroBrowseRow[]> {
+  const { xero, connection } = await getRefreshedClientAndConnection(userId);
+  const max = Math.min(opts.max ?? 200, 500);
+  const localInvoices = await storage.getInvoices(userId);
+  const importedSet = new Set(
+    localInvoices.map(i => i.xeroInvoiceId).filter(Boolean) as string[]
+  );
+
+  const rows: XeroBrowseRow[] = [];
+  let page = 1;
+  while (rows.length < max && page <= 5) {
+    const where = opts.status ? `Status=="${opts.status.toUpperCase()}"` : undefined;
+    const resp: any = await xeroApiCall(connection, `getInvoices.page${page}`, () =>
+      xero.accountingApi.getInvoices(
+        connection.tenantId,
+        undefined,
+        where,
+        'Date DESC',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        page,
+      )
+    );
+    const batch = resp.body?.invoices || [];
+    if (batch.length === 0) break;
+    for (const inv of batch) {
+      if (!inv.invoiceID) continue;
+      rows.push({
+        xeroId: inv.invoiceID,
+        number: inv.invoiceNumber || null,
+        reference: inv.reference || null,
+        status: inv.status || null,
+        contactName: inv.contact?.name || null,
+        contactId: inv.contact?.contactID || null,
+        date: toIsoDate(inv.date),
+        total: toNum(inv.total),
+        currency: inv.currencyCode || null,
+        alreadyImported: importedSet.has(inv.invoiceID),
+      });
+      if (rows.length >= max) break;
+    }
+    if (batch.length < 100) break;
+    page++;
+  }
+  return rows;
+}
+
+export async function listXeroQuotes(
+  userId: string,
+  opts: { status?: string; max?: number } = {},
+): Promise<XeroBrowseRow[]> {
+  const { xero, connection } = await getRefreshedClientAndConnection(userId);
+  const max = Math.min(opts.max ?? 200, 500);
+  const localQuotes = await storage.getQuotes(userId);
+  const importedSet = new Set(
+    localQuotes.map(q => q.xeroQuoteId).filter(Boolean) as string[]
+  );
+
+  const rows: XeroBrowseRow[] = [];
+  let page = 1;
+  while (rows.length < max && page <= 5) {
+    const status = opts.status ? opts.status.toUpperCase() : undefined;
+    const resp: any = await xeroApiCall(connection, `getQuotes.page${page}`, () =>
+      xero.accountingApi.getQuotes(
+        connection.tenantId,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        status as any,
+        page,
+        'DateString DESC',
+      )
+    );
+    const batch = resp.body?.quotes || [];
+    if (batch.length === 0) break;
+    for (const q of batch) {
+      if (!q.quoteID) continue;
+      rows.push({
+        xeroId: q.quoteID,
+        number: q.quoteNumber || null,
+        reference: q.reference || null,
+        status: q.status || null,
+        contactName: q.contact?.name || null,
+        contactId: q.contact?.contactID || null,
+        date: toIsoDate(q.date) || toIsoDate(q.dateString),
+        total: toNum(q.total),
+        currency: q.currencyCode || null,
+        alreadyImported: importedSet.has(q.quoteID),
+      });
+      if (rows.length >= max) break;
+    }
+    if (batch.length < 100) break;
+    page++;
+  }
+  return rows;
+}
+
+export async function getXeroInvoiceDetail(userId: string, xeroId: string): Promise<XeroPreviewDoc | null> {
+  const { xero, connection } = await getRefreshedClientAndConnection(userId);
+  const resp: any = await xeroApiCall(connection, "getInvoiceDetail", () =>
+    xero.accountingApi.getInvoice(connection.tenantId, xeroId)
+  );
+  const inv = resp.body?.invoices?.[0];
+  if (!inv) return null;
+
+  const localInvoices = await storage.getInvoices(userId);
+  const local = localInvoices.find(i => i.xeroInvoiceId === xeroId);
+
+  return {
+    xeroId,
+    type: 'invoice',
+    number: inv.invoiceNumber || null,
+    reference: inv.reference || null,
+    status: inv.status || null,
+    contactName: inv.contact?.name || null,
+    contactId: inv.contact?.contactID || null,
+    date: toIsoDate(inv.date),
+    dueDate: toIsoDate(inv.dueDate),
+    expiryDate: null,
+    subtotal: toNum(inv.subTotal),
+    totalTax: toNum(inv.totalTax),
+    total: toNum(inv.total),
+    currency: inv.currencyCode || null,
+    lineItems: (inv.lineItems || []).map((li: any) => ({
+      description: li.description || null,
+      quantity: toNum(li.quantity, 1),
+      unitAmount: toNum(li.unitAmount),
+      lineAmount: toNum(li.lineAmount),
+      taxAmount: toNum(li.taxAmount),
+      accountCode: li.accountCode || null,
+    })),
+    alreadyImported: !!local,
+    localDocId: local?.id || null,
+  };
+}
+
+export async function getXeroQuoteDetail(userId: string, xeroId: string): Promise<XeroPreviewDoc | null> {
+  const { xero, connection } = await getRefreshedClientAndConnection(userId);
+  const resp: any = await xeroApiCall(connection, "getQuoteDetail", () =>
+    xero.accountingApi.getQuote(connection.tenantId, xeroId)
+  );
+  const q = resp.body?.quotes?.[0];
+  if (!q) return null;
+
+  const localQuotes = await storage.getQuotes(userId);
+  const local = localQuotes.find(quote => quote.xeroQuoteId === xeroId);
+
+  return {
+    xeroId,
+    type: 'quote',
+    number: q.quoteNumber || null,
+    reference: q.reference || null,
+    status: q.status || null,
+    contactName: q.contact?.name || null,
+    contactId: q.contact?.contactID || null,
+    date: toIsoDate(q.date) || toIsoDate(q.dateString),
+    dueDate: null,
+    expiryDate: toIsoDate(q.expiryDate) || toIsoDate(q.expiryDateString),
+    subtotal: toNum(q.subTotal),
+    totalTax: toNum(q.totalTax),
+    total: toNum(q.total),
+    currency: q.currencyCode || null,
+    lineItems: (q.lineItems || []).map((li: any) => ({
+      description: li.description || null,
+      quantity: toNum(li.quantity, 1),
+      unitAmount: toNum(li.unitAmount),
+      lineAmount: toNum(li.lineAmount),
+      taxAmount: toNum(li.taxAmount),
+      accountCode: li.accountCode || null,
+    })),
+    alreadyImported: !!local,
+    localDocId: local?.id || null,
+  };
+}
+
+/**
+ * Find or create a JobRunner client matching a Xero contact, so an imported
+ * quote/invoice has a real client to attach to. Stamps xeroContactId for
+ * future lookups.
+ */
+async function ensureClientForXeroContact(
+  userId: string,
+  xeroContactId: string | null,
+  xeroContactName: string | null,
+): Promise<string | null> {
+  if (!xeroContactId && !xeroContactName) return null;
+  const clients = await storage.getClients(userId);
+  let match = xeroContactId
+    ? clients.find(c => c.xeroContactId === xeroContactId)
+    : null;
+  if (!match && xeroContactName) {
+    match = clients.find(c => c.name?.toLowerCase() === xeroContactName.toLowerCase());
+    if (match && xeroContactId && !match.xeroContactId) {
+      await storage.updateClient(match.id, userId, { xeroContactId });
+    }
+  }
+  if (match) return match.id;
+  if (!xeroContactName) return null;
+  const created = await storage.createClient({
+    userId,
+    name: xeroContactName,
+    xeroContactId: xeroContactId || undefined,
+    xeroSyncedAt: new Date(),
+  } as any);
+  return created.id;
+}
+
+function mapXeroStatusToInvoice(s: string | null | undefined): string {
+  switch ((s || '').toUpperCase()) {
+    case 'PAID': return 'paid';
+    case 'VOIDED':
+    case 'DELETED': return 'cancelled';
+    case 'AUTHORISED':
+    case 'SUBMITTED': return 'sent';
+    case 'DRAFT':
+    default: return 'draft';
+  }
+}
+
+function mapXeroStatusToQuote(s: string | null | undefined): string {
+  switch ((s || '').toUpperCase()) {
+    case 'ACCEPTED': return 'accepted';
+    case 'DECLINED': return 'declined';
+    case 'INVOICED': return 'accepted';
+    case 'SENT': return 'sent';
+    case 'DELETED': return 'declined';
+    case 'DRAFT':
+    default: return 'draft';
+  }
+}
+
+export interface PullSelectedResult {
+  imported: number;
+  skipped: number;
+  failed: number;
+  details: Array<{ xeroId: string; localId?: string; status: 'imported' | 'skipped' | 'failed'; error?: string }>;
+}
+
+export async function pullSelectedInvoicesFromXero(userId: string, xeroIds: string[]): Promise<PullSelectedResult> {
+  const result: PullSelectedResult = { imported: 0, skipped: 0, failed: 0, details: [] };
+  // Include archived so a previously-imported-but-archived doc still counts as a duplicate
+  const localInvoices = await storage.getInvoices(userId, true);
+  const importedSet = new Set(localInvoices.map(i => i.xeroInvoiceId).filter(Boolean) as string[]);
+  // Dedupe request ids so the same Xero ID submitted twice can't double-import
+  const uniqueIds = Array.from(new Set(xeroIds));
+
+  for (const xeroId of uniqueIds) {
+    if (importedSet.has(xeroId)) {
+      result.skipped++;
+      result.details.push({ xeroId, status: 'skipped' });
+      continue;
+    }
+    try {
+      const detail = await getXeroInvoiceDetail(userId, xeroId);
+      if (!detail) {
+        result.failed++;
+        result.details.push({ xeroId, status: 'failed', error: 'Not found in Xero' });
+        continue;
+      }
+      const clientId = await ensureClientForXeroContact(userId, detail.contactId, detail.contactName);
+      if (!clientId) {
+        result.failed++;
+        result.details.push({ xeroId, status: 'failed', error: 'Could not resolve client' });
+        continue;
+      }
+      const created = await storage.createInvoice({
+        userId,
+        clientId,
+        title: detail.number ? `Xero Invoice ${detail.number}` : 'Imported from Xero',
+        description: detail.reference || null,
+        status: mapXeroStatusToInvoice(detail.status),
+        subtotal: String(detail.subtotal.toFixed(2)),
+        gstAmount: String(detail.totalTax.toFixed(2)),
+        total: String(detail.total.toFixed(2)),
+        dueDate: detail.dueDate ? new Date(detail.dueDate) : undefined,
+        isXeroImport: true,
+        xeroInvoiceId: detail.xeroId,
+        xeroContactId: detail.contactId || undefined,
+        xeroSyncedAt: new Date(),
+      } as any);
+      for (let i = 0; i < detail.lineItems.length; i++) {
+        const li = detail.lineItems[i];
+        await storage.createInvoiceLineItem({
+          invoiceId: created.id,
+          description: li.description || 'Item',
+          quantity: String(li.quantity.toFixed(2)),
+          unitPrice: String(li.unitAmount.toFixed(2)),
+          total: String(li.lineAmount.toFixed(2)),
+          sortOrder: i,
+        } as any, userId);
+      }
+      importedSet.add(xeroId);
+      result.imported++;
+      result.details.push({ xeroId, localId: created.id, status: 'imported' });
+    } catch (err: any) {
+      result.failed++;
+      result.details.push({ xeroId, status: 'failed', error: err?.message || String(err) });
+    }
+  }
+  xeroLog("pullSelectedInvoices", { userId, imported: result.imported, skipped: result.skipped, failed: result.failed });
+  return result;
+}
+
+export async function pullSelectedQuotesFromXero(userId: string, xeroIds: string[]): Promise<PullSelectedResult> {
+  const result: PullSelectedResult = { imported: 0, skipped: 0, failed: 0, details: [] };
+  const localQuotes = await storage.getQuotes(userId, true);
+  const importedSet = new Set(localQuotes.map(q => q.xeroQuoteId).filter(Boolean) as string[]);
+  const uniqueIds = Array.from(new Set(xeroIds));
+
+  for (const xeroId of uniqueIds) {
+    if (importedSet.has(xeroId)) {
+      result.skipped++;
+      result.details.push({ xeroId, status: 'skipped' });
+      continue;
+    }
+    try {
+      const detail = await getXeroQuoteDetail(userId, xeroId);
+      if (!detail) {
+        result.failed++;
+        result.details.push({ xeroId, status: 'failed', error: 'Not found in Xero' });
+        continue;
+      }
+      const clientId = await ensureClientForXeroContact(userId, detail.contactId, detail.contactName);
+      if (!clientId) {
+        result.failed++;
+        result.details.push({ xeroId, status: 'failed', error: 'Could not resolve client' });
+        continue;
+      }
+      const created = await storage.createQuote({
+        userId,
+        clientId,
+        title: detail.number ? `Xero Quote ${detail.number}` : 'Imported from Xero',
+        description: detail.reference || null,
+        status: mapXeroStatusToQuote(detail.status),
+        subtotal: String(detail.subtotal.toFixed(2)),
+        gstAmount: String(detail.totalTax.toFixed(2)),
+        total: String(detail.total.toFixed(2)),
+        validUntil: detail.expiryDate ? new Date(detail.expiryDate) : undefined,
+        isXeroImport: true,
+        xeroQuoteId: detail.xeroId,
+        xeroContactId: detail.contactId || undefined,
+        xeroSyncedAt: new Date(),
+      } as any);
+      for (let i = 0; i < detail.lineItems.length; i++) {
+        const li = detail.lineItems[i];
+        await storage.createQuoteLineItem({
+          quoteId: created.id,
+          description: li.description || 'Item',
+          quantity: String(li.quantity.toFixed(2)),
+          unitPrice: String(li.unitAmount.toFixed(2)),
+          total: String(li.lineAmount.toFixed(2)),
+          sortOrder: i,
+        } as any, userId);
+      }
+      importedSet.add(xeroId);
+      result.imported++;
+      result.details.push({ xeroId, localId: created.id, status: 'imported' });
+    } catch (err: any) {
+      result.failed++;
+      result.details.push({ xeroId, status: 'failed', error: err?.message || String(err) });
+    }
+  }
+  xeroLog("pullSelectedQuotes", { userId, imported: result.imported, skipped: result.skipped, failed: result.failed });
+  return result;
+}
+
+export interface PushSelectedResult {
+  pushed: number;
+  skipped: number;
+  failed: number;
+  details: Array<{ localId: string; xeroId?: string; status: 'pushed' | 'skipped' | 'failed'; error?: string }>;
+}
+
+export async function pushSelectedInvoicesToXero(userId: string, localIds: string[]): Promise<PushSelectedResult> {
+  const result: PushSelectedResult = { pushed: 0, skipped: 0, failed: 0, details: [] };
+  for (const id of Array.from(new Set(localIds))) {
+    try {
+      // Pre-check: already pushed → skip without hitting Xero
+      const existing = await storage.getInvoice(id, userId);
+      if (!existing) {
+        result.failed++;
+        result.details.push({ localId: id, status: 'failed', error: 'Invoice not found' });
+        continue;
+      }
+      if ((existing as any).xeroInvoiceId) {
+        result.skipped++;
+        result.details.push({ localId: id, xeroId: (existing as any).xeroInvoiceId, status: 'skipped' });
+        continue;
+      }
+      const r = await syncSingleInvoiceToXero(userId, id);
+      if (r.success && r.xeroInvoiceId) {
+        result.pushed++;
+        result.details.push({ localId: id, xeroId: r.xeroInvoiceId, status: 'pushed' });
+      } else {
+        result.failed++;
+        result.details.push({ localId: id, status: 'failed', error: r.error });
+      }
+    } catch (err: any) {
+      result.failed++;
+      result.details.push({ localId: id, status: 'failed', error: err?.message || String(err) });
+    }
+  }
+  return result;
+}
+
+export async function pushSelectedQuotesToXero(userId: string, localIds: string[]): Promise<PushSelectedResult> {
+  const result: PushSelectedResult = { pushed: 0, skipped: 0, failed: 0, details: [] };
+  for (const id of Array.from(new Set(localIds))) {
+    try {
+      const existing = await storage.getQuote(id, userId);
+      if (!existing) {
+        result.failed++;
+        result.details.push({ localId: id, status: 'failed', error: 'Quote not found' });
+        continue;
+      }
+      if ((existing as any).xeroQuoteId) {
+        result.skipped++;
+        result.details.push({ localId: id, xeroId: (existing as any).xeroQuoteId, status: 'skipped' });
+        continue;
+      }
+      const r = await pushQuoteToXero(userId, id);
+      if (r.success && r.xeroQuoteId) {
+        result.pushed++;
+        result.details.push({ localId: id, xeroId: r.xeroQuoteId, status: 'pushed' });
+      } else {
+        result.failed++;
+        result.details.push({ localId: id, status: 'failed', error: r.error });
+      }
+    } catch (err: any) {
+      result.failed++;
+      result.details.push({ localId: id, status: 'failed', error: err?.message || String(err) });
+    }
+  }
+  return result;
+}

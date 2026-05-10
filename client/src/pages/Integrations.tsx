@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { XeroSyncManager } from "@/components/integrations/XeroSyncManager";
 import { useQuery, useMutation, type UseQueryResult } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -734,6 +735,7 @@ export default function Integrations() {
   });
 
   const [quickbooksSyncError, setQuickbooksSyncError] = useState<string | undefined>();
+  const [xeroSyncManagerOpen, setXeroSyncManagerOpen] = useState(false);
   const quickbooksStatus = allIntegrationsStatus?.quickbooks;
   const refetchQuickbooks = refetchAllIntegrations;
 
@@ -1758,6 +1760,15 @@ export default function Integrations() {
                       )}
                       Full Sync
                     </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setXeroSyncManagerOpen(true)}
+                      data-testid="button-open-xero-sync-manager"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Browse & Sync
+                    </Button>
                     <TestConnectionButton endpoint="/api/integrations/xero/test" testId="button-test-xero" />
                   </div>
                   <XeroTenantSelector />
@@ -2239,6 +2250,7 @@ export default function Integrations() {
           </Card>
         </div>
       </div>
+      <XeroSyncManager open={xeroSyncManagerOpen} onOpenChange={setXeroSyncManagerOpen} />
     </PageShell>
   );
 }
