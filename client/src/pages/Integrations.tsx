@@ -1228,7 +1228,7 @@ export default function Integrations() {
                 ) : stripePartiallyConnected ? (
                   <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 border-0">
                     <AlertTriangle className="w-3 h-3 mr-1" />
-                    Incomplete
+                    Connected · verification pending
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
@@ -1267,7 +1267,7 @@ export default function Integrations() {
               ) : stripePartiallyConnected ? (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Your Stripe account needs additional verification before you can receive payments.
+                    Your Stripe account is connected, but Stripe still needs a few business details (ID, ABN, bank account) before payouts can be enabled.
                   </p>
                   <Button 
                     onClick={handleOpenDashboard}
@@ -1279,7 +1279,7 @@ export default function Integrations() {
                     ) : (
                       <Settings className="w-4 h-4 mr-2" />
                     )}
-                    Complete Setup
+                    Continue Stripe Verification
                     <ExternalLink className="w-3 h-3 ml-2" />
                   </Button>
                 </>
