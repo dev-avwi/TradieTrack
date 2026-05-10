@@ -41,7 +41,7 @@ import { encrypt, decrypt } from "./encryption";
 import crypto from "crypto";
 import { xeroAccountsCache, xeroTaxRatesCache, xeroItemsCache } from "./cache";
 
-const XERO_SCOPES = "openid profile email accounting.transactions accounting.contacts offline_access";
+const XERO_SCOPES = "openid profile email accounting.transactions accounting.contacts accounting.settings offline_access";
 
 /**
  * Task #91: build a PDF buffer for an invoice using the same generator the
