@@ -1568,10 +1568,18 @@ function AppLayout() {
     );
   }
 
-  if (userCheck && businessSettings === null && !isStaffOnOtherTeam && !userCheck.isPlatformAdmin) {
-    // User exists but no business settings AND not staff on another team AND not a platform admin - show simple onboarding
-    // Staff users (on someone else's team) skip onboarding - they use their employer's business settings
-    // Platform admins don't need business settings - they have a separate admin interface
+  // Send owner to onboarding when:
+  //  1) no business_settings row at all (businessSettings === null), OR
+  //  2) row exists but onboardingCompleted is false — server-side onboarding
+  //     guard will 403 every data API otherwise, leaving the dashboard broken.
+  const ownerNeedsOnboarding =
+    !!userCheck &&
+    !isStaffOnOtherTeam &&
+    !userCheck.isPlatformAdmin &&
+    (businessSettings === null ||
+      (businessSettings && businessSettings.onboardingCompleted === false));
+
+  if (ownerNeedsOnboarding) {
     return <SimpleOnboarding onComplete={handleSimpleOnboardingComplete} onSkip={handleSimpleOnboardingComplete} />;
   }
 
