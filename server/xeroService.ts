@@ -84,7 +84,28 @@ export async function handleCallback(url: string, userId: string): Promise<XeroC
   const xero = createXeroClient(stateFromUrl);
   
   const tokenSet = await xero.apiCallback(url);
-  
+
+  // DIAGNOSTIC: Dump the scopes Xero actually granted in the access_token.
+  // The `scope` param in the callback URL only echoes the request — it doesn't
+  // prove the issued token has those scopes. The access_token is a JWT whose
+  // payload includes the real granted scopes.
+  try {
+    const at = tokenSet.access_token || '';
+    const parts = at.split('.');
+    const payloadJson = parts.length === 3
+      ? JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
+      : null;
+    console.log('[Xero] Token granted scopes:', {
+      tokenSetScope: tokenSet.scope,
+      jwtScope: payloadJson?.scope,
+      jwtAud: payloadJson?.aud,
+      jwtAuthEvent: payloadJson?.authentication_event_id,
+      jwtAuthMethods: payloadJson?.amr,
+    });
+  } catch (logErr) {
+    console.warn('[Xero] Could not decode access_token for diagnostic:', logErr);
+  }
+
   let tenants;
   try {
     await xero.updateTenants();
