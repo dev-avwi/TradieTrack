@@ -57,10 +57,11 @@ function resolveBaseStyle(userStyle: unknown, isAndroid: boolean): TextStyle {
     const fam = flat.fontFamily;
     if (typeof fam === 'string' && fam.startsWith('Inter_')) {
       const inferredWeight = INTER_TO_WEIGHT[fam];
-      // RN ignores `fontFamily: undefined` in style merging, so use null
-      // (or the empty string) to actively clear it. `null as any` is safe
-      // here — the RN type defs disallow it but the runtime accepts it.
-      const override: TextStyle = { fontFamily: undefined as unknown as string };
+      // Use 'System' instead of undefined — undefined values are skipped
+      // by React Native's style flatten and would NOT override an earlier
+      // `fontFamily: 'Inter_…'` in the merged array. 'System' is a name
+      // iOS resolves to SF Pro Display/Text and reliably wins the merge.
+      const override: TextStyle = { fontFamily: 'System' };
       if (inferredWeight && flat.fontWeight == null) override.fontWeight = inferredWeight;
       return override;
     }
@@ -94,7 +95,14 @@ function patchComponent(Component: unknown, isAndroid: boolean): void {
       if (!isValidElement(out)) return out;
       const el = out as ReactElement<{ style?: unknown }>;
       const base = resolveBaseStyle(el.props.style, isAndroid);
-      return cloneElement(el, { style: [base, el.props.style] });
+      // Order matters: on Android `base` provides DEFAULTS that user style
+      // should override (so [base, userStyle]). On iOS `base` is an OVERRIDE
+      // that strips explicit Inter_… fontFamily, so it must come AFTER user
+      // style ([userStyle, base]). When `base` is `{}` either order is a no-op.
+      const merged = isAndroid
+        ? [base, el.props.style]
+        : [el.props.style, base];
+      return cloneElement(el, { style: merged });
     };
   }
   c[PATCHED] = true;
