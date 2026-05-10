@@ -67,7 +67,7 @@ export function ObjectUploader({
       });
 
       xhr.onload = () => {
-        if (xhr.status === 200) {
+        if (xhr.status >= 200 && xhr.status < 300) {
           setUploadComplete(true);
           setUploadProgress(100);
           onComplete?.(url);
@@ -76,18 +76,28 @@ export function ObjectUploader({
             resetModal();
           }, 1500);
         } else {
-          setError('Upload failed. Please try again.');
+          const detail = (xhr.responseText || '').slice(0, 200);
+          console.error('[Upload] GCS PUT failed', {
+            status: xhr.status,
+            statusText: xhr.statusText,
+            response: detail,
+          });
+          setError(
+            `Upload failed (status ${xhr.status}${xhr.statusText ? ' ' + xhr.statusText : ''}). ${detail || 'No response body.'}`
+          );
           setUploading(false);
         }
       };
 
       xhr.onerror = () => {
-        setError('Upload failed. Please try again.');
+        console.error('[Upload] Network error during GCS PUT', { url });
+        setError('Upload failed: network error reaching storage. This is usually a CORS or DNS issue.');
         setUploading(false);
       };
 
       xhr.open(method, url);
-      xhr.send(selectedFile);
+      const body = new Blob([await selectedFile.arrayBuffer()], { type: selectedFile.type || 'application/octet-stream' });
+      xhr.send(body);
 
     } catch (err) {
       setError('Failed to get upload URL. Please try again.');
