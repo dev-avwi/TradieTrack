@@ -80,6 +80,9 @@ psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_jobs_is_sample     ON jo
 psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_quotes_is_sample   ON quotes   (user_id) WHERE is_sample = true;" 2>/dev/null || true
 psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_invoices_is_sample ON invoices (user_id) WHERE is_sample = true;" 2>/dev/null || true
 
+# Task #114 (Today's Schedule v2): per-day drag-reorder column on jobs
+psql "$DATABASE_URL" -c "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS schedule_order integer;" 2>/dev/null || true
+
 # Drift guard rail (Task #108): refuse to deploy if schema.ts and the live DB
 # disagree after the ALTERs above. Logs the diff and exits non-zero.
 echo "Verifying schema is in sync with shared/schema.ts..."
