@@ -76,7 +76,13 @@ function createXeroClient(state?: string): XeroClient {
 export async function getAuthUrl(state: string): Promise<string> {
   const xero = createXeroClient(state);
   const consentUrl = await xero.buildConsentUrl();
-  return consentUrl;
+  // Force Xero to re-display the consent screen so the user actually grants
+  // the accounting.* scopes. Without this, Xero silently reuses any prior
+  // consent (e.g. an OIDC-only Sign-In-with-Xero grant) and issues an access
+  // token missing the data scopes — causing /connections to 401 with
+  // insufficient_scope.
+  const sep = consentUrl.includes('?') ? '&' : '?';
+  return `${consentUrl}${sep}prompt=consent`;
 }
 
 export async function handleCallback(url: string, userId: string): Promise<XeroConnection> {
