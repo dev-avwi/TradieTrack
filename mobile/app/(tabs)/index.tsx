@@ -963,7 +963,7 @@ function TimeTrackingWidget() {
         {/* Job list to start timer */}
         {availableJobs.length > 0 && (
           <View style={styles.timerJobListContainer}>
-            <Text style={styles.timerJobListLabel}>Start Timer</Text>
+            <Text style={styles.timerJobListLabel}>Start Job</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
@@ -3034,9 +3034,10 @@ function OwnerDashboardScreen() {
               )}
             </View>
             <Text style={styles.headerSubtitle}>
-              {todaysJobs.length > 0
-                ? `You have ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} scheduled today`
-                : 'No jobs scheduled today'}
+              {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {todaysJobs.length > 0 
+                ? ` \u00b7 ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} today`
+                : ''}
             </Text>
           </View>
           <View style={styles.headerRight}>
@@ -3203,10 +3204,10 @@ function OwnerDashboardScreen() {
         <GettingStartedChecklist />
       )}
 
-      {/* Weather Widget - Quick glance before jumping into the day */}
-      <View style={styles.section}>
-        <WeatherWidget />
-      </View>
+      {/* Operational Alerts - Managers */}
+      {roleResolved && !isStaffUser && (
+        <OperationalAlertsCard />
+      )}
 
       {/* Time Tracking Widget - All Users */}
       {roleResolved && (
@@ -3215,11 +3216,10 @@ function OwnerDashboardScreen() {
         </View>
       )}
 
-      {/* Operational Alerts - Managers (hidden from default dashboard view per user request;
-           still available via the dedicated Action Center if needed in future) */}
-      {false && roleResolved && !isStaffUser && (
-        <OperationalAlertsCard />
-      )}
+      {/* Weather Widget - Quick glance before jumping into the day */}
+      <View style={styles.section}>
+        <WeatherWidget />
+      </View>
 
       {/* Quick Stats - Compact KPI overview */}
       <View style={styles.section}>
