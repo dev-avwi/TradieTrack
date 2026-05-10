@@ -12,10 +12,10 @@ import {
   Platform,
   AppState,
   AppStateStatus,
-  Modal,
   TextInput,
 } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
+import { AppBottomSheet } from '@/components/ui/AppBottomSheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -223,19 +223,14 @@ function WeatherWidget() {
 
   function renderSettingsModal() {
     return (
-      <Modal visible={showSettings} animationType="slide" transparent onRequestClose={() => setShowSettings(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: spacing.lg, paddingBottom: spacing.lg + insets.bottom, maxHeight: '70%' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground }}>Weather Settings</Text>
-              <Button
-                size="icon"
-                variant="ghost"
-                onPress={() => setShowSettings(false)}
-                icon={<Feather name="x" size={22} color={colors.foreground} />}
-              >{null}</Button>
-            </View>
-
+      <AppBottomSheet
+        visible={showSettings}
+        onDismiss={() => setShowSettings(false)}
+        title="Weather Settings"
+        showCloseButton
+        snapPoints={['70%']}
+      >
+        <View>
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.lg, backgroundColor: settings.mode === 'live' ? colorWithOpacity(colors.primary, 0.1) : 'transparent', borderWidth: 1, borderColor: settings.mode === 'live' ? colors.primary : colors.border, marginBottom: spacing.sm }}
               onPress={() => saveSettings({ mode: 'live' })}
@@ -286,9 +281,8 @@ function WeatherWidget() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     );
   }
 

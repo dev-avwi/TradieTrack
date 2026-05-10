@@ -15,6 +15,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { Stack, router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
@@ -434,7 +435,7 @@ export default function LeadsScreen() {
                       <Text style={styles.cardAvatarText}>{lead.name.charAt(0).toUpperCase()}</Text>
                     </View>
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                         <Text style={styles.cardName} numberOfLines={1}>{lead.name}</Text>
                         {lead.createdAt && (
                           <Text style={styles.cardTime}>{formatRelativeDate(lead.createdAt)}</Text>
@@ -558,11 +559,14 @@ export default function LeadsScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal
-      onRequestClose={() => setShowConvertModal(false)} visible={showConvertModal} animationType="slide" transparent>
-        <View style={styles.convertOverlay}>
-          <View style={styles.convertModal}>
-            <Text style={styles.convertTitle}>Convert Lead to Client</Text>
+      <AppBottomSheet
+        visible={showConvertModal}
+        onDismiss={() => { setShowConvertModal(false); setLeadToConvert(null); }}
+        title="Convert Lead to Client"
+        showCloseButton
+        snapPoints={['60%']}
+      >
+        <View>
             <Text style={styles.convertSubtitle}>
               {leadToConvert?.name} will be converted to a client. Optionally create related records:
             </Text>
@@ -597,9 +601,8 @@ export default function LeadsScreen() {
                 )}
               </PressableRow>
             </View>
-          </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </View>
   );
 }
@@ -610,10 +613,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   loadingText: { ...typography.body, color: colors.mutedForeground },
   heroSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md },
   pageTitle: { fontSize: 28, fontWeight: '800', color: colors.foreground, letterSpacing: -0.5 },
-  pageSubtitle: { fontSize: 14, color: colors.mutedForeground, marginTop: 4, lineHeight: 20 },
+  pageSubtitle: { fontSize: 14, color: colors.mutedForeground, marginTop: spacing.xs, lineHeight: 20 },
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   statCard: { flex: 1, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.cardBorder },
-  statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  statIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },
   statValue: { fontSize: 16, fontWeight: '700', color: colors.foreground },
   statLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 1 },
   searchSection: { flexDirection: 'row', paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.sm },
@@ -639,14 +642,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   cardName: { fontSize: 15, fontWeight: '600', color: colors.foreground, flex: 1 },
   cardTime: { fontSize: 11, color: colors.mutedForeground },
   cardDescription: { fontSize: 13, color: colors.mutedForeground, marginTop: 1 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.full },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full },
   statusBadgeText: { fontSize: 11, fontWeight: '600' },
   cardBottom: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, paddingTop: spacing.xs },
   cardMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.sm },
-  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.muted, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full },
+  metaChip: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.muted, paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
   metaChipText: { fontSize: 11, color: colors.mutedForeground },
   cardActionRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.xs },
-  cardActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.md },
+  cardActionBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.md },
   cardActionText: { fontSize: 12, fontWeight: '600' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   modalCancel: { ...typography.body, color: colors.mutedForeground },
@@ -659,7 +662,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   formInput: { backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: spacing.sm, height: sizes.inputHeight, borderWidth: 1, borderColor: colors.border, ...typography.body, color: colors.foreground },
   formTextarea: { height: 80, paddingVertical: spacing.sm },
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  optionChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 4 },
+  optionChip: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   optionChipText: { ...typography.caption, color: colors.mutedForeground },
   convertOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', paddingHorizontal: spacing.lg },
   convertModal: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg },

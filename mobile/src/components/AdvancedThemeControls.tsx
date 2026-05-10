@@ -9,6 +9,7 @@ import {
   Modal,
 } from 'react-native';
 import { PressableRow } from './ui/PressableRow';
+import { AppBottomSheet } from './ui/AppBottomSheet';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, shadows } from '../lib/design-tokens';
@@ -319,42 +320,34 @@ export function AdvancedThemeControls({ onClose }: AdvancedThemeControlsProps) {
         <Text style={styles.resetButtonText}>Reset to Defaults</Text>
       </PressableRow>
 
-      {/* Preset Picker Modal */}
-      <Modal
+      {/* Preset Picker Bottom Sheet */}
+      <AppBottomSheet
         visible={showPresetPicker}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowPresetPicker(false)}
+        onDismiss={() => setShowPresetPicker(false)}
+        title="Choose Theme Preset"
+        showCloseButton
+        snapPoints={['70%']}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.bottomSheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Choose Theme Preset</Text>
-            <ScrollView style={styles.presetList}>
-              {PRESET_THEMES.map((preset) => (
-                <PressableRow key={preset.id} style={[ styles.presetItem, activePresetId === preset.id && styles.presetItemActive, ]} onPress={() => { setActivePreset(preset.id); setShowPresetPicker(false); }} >
-                  <View
-                    style={[
-                      styles.presetColorDot,
-                      { backgroundColor: preset.lightPalette.primary },
-                    ]}
-                  />
-                  <View style={styles.presetItemInfo}>
-                    <Text style={styles.presetItemName}>{preset.name}</Text>
-                    <Text style={styles.presetItemDesc}>{preset.description}</Text>
-                  </View>
-                  {activePresetId === preset.id && (
-                    <Feather name="check" size={18} color={colors.primary} />
-                  )}
-                </PressableRow>
-              ))}
-            </ScrollView>
-            <PressableRow style={styles.cancelButton} onPress={() => setShowPresetPicker(false)} >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+        <View>
+          {PRESET_THEMES.map((preset) => (
+            <PressableRow key={preset.id} style={[ styles.presetItem, activePresetId === preset.id && styles.presetItemActive, ]} onPress={() => { setActivePreset(preset.id); setShowPresetPicker(false); }} >
+              <View
+                style={[
+                  styles.presetColorDot,
+                  { backgroundColor: preset.lightPalette.primary },
+                ]}
+              />
+              <View style={styles.presetItemInfo}>
+                <Text style={styles.presetItemName}>{preset.name}</Text>
+                <Text style={styles.presetItemDesc}>{preset.description}</Text>
+              </View>
+              {activePresetId === preset.id && (
+                <Feather name="check" size={18} color={colors.primary} />
+              )}
             </PressableRow>
-          </View>
+          ))}
         </View>
-      </Modal>
+      </AppBottomSheet>
     </ScrollView>
   );
 }

@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useActionSheet } from '../../src/components/ui/ActionSheet';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
@@ -1084,7 +1085,7 @@ export default function PaymentHubScreen() {
                 <View key={item.invoiceId} style={[styles.documentRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap', marginBottom: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap', marginBottom: spacing.xs }}>
                         <Text style={[styles.documentTitle, { flexShrink: 1 }]} numberOfLines={1}>{item.clientName}</Text>
                         <View style={[styles.statusBadge, { backgroundColor: uCfg.bg }]}>
                           <Text style={[styles.statusText, { color: uCfg.color }]}>{uCfg.label}</Text>
@@ -1305,58 +1306,47 @@ export default function PaymentHubScreen() {
         </View>
       </ScrollView>
 
-      <Modal
+      <AppBottomSheet
         visible={previewModal.visible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setPreviewModal(prev => ({ ...prev, visible: false }))}
+        onDismiss={() => setPreviewModal(prev => ({ ...prev, visible: false }))}
+        title="Preview Reminder"
+        showCloseButton
+        snapPoints={['80%']}
       >
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius['2xl'], borderTopRightRadius: radius['2xl'], maxHeight: '80%' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <View>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground }}>Preview Reminder</Text>
-                <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: 2 }}>
-                  {previewModal.tone.charAt(0).toUpperCase() + previewModal.tone.slice(1)} tone to {previewModal.clientName}
-                </Text>
-              </View>
-              <PressableRow onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))} style={{ padding: spacing.xs }}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </PressableRow>
+        <View>
+          <Text style={{ fontSize: 13, color: colors.mutedForeground, marginTop: -spacing.sm, marginBottom: spacing.md }}>
+            {previewModal.tone.charAt(0).toUpperCase() + previewModal.tone.slice(1)} tone to {previewModal.clientName}
+          </Text>
+
+          <View style={{ backgroundColor: colors.background, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.lg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
+              <Feather name="mail" size={16} color={colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Email to {previewModal.clientName}</Text>
             </View>
-
-            <ScrollView style={{ padding: spacing.lg }} showsVerticalScrollIndicator={false}>
-              <View style={{ backgroundColor: colors.background, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md }}>
-                  <Feather name="mail" size={16} color={colors.primary} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.foreground }}>Email to {previewModal.clientName}</Text>
-                </View>
-                <View style={{ backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.xs }}>Subject: Payment Reminder — Invoice {previewModal.invoiceNumber}</Text>
-                  <View style={{ height: 1, backgroundColor: colors.border, marginBottom: spacing.sm }} />
-                  <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 22 }}>{previewModal.preview}</Text>
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={{ padding: spacing.lg, paddingBottom: spacing['2xl'], gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
-              <PressableRow style={{ backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: radius.lg, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, opacity: previewModal.loading ? 0.6 : 1 }} onPress={handleConfirmSendReminder} disabled={previewModal.loading} >
-                {previewModal.loading ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <>
-                    <Feather name="send" size={16} color={colors.primaryForeground} />
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primaryForeground }}>Send Reminder</Text>
-                  </>
-                )}
-              </PressableRow>
-              <PressableRow style={{ paddingVertical: spacing.sm, alignItems: 'center' }} onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))} >
-                <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Cancel</Text>
-              </PressableRow>
+            <View style={{ backgroundColor: colors.card, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.mutedForeground, marginBottom: spacing.xs }}>Subject: Payment Reminder — Invoice {previewModal.invoiceNumber}</Text>
+              <View style={{ height: 1, backgroundColor: colors.border, marginBottom: spacing.sm }} />
+              <Text style={{ fontSize: 14, color: colors.foreground, lineHeight: 22 }}>{previewModal.preview}</Text>
             </View>
           </View>
+
+          <View style={{ gap: spacing.sm }}>
+            <PressableRow style={{ backgroundColor: colors.primary, paddingVertical: spacing.md, borderRadius: radius.lg, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: spacing.sm, opacity: previewModal.loading ? 0.6 : 1 }} onPress={handleConfirmSendReminder} disabled={previewModal.loading} >
+              {previewModal.loading ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <>
+                  <Feather name="send" size={16} color={colors.primaryForeground} />
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primaryForeground }}>Send Reminder</Text>
+                </>
+              )}
+            </PressableRow>
+            <PressableRow style={{ paddingVertical: spacing.sm, alignItems: 'center' }} onPress={() => setPreviewModal(prev => ({ ...prev, visible: false }))} >
+              <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Cancel</Text>
+            </PressableRow>
+          </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
     </View>
   );
 }
@@ -1781,7 +1771,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   chaserActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.md,

@@ -15,6 +15,7 @@ import {
   Linking,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import { useTheme, ThemeColors } from '../../src/lib/theme';
 import api from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { TeamAvatar } from '../../src/components/TeamAvatar';
+import { spacing } from '../../src/lib/design-tokens';
 
 interface Subcontractor {
   id: string;
@@ -409,24 +411,14 @@ export default function SubcontractorsScreen() {
           )}
         </ScrollView>
 
-        <Modal
+        <AppBottomSheet
           visible={upgradeOpen}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setUpgradeOpen(false)}
+          onDismiss={() => setUpgradeOpen(false)}
+          title="Upgrade to full account"
+          showCloseButton
+          snapPoints={['90%']}
         >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
-          >
-            <View style={styles.modalSheet}>
-              <View style={styles.modalHandle} />
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Upgrade to full account</Text>
-                <PressableRow onPress={() => setUpgradeOpen(false)}>
-                  <Feather name="x" size={22} color={colors.mutedForeground} />
-                </PressableRow>
-              </View>
+            <View>
               <Text style={styles.modalDesc}>
                 Convert this magic-link sub into a full team member with their own login,
                 dashboard and invoicing. We'll re-use their existing details.
@@ -450,11 +442,7 @@ export default function SubcontractorsScreen() {
                 </View>
               )}
 
-              <ScrollView
-                style={styles.formScroll}
-                contentContainerStyle={styles.formContent}
-                keyboardShouldPersistTaps="handled"
-              >
+              <View style={styles.formContent}>
                 <View style={styles.formRow}>
                   <View style={styles.formCol}>
                     <Text style={styles.formLabel}>First name</Text>
@@ -516,7 +504,7 @@ export default function SubcontractorsScreen() {
                   We'll email an account-setup link
                   {upgradeTarget?.contactPhone ? ' and SMS them too' : ''}.
                 </Text>
-              </ScrollView>
+              </View>
 
               <View style={styles.modalActions}>
                 <PressableRow style={[styles.modalBtn, styles.modalBtnGhost]} onPress={() => setUpgradeOpen(false)} testID="button-upgrade-cancel" >
@@ -534,8 +522,7 @@ export default function SubcontractorsScreen() {
                 </PressableRow>
               </View>
             </View>
-          </KeyboardAvoidingView>
-        </Modal>
+        </AppBottomSheet>
       </View>
     </>
   );
@@ -547,10 +534,10 @@ const createStyles = (colors: ThemeColors) =>
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 12,
-      gap: 12,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+      gap: spacing.md,
     },
     backButton: {
       width: 40,
@@ -565,28 +552,28 @@ const createStyles = (colors: ThemeColors) =>
     headerSubtitle: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
 
     gateBanner: {
-      marginHorizontal: 16,
-      marginBottom: 8,
-      padding: 12,
+      marginHorizontal: spacing.lg,
+      marginBottom: spacing.sm,
+      padding: spacing.md,
       borderRadius: 10,
       backgroundColor: (colors.warning ?? '#f59e0b') + '15',
       borderWidth: 1,
       borderColor: (colors.warning ?? '#f59e0b') + '40',
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: spacing.sm,
     },
     gateBannerText: { flex: 1, fontSize: 13, color: colors.foreground },
     gateBannerCta: { fontSize: 13, fontWeight: '600', color: colors.primary },
 
     searchWrap: {
-      marginHorizontal: 16,
-      marginBottom: 8,
-      paddingHorizontal: 12,
+      marginHorizontal: spacing.lg,
+      marginBottom: spacing.sm,
+      paddingHorizontal: spacing.md,
       paddingVertical: 10,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: spacing.sm,
       backgroundColor: colors.card,
       borderRadius: 10,
       borderWidth: 1,
@@ -600,12 +587,12 @@ const createStyles = (colors: ThemeColors) =>
     },
 
     scrollView: { flex: 1 },
-    scrollContent: { paddingBottom: 32 },
+    scrollContent: { paddingBottom: spacing['3xl'] },
 
-    loadingWrap: { paddingVertical: 60, alignItems: 'center', gap: 12 },
+    loadingWrap: { paddingVertical: 60, alignItems: 'center', gap: spacing.md },
     loadingText: { color: colors.mutedForeground, fontSize: 13 },
 
-    emptyWrap: { paddingHorizontal: 32, paddingVertical: 60, alignItems: 'center' },
+    emptyWrap: { paddingHorizontal: spacing['3xl'], paddingVertical: 60, alignItems: 'center' },
     emptyIcon: {
       width: 72,
       height: 72,
@@ -613,7 +600,7 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.card,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 16,
+      marginBottom: spacing.lg,
     },
     emptyTitle: {
       fontSize: 16,
@@ -633,23 +620,23 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       gap: 6,
       backgroundColor: colors.primary,
-      paddingHorizontal: 16,
+      paddingHorizontal: spacing.lg,
       paddingVertical: 10,
       borderRadius: 8,
-      marginTop: 16,
+      marginTop: spacing.lg,
     },
     retryButtonText: { color: colors.white, fontSize: 13, fontWeight: '600' },
 
-    list: { paddingHorizontal: 16, gap: 10 },
+    list: { paddingHorizontal: spacing.lg, gap: 10 },
     subCard: {
       backgroundColor: colors.card,
       borderRadius: 12,
       padding: 14,
       borderWidth: 1,
       borderColor: colors.cardBorder,
-      gap: 12,
+      gap: spacing.md,
     },
-    subRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    subRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
     subInfo: { flex: 1, gap: 3 },
     subName: { fontSize: 15, fontWeight: '600', color: colors.foreground },
     subContact: { fontSize: 13, color: colors.mutedForeground },
@@ -665,15 +652,15 @@ const createStyles = (colors: ThemeColors) =>
     statusBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 8,
+      gap: spacing.xs,
+      paddingHorizontal: spacing.sm,
       paddingVertical: 3,
       borderRadius: 999,
     },
     statusDot: { width: 6, height: 6, borderRadius: 3 },
     statusText: { fontSize: 11, fontWeight: '600' },
 
-    subActions: { flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end' },
+    subActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'flex-end' },
     iconAction: {
       width: 36,
       height: 36,
@@ -689,7 +676,7 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: 'center',
       gap: 6,
       paddingHorizontal: 14,
-      paddingVertical: 8,
+      paddingVertical: spacing.sm,
       borderRadius: 8,
       backgroundColor: colors.primary,
     },
@@ -705,9 +692,9 @@ const createStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
-      paddingHorizontal: 20,
-      paddingTop: 8,
-      paddingBottom: 24,
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing['2xl'],
       maxHeight: '88%',
     },
     modalHandle: {
@@ -716,7 +703,7 @@ const createStyles = (colors: ThemeColors) =>
       borderRadius: 2,
       backgroundColor: colors.cardBorder,
       alignSelf: 'center',
-      marginBottom: 12,
+      marginBottom: spacing.md,
     },
     modalHeader: {
       flexDirection: 'row',
@@ -725,23 +712,23 @@ const createStyles = (colors: ThemeColors) =>
       marginBottom: 6,
     },
     modalTitle: { fontSize: 18, fontWeight: '700', color: colors.foreground },
-    modalDesc: { fontSize: 13, color: colors.mutedForeground, marginBottom: 16, lineHeight: 18 },
+    modalDesc: { fontSize: 13, color: colors.mutedForeground, marginBottom: spacing.lg, lineHeight: 18 },
 
     targetCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
-      padding: 12,
+      gap: spacing.md,
+      padding: spacing.md,
       backgroundColor: colors.card,
       borderRadius: 10,
-      marginBottom: 16,
+      marginBottom: spacing.lg,
     },
     targetName: { fontSize: 14, fontWeight: '600', color: colors.foreground },
     targetContact: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
 
     formScroll: { maxHeight: 360 },
-    formContent: { gap: 14, paddingBottom: 4 },
-    formRow: { flexDirection: 'row', gap: 12 },
+    formContent: { gap: 14, paddingBottom: spacing.xs },
+    formRow: { flexDirection: 'row', gap: spacing.md },
     formCol: { flex: 1, gap: 6 },
     formField: { gap: 6 },
     formLabel: { fontSize: 13, fontWeight: '500', color: colors.foreground },
@@ -750,7 +737,7 @@ const createStyles = (colors: ThemeColors) =>
       borderWidth: 1,
       borderColor: colors.cardBorder,
       borderRadius: 8,
-      paddingHorizontal: 12,
+      paddingHorizontal: spacing.md,
       paddingVertical: 10,
       fontSize: 15,
       color: colors.foreground,
@@ -759,7 +746,7 @@ const createStyles = (colors: ThemeColors) =>
       fontSize: 12,
       color: colors.mutedForeground,
       lineHeight: 16,
-      marginTop: 4,
+      marginTop: spacing.xs,
     },
 
     modalActions: {

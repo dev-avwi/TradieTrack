@@ -433,18 +433,20 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
     height: 34,
     borderRadius: 8,
   },
+  // Use typography presets so brand + page title share the same font
+  // pipeline as card text (Inter on Android, System/SF on iOS via the
+  // global text-defaults patch). Previously these used raw fontSize/
+  // fontWeight which on iOS reads as San Francisco at non-standard weights
+  // and visually clashes with card text rendered through typography presets.
   brandName: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...typography.headline,
     color: colors.primary,
-    letterSpacing: -0.5,
     flexShrink: 1,
   },
   pageTitleWithBack: {
+    ...typography.cardTitle,
     fontSize: 19,
-    fontWeight: '600',
     color: colors.foreground,
-    letterSpacing: -0.3,
     flex: 1,
     flexShrink: 1,
     lineHeight: 22,
@@ -456,8 +458,9 @@ const createStyles = (colors: ThemeColors, topInset: number) => StyleSheet.creat
     marginTop: 1,
   },
   businessBadgeText: {
-    fontSize: 11,
-    fontWeight: '500',
+    ...typography.label,
+    textTransform: 'none',
+    letterSpacing: 0,
     color: colors.primary,
     maxWidth: 120,
   },

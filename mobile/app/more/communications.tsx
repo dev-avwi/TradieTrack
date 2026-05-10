@@ -12,6 +12,7 @@ import {
   Linking,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { router, Stack } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -141,7 +142,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
+    paddingVertical: spacing.sm,
     paddingHorizontal: 14,
     borderRadius: radius.pill,
     backgroundColor: colors.muted,
@@ -243,12 +244,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: typographySizes.sm,
     fontWeight: '500',
     color: colors.foreground,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   itemBody: {
     fontSize: typographySizes.sm,
     color: colors.mutedForeground,
-    marginTop: 4,
+    marginTop: spacing.xs,
     lineHeight: 20,
   },
   itemFooter: {
@@ -291,7 +292,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   attachmentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     borderRadius: radius.sm,
@@ -306,7 +307,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   entityLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: spacing.xs,
   },
   entityLinkText: {
     fontSize: typographySizes.xs,
@@ -331,7 +332,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     fontSize: typographySizes.lg,
     fontWeight: '700',
     color: colors.foreground,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   emptySubtext: {
     fontSize: typographySizes.sm,
@@ -779,44 +780,17 @@ export default function CommunicationsScreen() {
         </ScrollView>
       )}
       
-      <Modal
+      <AppBottomSheet
         visible={showDetail}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowDetail(false)}
+        onDismiss={() => setShowDetail(false)}
+        title={selectedItem ? `${selectedItem.type === 'email' ? 'Email' : 'SMS'} Details` : 'Details'}
+        showCloseButton
+        snapPoints={['85%']}
       >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDetail(false)}
-        >
-          <TouchableOpacity 
-            style={styles.modalContent}
-            activeOpacity={1}
-            onPress={e => e.stopPropagation()}
-          >
+        <View>
             {selectedItem && (
               <>
-                <View style={styles.modalHeader}>
-                  <View style={[
-                    styles.itemIconContainer,
-                    selectedItem.type === 'email' ? styles.emailIcon : styles.smsIcon
-                  ]}>
-                    <Feather 
-                      name={selectedItem.type === 'email' ? 'mail' : 'message-square'} 
-                      size={iconSizes.md} 
-                      color={selectedItem.type === 'email' ? colors.info : colors.success} 
-                    />
-                  </View>
-                  <Text style={styles.modalTitle}>
-                    {selectedItem.type === 'email' ? 'Email' : 'SMS'} Details
-                  </Text>
-                  <PressableRow onPress={() => setShowDetail(false)}>
-                    <Feather name="x" size={iconSizes.lg} color={colors.foreground} />
-                  </PressableRow>
-                </View>
-                
-                <ScrollView style={styles.modalBody}>
+                <View style={styles.modalBody}>
                   <View style={styles.detailSection}>
                     <Text style={styles.detailLabel}>Recipient</Text>
                     <Text style={styles.detailValue}>{selectedItem.recipient}</Text>
@@ -889,12 +863,11 @@ export default function CommunicationsScreen() {
                       <Feather name="chevron-right" size={iconSizes.md} color={colors.primary} />
                     </PressableRow>
                   )}
-                </ScrollView>
+                </View>
               </>
             )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        </View>
+      </AppBottomSheet>
     </View>
   );
 }

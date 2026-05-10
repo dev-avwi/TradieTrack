@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
+import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 let MapView: any;
 let Marker: any;
 let Callout: any;
@@ -927,67 +928,59 @@ export default function DispatchBoardScreen() {
   };
 
   const renderAssignModal = () => (
-    <Modal
-      onRequestClose={() => setShowAssignModal(false)} visible={showAssignModal} animationType="slide" transparent>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHandle} />
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {assigningJob?.assignedTo ? 'Reassign Job' : 'Assign Job'}
-            </Text>
-            <PressableRow onPress={() => { setShowAssignModal(false); setAssigningJob(null); }} >
-              <Feather name="x" size={24} color={colors.foreground} />
-            </PressableRow>
-          </View>
-          {assigningJob && (
-            <View style={styles.modalJobInfo}>
-              <Text style={styles.modalJobTitle}>{assigningJob.title}</Text>
-              {assigningJob.scheduledAt && (
-                <Text style={styles.modalJobMeta}>{format(parseISO(assigningJob.scheduledAt), 'EEE, d MMM · h:mm a')}</Text>
-              )}
-            </View>
-          )}
-          <ScrollView style={styles.modalList}>
-            {assigningJob?.assignedTo && (
-              <PressableRow style={styles.modalMemberItem} onPress={() => handleUnassign(assigningJob)} >
-                <View style={[styles.modalMemberAvatar, { backgroundColor: colors.destructive }]}>
-                  <Feather name="user-x" size={16} color={colors.destructiveForeground || colors.white} />
-                </View>
-                <Text style={[styles.modalMemberName, { color: colors.destructive }]}>Unassign</Text>
-              </PressableRow>
+    <AppBottomSheet
+      visible={showAssignModal}
+      onDismiss={() => { setShowAssignModal(false); setAssigningJob(null); }}
+      title={assigningJob?.assignedTo ? 'Reassign Job' : 'Assign Job'}
+      showCloseButton
+      snapPoints={['70%']}
+    >
+      <View>
+        {assigningJob && (
+          <View style={styles.modalJobInfo}>
+            <Text style={styles.modalJobTitle}>{assigningJob.title}</Text>
+            {assigningJob.scheduledAt && (
+              <Text style={styles.modalJobMeta}>{format(parseISO(assigningJob.scheduledAt), 'EEE, d MMM · h:mm a')}</Text>
             )}
-            {teamMembers.map(member => {
-              const isCurrentlyAssigned = assigningJob?.assignedTo === member.userId;
-              return (
-                <PressableRow key={member.id} style={[styles.modalMemberItem, isCurrentlyAssigned && styles.modalMemberItemActive]} onPress={() => handleAssign(member.userId)} disabled={isAssigning || isCurrentlyAssigned} >
-                  <TeamAvatar
-                    firstName={member.firstName}
-                    lastName={member.lastName}
-                    userId={String(member.userId)}
-                    themeColor={(member as any).themeColor}
-                    size={36}
-                  />
-                  <View style={styles.modalMemberInfo}>
-                    <Text style={styles.modalMemberName}>{getMemberName(member)}</Text>
-                    {member.roleName && <Text style={styles.modalMemberRole}>{member.roleName}</Text>}
-                  </View>
-                  {isCurrentlyAssigned && (
-                    <Feather name="check" size={18} color={colors.primary} />
-                  )}
-                </PressableRow>
-              );
-            })}
-          </ScrollView>
-          {isAssigning && (
-            <View style={styles.modalLoading}>
-              <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.modalLoadingText}>Assigning...</Text>
+          </View>
+        )}
+        {assigningJob?.assignedTo && (
+          <PressableRow style={styles.modalMemberItem} onPress={() => handleUnassign(assigningJob)} >
+            <View style={[styles.modalMemberAvatar, { backgroundColor: colors.destructive }]}>
+              <Feather name="user-x" size={16} color={colors.destructiveForeground || colors.white} />
             </View>
-          )}
-        </View>
+            <Text style={[styles.modalMemberName, { color: colors.destructive }]}>Unassign</Text>
+          </PressableRow>
+        )}
+        {teamMembers.map(member => {
+          const isCurrentlyAssigned = assigningJob?.assignedTo === member.userId;
+          return (
+            <PressableRow key={member.id} style={[styles.modalMemberItem, isCurrentlyAssigned && styles.modalMemberItemActive]} onPress={() => handleAssign(member.userId)} disabled={isAssigning || isCurrentlyAssigned} >
+              <TeamAvatar
+                firstName={member.firstName}
+                lastName={member.lastName}
+                userId={String(member.userId)}
+                themeColor={(member as any).themeColor}
+                size={36}
+              />
+              <View style={styles.modalMemberInfo}>
+                <Text style={styles.modalMemberName}>{getMemberName(member)}</Text>
+                {member.roleName && <Text style={styles.modalMemberRole}>{member.roleName}</Text>}
+              </View>
+              {isCurrentlyAssigned && (
+                <Feather name="check" size={18} color={colors.primary} />
+              )}
+            </PressableRow>
+          );
+        })}
+        {isAssigning && (
+          <View style={styles.modalLoading}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.modalLoadingText}>Assigning...</Text>
+          </View>
+        )}
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 
   return (
@@ -1562,7 +1555,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     borderTopLeftRadius: radius['2xl'],
     borderTopRightRadius: radius['2xl'],
     maxHeight: '70%',
-    paddingBottom: 40,
+    paddingBottom: spacing['4xl'],
   },
   modalHandle: {
     width: 36,
@@ -1780,14 +1773,14 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
   calloutTitle: {
     ...typography.bodySemibold,
     color: '#000',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   calloutStatusBadge: {
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.sm,
     alignSelf: 'flex-start',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   calloutStatusText: {
     fontSize: 11,
@@ -1802,7 +1795,7 @@ const createStyles = (colors: ThemeColors, contentWidth: number, responsivePaddi
     fontSize: 12,
     color: colors.foreground,
     fontWeight: '500',
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   calloutTapHint: {
     fontSize: 11,

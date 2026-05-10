@@ -10,6 +10,7 @@ import {
   Alert
 } from 'react-native';
 import { PressableRow } from './ui/PressableRow';
+import { AppBottomSheet } from './ui/AppBottomSheet';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { spacing, radius, typography } from '../lib/design-tokens';
@@ -125,22 +126,14 @@ export function TradeTypeSelector({
         <Feather name="chevron-down" size={18} color={colors.mutedForeground} />
       </PressableRow>
 
-      <Modal
+      <AppBottomSheet
         visible={showPicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPicker(false)}
+        onDismiss={() => setShowPicker(false)}
+        title="Select Trade Type"
+        showCloseButton
+        snapPoints={['80%']}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Trade Type</Text>
-              <PressableRow style={styles.closeButton} onPress={() => setShowPicker(false)} >
-                <Feather name="x" size={20} color={colors.mutedForeground} />
-              </PressableRow>
-            </View>
-
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View>
               {Object.entries(TRADE_CATEGORIES).map(([category, trades]) => (
                 <View key={category} style={styles.categorySection}>
                   <Text style={styles.categoryLabel}>{category}</Text>
@@ -179,10 +172,8 @@ export function TradeTypeSelector({
                   <Text style={styles.requestButtonText}>Request New Trade Type</Text>
                 </PressableRow>
               </View>
-            </ScrollView>
-          </View>
         </View>
-      </Modal>
+      </AppBottomSheet>
 
       <Modal
         visible={showRequestModal}
@@ -233,8 +224,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   label: {
     fontSize: 15,
@@ -255,7 +246,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: spacing.md,
   },
   iconContainer: {
     width: 36,
@@ -280,7 +271,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
-    paddingBottom: 32,
+    paddingBottom: spacing['3xl'],
   },
   requestModalContent: {
     paddingHorizontal: spacing.lg,
@@ -301,7 +292,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     color: colors.foreground,
   },
   closeButton: {
-    padding: 8,
+    padding: spacing.sm,
   },
   scrollView: {
     paddingHorizontal: spacing.md,
@@ -321,10 +312,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   tradeItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.md,
-    gap: 12,
+    gap: spacing.md,
   },
   tradeItemSelected: {
     backgroundColor: colors.primaryLight,
@@ -353,7 +344,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
     paddingVertical: 14,
     borderRadius: radius.lg,
     backgroundColor: colors.primaryLight,
@@ -401,7 +392,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
     paddingVertical: 14,
     borderRadius: radius.lg,
     backgroundColor: colors.primary,
