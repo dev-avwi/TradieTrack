@@ -85,11 +85,23 @@ export async function handleCallback(url: string, userId: string): Promise<XeroC
   
   const tokenSet = await xero.apiCallback(url);
   
-  await xero.updateTenants();
-  const tenants = xero.tenants;
+  let tenants;
+  try {
+    await xero.updateTenants();
+    tenants = xero.tenants;
+  } catch (err: any) {
+    const status = err?.response?.statusCode || err?.response?.status;
+    const wwwAuth = err?.response?.headers?.['www-authenticate'] || '';
+    if (status === 401 && /insufficient_scope/i.test(wwwAuth)) {
+      throw new Error(
+        "Xero didn't grant accounting access. This usually means the Xero account you signed in with has no organisation set up, or you didn't select an organisation on the Xero authorise screen. Please create/select a Xero organisation and try again."
+      );
+    }
+    throw err;
+  }
   
   if (!tenants || tenants.length === 0) {
-    throw new Error("No Xero organizations found for this account");
+    throw new Error("No Xero organizations found for this account. Please add an organisation in Xero and try again.");
   }
 
   const tenant = tenants[0];
