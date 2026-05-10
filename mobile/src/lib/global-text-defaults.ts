@@ -3,10 +3,17 @@ import { cloneElement, isValidElement } from 'react';
 import type { ReactElement } from 'react';
 import type { TextStyle } from 'react-native';
 
-// Inter is the brand font on both iOS and Android. iOS was previously left on
-// system font (San Francisco) due to a weight regression in r13/r14, but the
-// user has confirmed Inter is the intended look across both platforms. Inter
-// fonts are loaded in mobile/app/_layout.tsx via useFonts() before this runs.
+// Typography rule (re-established 2026-05 after Round 13 regression):
+//   - iOS  → SYSTEM FONT (San Francisco). SF Pro Display/Text renders weight
+//     hierarchy crisply across all 9 weights with no font loading needed.
+//     Forcing Inter on iOS in r13 collapsed weights 100/200/300 onto
+//     Inter_400Regular (the only "light-ish" weight we ship), flattening
+//     the visual hierarchy. The user confirmed via screenshot diff that
+//     SF is the intended iOS look — revert.
+//   - Android → INTER, because the Android default (Roboto) renders weight
+//     hierarchy poorly and we already ship Inter_400/500/600/700/800.
+// Inter fonts are loaded in mobile/app/_layout.tsx via useFonts() before
+// this runs.
 
 const WEIGHT_TO_INTER: Record<string, string> = {
   '100': 'Inter_400Regular',
@@ -26,7 +33,11 @@ const ANDROID_TEXT_FIX: TextStyle = { includeFontPadding: false, textAlignVertic
 
 function resolveBaseStyle(userStyle: unknown, isAndroid: boolean): TextStyle {
   const flat = (StyleSheet.flatten(userStyle as any) || {}) as TextStyle;
-  const androidFix = isAndroid ? ANDROID_TEXT_FIX : {};
+  // iOS: leave fontFamily unset so React Native falls through to San
+  // Francisco. RN already honours fontWeight on the system font, so
+  // weights 100→900 all render with their true visual weight.
+  if (!isAndroid) return {};
+  const androidFix = ANDROID_TEXT_FIX;
   if (flat.fontFamily) return androidFix;
   const w = flat.fontWeight != null ? String(flat.fontWeight) : '400';
   const fontFamily = WEIGHT_TO_INTER[w] || 'Inter_400Regular';
