@@ -196,49 +196,64 @@ function ClearSampleDataCard() {
   });
   
   const hasDemoData = (userData as any)?.user?.hasDemoData === true;
-  
+
+  // Task #115: also detect isSample-flagged rows from the new sample-data system.
+  const { data: sampleDataInfo } = useQuery<{ hasSampleData: boolean }>({
+    queryKey: ['/api/onboarding/sample-data'],
+  });
+  const hasSampleData = sampleDataInfo?.hasSampleData === true;
+
   const handleClearData = async () => {
-    if (!confirm('Clear all sample data? This only removes demo records - your own data is safe.')) {
+    if (!confirm('Remove all sample data? This only removes the example records — your own data is safe.')) {
       return;
     }
-    
+
     setIsClearing(true);
     try {
-      const response = await fetch('/api/onboarding/clear-demo-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to clear sample data');
+      // Clear both legacy demo data and isSample-flagged rows.
+      if (hasDemoData) {
+        try {
+          await fetch('/api/onboarding/clear-demo-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+          });
+        } catch {}
       }
-      
+      if (hasSampleData) {
+        const r = await fetch('/api/onboarding/sample-data', {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to remove sample data');
+        }
+      }
+
       toast({
-        title: "Sample data cleared",
-        description: `Removed ${data.deleted?.clients || 0} clients, ${data.deleted?.jobs || 0} jobs, ${data.deleted?.quotes || 0} quotes, ${data.deleted?.invoices || 0} invoices. You're ready to add your own!`,
+        title: "Sample data removed",
+        description: "All example clients, jobs, quotes and invoices were deleted. You're ready to add your own!",
       });
-      
-      // Invalidate all relevant queries
+
       queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/onboarding/sample-data'] });
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "Failed to clear sample data",
+        description: error.message || "Failed to remove sample data",
       });
     } finally {
       setIsClearing(false);
     }
   };
-  
-  if (!hasDemoData) return null;
+
+  if (!hasDemoData && !hasSampleData) return null;
   
   return (
     <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
@@ -267,7 +282,7 @@ function ClearSampleDataCard() {
           ) : (
             <>
               <X className="h-4 w-4 mr-2" />
-              Clear Sample Data
+              Remove Sample Data
             </>
           )}
         </Button>

@@ -12338,6 +12338,49 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // ============================================
+  // Task #115: First-Run Sample Data Toggle
+  // POST   /api/onboarding/seed-sample-data    (opt-in during onboarding)
+  // GET    /api/onboarding/sample-data          (does the user have any?)
+  // DELETE /api/onboarding/sample-data          (one-tap "Remove sample data")
+  // All flagged via clients.isSample / jobs.isSample / quotes.isSample / invoices.isSample.
+  // ============================================
+  app.post("/api/onboarding/seed-sample-data", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const { seedSampleDataForUser } = await import('./sampleData');
+      const userId = req.userId!;
+      const user = await storage.getUser(userId);
+      const tradeType = req.body?.tradeType || user?.tradeType || 'general';
+      const result = await seedSampleDataForUser(userId, tradeType);
+      if (!result.success) return res.status(400).json({ error: result.message });
+      res.json(result);
+    } catch (error: any) {
+      console.error('[SampleData] seed error:', error);
+      res.status(500).json({ error: error.message || 'Failed to seed sample data' });
+    }
+  });
+
+  app.get("/api/onboarding/sample-data", requireAuth, async (req: any, res) => {
+    try {
+      const { userHasSampleData } = await import('./sampleData');
+      res.json({ hasSampleData: await userHasSampleData(req.userId!) });
+    } catch (error: any) {
+      console.error('[SampleData] check error:', error);
+      res.status(500).json({ error: error.message || 'Failed to check sample data' });
+    }
+  });
+
+  app.delete("/api/onboarding/sample-data", requireAuth, ownerOnly(), async (req: any, res) => {
+    try {
+      const { clearSampleDataForUser } = await import('./sampleData');
+      const result = await clearSampleDataForUser(req.userId!);
+      res.json(result);
+    } catch (error: any) {
+      console.error('[SampleData] clear error:', error);
+      res.status(500).json({ error: error.message || 'Failed to remove sample data' });
+    }
+  });
+
   // Endpoint to clear demo data when user is ready to start fresh
   // Removes ONLY the sample records created during onboarding (tracked by ID)
   // User's own data is never touched

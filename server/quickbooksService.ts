@@ -452,7 +452,9 @@ export async function syncInvoicesToQuickbooks(userId: string): Promise<{ synced
     for (const invoice of invoices) {
       try {
         if (invoice.status === 'draft') continue;
-        
+        // Task #115: never sync sample/demo records to upstream accounting systems.
+        if (invoice.isSample) { skipped++; continue; }
+
         if ((invoice as any).quickbooksInvoiceId) {
           skipped++;
           continue;
@@ -460,6 +462,7 @@ export async function syncInvoicesToQuickbooks(userId: string): Promise<{ synced
         
         const client = clients.find(c => c.id === invoice.clientId);
         if (!client) continue;
+        if (client.isSample) { skipped++; continue; }
 
         let customer = await findCustomerByEmail(tokens.accessToken, refreshedConnection.realmId, client.email);
         
@@ -623,6 +626,11 @@ export async function syncSingleInvoiceToQuickbooks(userId: string, invoiceId: s
       return { success: false, error: "Invoice not found" };
     }
 
+    // Task #115: never sync sample/demo records to upstream accounting systems.
+    if (invoice.isSample) {
+      return { success: true };
+    }
+
     if ((invoice as any).quickbooksInvoiceId) {
       return { success: true, quickbooksInvoiceId: (invoice as any).quickbooksInvoiceId };
     }
@@ -719,9 +727,12 @@ export async function syncQuotesToQuickbooks(userId: string): Promise<{ synced: 
     for (const quote of quotes) {
       try {
         if (quote.status === 'draft') { skipped++; continue; }
+        // Task #115: never sync sample/demo records to upstream accounting systems.
+        if (quote.isSample) { skipped++; continue; }
 
         const client = clients.find(c => c.id === quote.clientId);
         if (!client) { skipped++; continue; }
+        if (client.isSample) { skipped++; continue; }
 
         let customer = await findCustomerByEmail(tokens.accessToken, refreshedConnection.realmId, client.email);
         if (!customer) {

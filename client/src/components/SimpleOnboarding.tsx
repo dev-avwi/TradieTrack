@@ -502,14 +502,18 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
 
       if (seedDemoData) {
         try {
-          await apiRequest('POST', '/api/onboarding/seed-demo-data', { tradeType: userTradeKey });
+          // Task #115: opt-in "Try with sample data". Creates 3 sample clients,
+          // 2 quotes, 2 invoices, 1 scheduled + 1 in-progress job (all flagged
+          // isSample=true so accounting integrations skip them, and one tap
+          // removes everything from Dashboard or Settings).
+          await apiRequest('POST', '/api/onboarding/seed-sample-data', { tradeType: userTradeKey });
           await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
           await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
           await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
           await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
-          await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+          await queryClient.invalidateQueries({ queryKey: ['/api/onboarding/sample-data'] });
         } catch (error) {
-          console.log('Demo data seeding skipped:', error);
+          console.log('Sample data seeding skipped:', error);
         }
       }
 
@@ -572,7 +576,9 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const [seedDemoData, setSeedDemoData] = useState(true);
+  // Task #115: opt-in sample data toggle. Default OFF — most users prefer
+  // an empty workspace they can populate with their own jobs straight away.
+  const [seedDemoData, setSeedDemoData] = useState(false);
   const [importMode, setImportMode] = useState<'none' | 'clients' | 'catalog' | 'tradify' | 'servicem8'>('none');
   const [importPreview, setImportPreview] = useState<{ headers: string[]; rows: any[]; totalRows: number; suggestedMappings: Record<string, string>; detectedType?: string; detectedPlatform?: string; duplicateCount?: number; duplicates?: { row: number; reason: string }[]; formatWarning?: string } | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -1608,9 +1614,14 @@ export default function SimpleOnboarding({ onComplete, onSkip }: SimpleOnboardin
         </div>
         <div className="flex items-center justify-between gap-3">
           <div className="flex-1">
-            <p className="text-xs text-muted-foreground">Also load sample clients, jobs & invoices to explore</p>
+            <p className="text-xs font-medium">Try with sample data</p>
+            <p className="text-xs text-muted-foreground">Loads a few example clients, quotes &amp; invoices so you can explore. Remove any time.</p>
           </div>
-          <Switch checked={seedDemoData} onCheckedChange={setSeedDemoData} />
+          <Switch
+            checked={seedDemoData}
+            onCheckedChange={setSeedDemoData}
+            data-testid="switch-try-sample-data"
+          />
         </div>
         <Button
           type="button"

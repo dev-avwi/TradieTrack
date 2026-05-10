@@ -755,6 +755,8 @@ export const clients = pgTable("clients", {
   referralSource: text("referral_source"),
   xeroContactId: varchar("xero_contact_id"),
   xeroSyncedAt: timestamp("xero_synced_at"),
+  // Task #115: marks rows created by the "Try with sample data" onboarding toggle.
+  isSample: boolean("is_sample").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -817,6 +819,8 @@ export const jobs = pgTable("jobs", {
   leadSource: text("lead_source"),
   leadId: varchar("lead_id"),
   version: integer("version").notNull().default(1),
+  // Task #115: marks rows created by the "Try with sample data" onboarding toggle.
+  isSample: boolean("is_sample").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -919,6 +923,8 @@ export const quotes = pgTable("quotes", {
   // Document-level template settings (locked at creation time - won't change if business template changes later)
   documentTemplate: text("document_template"), // modern, professional, minimal - copied from business settings at creation
   documentTemplateSettings: json("document_template_settings"), // Custom overrides for template - copied from business settings at creation
+  // Task #115: marks rows created by the "Try with sample data" onboarding toggle.
+  isSample: boolean("is_sample").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1032,6 +1038,8 @@ export const invoices = pgTable("invoices", {
   depositAmount: decimal("deposit_amount", { precision: 10, scale: 2 }),
   depositPaid: boolean("deposit_paid").default(false),
   depositPaidAt: timestamp("deposit_paid_at"),
+  // Task #115: marks rows created by the "Try with sample data" onboarding toggle.
+  isSample: boolean("is_sample").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -79,6 +79,13 @@ export default function TradieDashboard({
     staleTime: 30000,
   });
   const hasDemoData = userData?.hasDemoData === true;
+  // Task #115: also surface the banner when isSample-flagged rows exist.
+  const { data: sampleDataInfo } = useQuery<{ hasSampleData: boolean }>({
+    queryKey: ["/api/onboarding/sample-data"],
+    staleTime: 30000,
+  });
+  const hasSampleData = sampleDataInfo?.hasSampleData === true;
+  const showSampleBanner = hasDemoData || hasSampleData;
   const [isClearingDemo, setIsClearingDemo] = useState(false);
 
   // Fetch active time entry across all jobs
@@ -573,7 +580,7 @@ export default function TradieDashboard({
       <DashboardUpgradeCard />
 
       {/* Demo data banner - shown when user has sample data loaded */}
-      {hasDemoData && (
+      {showSampleBanner && (
         <Card className="border border-amber-200 dark:border-amber-800 overflow-visible" data-testid="demo-data-banner">
           <CardContent className="py-3 px-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -588,9 +595,22 @@ export default function TradieDashboard({
                 size="sm"
                 disabled={isClearingDemo}
                 onClick={async () => {
+                  // Task #115: confirm once before destructive removal.
+                  if (!confirm('Remove all sample data? This only deletes the example clients, jobs, quotes and invoices — your own data is safe.')) {
+                    return;
+                  }
                   setIsClearingDemo(true);
                   try {
-                    await apiRequest('POST', '/api/onboarding/clear-demo-data', {});
+                    // Task #115: clear both the legacy demo dataset and the
+                    // newer isSample-flagged rows so one tap removes everything.
+                    // Errors propagate to the outer catch so the UI shows a
+                    // destructive toast instead of silently claiming success.
+                    if (hasDemoData) {
+                      await apiRequest('POST', '/api/onboarding/clear-demo-data', {});
+                    }
+                    if (hasSampleData) {
+                      await apiRequest('DELETE', '/api/onboarding/sample-data');
+                    }
                     await queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
                     await queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
                     await queryClient.invalidateQueries({ queryKey: ['/api/jobs/my-jobs'] });
@@ -599,9 +619,10 @@ export default function TradieDashboard({
                     await queryClient.invalidateQueries({ queryKey: ['/api/quotes'] });
                     await queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
                     await queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
-                    toast({ title: "Sample data cleared", description: "All demo records have been removed. You're starting fresh!" });
+                    await queryClient.invalidateQueries({ queryKey: ['/api/onboarding/sample-data'] });
+                    toast({ title: "Sample data removed", description: "All sample records have been deleted. You're starting fresh!" });
                   } catch (error) {
-                    toast({ title: "Failed to clear demo data", description: "Please try again", variant: "destructive" });
+                    toast({ title: "Failed to remove sample data", description: "Please try again", variant: "destructive" });
                   } finally {
                     setIsClearingDemo(false);
                   }

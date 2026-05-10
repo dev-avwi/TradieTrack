@@ -315,9 +315,12 @@ export async function syncInvoicesToMyob(userId: string): Promise<{ synced: numb
     for (const invoice of invoices) {
       try {
         if (invoice.status === 'draft') continue;
-        
+        // Task #115: never sync sample/demo records to upstream accounting systems.
+        if (invoice.isSample) continue;
+
         const client = clients.find(c => c.id === invoice.clientId);
         if (!client) continue;
+        if (client.isSample) continue;
 
         const lineItems = await storage.getInvoiceLineItems(invoice.id);
         
@@ -484,6 +487,11 @@ export async function syncSingleInvoiceToMyob(userId: string, invoiceId: string)
       return { success: false, error: "Invoice not found" };
     }
 
+    // Task #115: never sync sample/demo records to upstream accounting systems.
+    if (invoice.isSample) {
+      return { success: true };
+    }
+
     const refreshedConnection = await refreshTokenIfNeeded(connection);
     const tokens = decryptTokens(refreshedConnection);
     const cfToken = getCfToken(refreshedConnection);
@@ -560,9 +568,12 @@ export async function syncQuotesToMyob(userId: string): Promise<{ synced: number
     for (const quote of quotes) {
       try {
         if (quote.status === 'draft') { skipped++; continue; }
+        // Task #115: never sync sample/demo records to upstream accounting systems.
+        if (quote.isSample) { skipped++; continue; }
 
         const client = clients.find(c => c.id === quote.clientId);
         if (!client) { skipped++; continue; }
+        if (client.isSample) { skipped++; continue; }
 
         const lineItems = await storage.getQuoteLineItems(quote.id);
 

@@ -672,7 +672,9 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
     for (const invoice of invoices) {
       try {
         if (invoice.status === 'draft') continue;
-        
+        // Task #115: never sync sample/demo records to upstream accounting systems.
+        if (invoice.isSample) { skipped++; continue; }
+
         if (invoice.xeroInvoiceId) {
           skipped++;
           continue;
@@ -680,6 +682,7 @@ export async function syncInvoicesToXero(userId: string): Promise<{ synced: numb
         
         const client = clients.find(c => c.id === invoice.clientId);
         if (!client) continue;
+        if (client.isSample) { skipped++; continue; }
 
         const lineItems = await storage.getInvoiceLineItems(invoice.id);
         
@@ -758,6 +761,11 @@ export async function syncSingleInvoiceToXero(userId: string, invoiceId: string)
     const invoice = await storage.getInvoice(invoiceId, userId);
     if (!invoice) {
       return { success: false, error: "Invoice not found" };
+    }
+
+    // Task #115: never sync sample/demo records to upstream accounting systems.
+    if (invoice.isSample) {
+      return { success: true };
     }
 
     if (invoice.xeroInvoiceId) {
@@ -1013,6 +1021,11 @@ export async function syncQuoteToXero(userId: string, quoteId: string): Promise<
       return { success: false, error: "Quote not found" };
     }
 
+    // Task #115: never sync sample/demo records to upstream accounting systems.
+    if (quote.isSample) {
+      return { success: true };
+    }
+
     if ((quote as any).xeroInvoiceId) {
       return { success: true, xeroInvoiceId: (quote as any).xeroInvoiceId };
     }
@@ -1088,6 +1101,10 @@ export async function pushQuoteToXero(userId: string, quoteId: string): Promise<
 
     const quote = await storage.getQuote(quoteId, userId);
     if (!quote) return { success: false, error: "Quote not found" };
+    // Task #115: never sync sample/demo records to upstream accounting systems.
+    if (quote.isSample) {
+      return { success: true };
+    }
     if ((quote as any).xeroQuoteId) {
       return { success: true, xeroQuoteId: (quote as any).xeroQuoteId };
     }
