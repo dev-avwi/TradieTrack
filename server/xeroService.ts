@@ -185,10 +185,10 @@ export async function handleCallback(url: string, userId: string): Promise<XeroC
     tenants = xero.tenants || [];
   } catch (err: any) {
     updateTenantsError = err;
-    // Inspect the error VERY defensively — different xero-node / openid-client
-    // versions wrap upstream errors differently (axios-style .response.status,
-    // openid-client OPError with .statusCode, generic Error with body in
-    // .message, etc.). We dig through every plausible field.
+    // xero-node sometimes throws a PLAIN STRING (e.g. raw response body) for
+    // /connections failures, sometimes an axios-style Error with .response,
+    // sometimes an openid-client OPError with .statusCode. Handle all shapes.
+    const errIsString = typeof err === 'string';
     const status =
       err?.response?.statusCode ??
       err?.response?.status ??
@@ -200,7 +200,7 @@ export async function handleCallback(url: string, userId: string): Promise<XeroC
       '';
     const detailBody = err?.response?.body || err?.body || {};
     const detail = (detailBody?.Detail || detailBody?.detail || '') as string;
-    const errMsg = String(err?.message || '');
+    const errMsg = errIsString ? err : String(err?.message || '');
 
     console.error('[Xero] updateTenants failed:', {
       status,
@@ -212,14 +212,19 @@ export async function handleCallback(url: string, userId: string): Promise<XeroC
       jwtScopes,
     });
 
+    const isLegacy = Array.isArray(amr) && amr.includes('legacy');
+
     const looksLikeInsufficientScope =
       /insufficient_scope/i.test(wwwAuth) ||
       /insufficient_scope/i.test(errMsg) ||
       /AuthorizationUnsuccessful/i.test(detail) ||
-      (status === 401 && jwtScopes.length > 0);
+      /AuthorizationUnsuccessful/i.test(errMsg) ||
+      (status === 401 && jwtScopes.length > 0) ||
+      // String-typed throws from xero-node lose all metadata; if we know
+      // amr=['legacy'] then updateTenants failed for the classic legacy reason.
+      isLegacy;
 
     if (looksLikeInsufficientScope) {
-      const isLegacy = Array.isArray(amr) && amr.includes('legacy');
       if (isLegacy) {
         throw new Error(
           "Your Xero login is a legacy 'Sign In with Xero' account, not a full Xero accounting subscription. " +
