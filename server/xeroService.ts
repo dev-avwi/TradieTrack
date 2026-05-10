@@ -1,5 +1,5 @@
 import { XeroClient, TokenSet, Contact, Phone, Address } from "xero-node";
-import { Issuer } from "openid-client";
+import { createRequire } from "module";
 import { storage } from "./storage";
 
 // Xero rate-limits / Akamai-blocks repeated hits to its OIDC discovery endpoint
@@ -8,19 +8,34 @@ import { storage } from "./storage";
 // Connect/Test attempt re-discovers — hammering the endpoint until WAF returns
 // 403 Forbidden. Patch Issuer.discover to cache the result for the life of the
 // process so we only hit Xero's discovery endpoint once.
-const _origDiscover = Issuer.discover.bind(Issuer);
-const _discoveryCache = new Map<string, Promise<Issuer<any>>>();
-(Issuer as any).discover = function(url: string): Promise<Issuer<any>> {
-  let p = _discoveryCache.get(url);
-  if (!p) {
-    p = _origDiscover(url).catch((err) => {
-      _discoveryCache.delete(url); // don't cache failures
-      throw err;
-    });
-    _discoveryCache.set(url, p);
+//
+// xero-node bundles openid-client v5 (which exports `Issuer`). The top-level
+// `openid-client` package may be a different (v6+) version that has dropped
+// the `Issuer` export, so we resolve the SDK's bundled copy explicitly.
+try {
+  const _require = createRequire(import.meta.url);
+  const _oidc: any = _require("xero-node/node_modules/openid-client");
+  if (_oidc?.Issuer?.discover) {
+    const _origDiscover = _oidc.Issuer.discover.bind(_oidc.Issuer);
+    const _discoveryCache = new Map<string, Promise<any>>();
+    _oidc.Issuer.discover = function (url: string): Promise<any> {
+      let p = _discoveryCache.get(url);
+      if (!p) {
+        p = _origDiscover(url).catch((err: any) => {
+          _discoveryCache.delete(url); // don't cache failures
+          throw err;
+        });
+        _discoveryCache.set(url, p);
+      }
+      return p;
+    };
+    console.log("[Xero] OIDC Issuer.discover patched with in-process cache");
+  } else {
+    console.warn("[Xero] Could not patch Issuer.discover — Issuer not found on bundled openid-client");
   }
-  return p;
-};
+} catch (err) {
+  console.warn("[Xero] Could not load bundled openid-client to patch discovery:", err);
+}
 import type { XeroConnection, InsertClient, XeroSyncState } from "@shared/schema";
 import { encrypt, decrypt } from "./encryption";
 import crypto from "crypto";
