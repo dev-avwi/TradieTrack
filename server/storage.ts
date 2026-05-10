@@ -398,6 +398,10 @@ import {
   numberPortRequests,
   type NumberPortRequest,
   type InsertNumberPortRequest,
+  quickReplies,
+  type QuickReply,
+  type InsertQuickReply,
+  DEFAULT_QUICK_REPLIES,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { tradieQuoteTemplates } from "./tradieTemplates";
@@ -969,6 +973,14 @@ export interface IStorage {
   updateMessageTemplate(id: string, userId: string, updates: Partial<InsertMessageTemplate>): Promise<MessageTemplate | null>;
   deleteMessageTemplate(id: string, userId: string): Promise<boolean>;
   ensureDefaultTemplates(userId: string): Promise<void>;
+
+  // Quick Replies (Chat Hub canned responses)
+  getQuickReplies(userId: string): Promise<QuickReply[]>;
+  createQuickReply(reply: InsertQuickReply): Promise<QuickReply>;
+  updateQuickReply(id: string, userId: string, updates: Partial<InsertQuickReply>): Promise<QuickReply | null>;
+  deleteQuickReply(id: string, userId: string): Promise<boolean>;
+  reorderQuickReplies(userId: string, orderedIds: string[]): Promise<QuickReply[]>;
+  ensureDefaultQuickReplies(userId: string): Promise<void>;
 
   // Business Templates (unified Templates Hub)
   getBusinessTemplates(userId: string, family?: string, tradeType?: string): Promise<BusinessTemplate[]>;
@@ -5708,6 +5720,70 @@ export class PostgresStorage implements IStorage {
     ];
 
     await db.insert(messageTemplates).values(defaultTemplates);
+  }
+
+  // Quick Replies (Chat Hub canned responses)
+  async getQuickReplies(userId: string): Promise<QuickReply[]> {
+    return db.select().from(quickReplies)
+      .where(eq(quickReplies.userId, userId))
+      .orderBy(asc(quickReplies.sortOrder), asc(quickReplies.createdAt));
+  }
+
+  async createQuickReply(reply: InsertQuickReply): Promise<QuickReply> {
+    const [existing] = await db.select({ max: sql<number>`COALESCE(MAX(${quickReplies.sortOrder}), -1)` })
+      .from(quickReplies)
+      .where(eq(quickReplies.userId, reply.userId));
+    const nextOrder = (existing?.max ?? -1) + 1;
+    const [result] = await db.insert(quickReplies).values({
+      ...reply,
+      sortOrder: reply.sortOrder ?? nextOrder,
+    }).returning();
+    return result;
+  }
+
+  async updateQuickReply(id: string, userId: string, updates: Partial<InsertQuickReply>): Promise<QuickReply | null> {
+    const { userId: _ignoredUserId, ...safeUpdates } = updates;
+    const [result] = await db.update(quickReplies)
+      .set(safeUpdates)
+      .where(and(eq(quickReplies.id, id), eq(quickReplies.userId, userId)))
+      .returning();
+    return result || null;
+  }
+
+  async deleteQuickReply(id: string, userId: string): Promise<boolean> {
+    const result = await db.delete(quickReplies)
+      .where(and(eq(quickReplies.id, id), eq(quickReplies.userId, userId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async reorderQuickReplies(userId: string, orderedIds: string[]): Promise<QuickReply[]> {
+    const existing = await db.select().from(quickReplies).where(eq(quickReplies.userId, userId));
+    const ownedIds = new Set(existing.map(r => r.id));
+    for (let i = 0; i < orderedIds.length; i++) {
+      const id = orderedIds[i];
+      if (!ownedIds.has(id)) continue;
+      await db.update(quickReplies)
+        .set({ sortOrder: i })
+        .where(and(eq(quickReplies.id, id), eq(quickReplies.userId, userId)));
+    }
+    return this.getQuickReplies(userId);
+  }
+
+  async ensureDefaultQuickReplies(userId: string): Promise<void> {
+    const existing = await db.select({ id: quickReplies.id }).from(quickReplies)
+      .where(eq(quickReplies.userId, userId))
+      .limit(1);
+    if (existing.length > 0) return;
+    const seeded = DEFAULT_QUICK_REPLIES.map((r, i) => ({
+      userId,
+      label: r.label,
+      body: r.body,
+      sortOrder: i,
+    }));
+    if (seeded.length > 0) {
+      await db.insert(quickReplies).values(seeded).onConflictDoNothing();
+    }
   }
 
   // Business Templates (unified Templates Hub)

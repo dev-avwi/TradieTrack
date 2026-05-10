@@ -3197,6 +3197,40 @@ export const updateMessageTemplateSchema = insertMessageTemplateSchema.partial()
 export type InsertMessageTemplate = z.infer<typeof insertMessageTemplateSchema>;
 export type MessageTemplate = typeof messageTemplates.$inferSelect;
 
+// Quick Replies - canned SMS responses for the Chat Hub composer
+export const quickReplies = pgTable("quick_replies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  label: varchar("label", { length: 60 }).notNull(),
+  body: text("body").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertQuickReplySchema = createInsertSchema(quickReplies).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  label: z.string().min(1, "Label is required").max(60, "Label must be 60 characters or fewer"),
+  body: z.string().min(1, "Message is required").max(1000, "Message is too long"),
+});
+
+export const updateQuickReplySchema = insertQuickReplySchema.partial().omit({
+  userId: true,
+});
+
+export type InsertQuickReply = z.infer<typeof insertQuickReplySchema>;
+export type QuickReply = typeof quickReplies.$inferSelect;
+
+export const DEFAULT_QUICK_REPLIES: { label: string; body: string }[] = [
+  { label: "On my way", body: "G'day! Just letting you know I'm on my way now. See you soon." },
+  { label: "Running late", body: "Apologies, running about 15 minutes late. Will be there as soon as I can." },
+  { label: "Job done", body: "Just finished — invoice on its way." },
+  { label: "Booking confirmed", body: "Booking confirmed for [date]. See you then!" },
+  { label: "Reschedule", body: "Need to reschedule, what suits?" },
+  { label: "Thanks for payment", body: "Thanks for the payment — much appreciated!" },
+];
+
 // Template purposes - defines when a template is triggered
 // Multiple templates can be active per family, but only one per purpose
 export const BUSINESS_TEMPLATE_PURPOSES = [

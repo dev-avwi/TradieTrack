@@ -62,6 +62,7 @@ import { useIntegrationHealth, isTwilioReady } from "@/hooks/use-integration-hea
 import { TwilioWarning } from "@/components/IntegrationWarning";
 import { format, isToday, isYesterday, formatDistanceToNow } from "date-fns";
 import type { MessageTemplate } from "@shared/schema";
+import { QuickRepliesBar } from "@/components/QuickRepliesBar";
 
 interface TeamChatMessage {
   id: string;
@@ -2644,6 +2645,24 @@ export default function ChatHub() {
                   </div>
                 </div>
               )}
+              {/* Quick replies strip */}
+              <QuickRepliesBar
+                context={{
+                  clientName: selectedSmsConversation?.clientName ?? null,
+                  jobTitle: (selectedSmsConversation?.jobId
+                    ? jobs.find(j => j.id === selectedSmsConversation.jobId)?.title
+                    : undefined) ?? null,
+                  jobDate: (selectedSmsConversation?.jobId
+                    ? jobs.find(j => j.id === selectedSmsConversation.jobId)?.scheduledAt
+                    : undefined) ?? null,
+                }}
+                draft={smsNewMessage}
+                disabled={!twilioConnected || !canTwoWayText}
+                onInsert={(text) => {
+                  setSmsNewMessage((prev) => (prev.trim().length > 0 ? `${prev.trimEnd()} ${text}` : text));
+                  setTimeout(() => smsInputRef.current?.focus(), 0);
+                }}
+              />
               {/* Message input */}
               <div className="px-4 py-3 flex gap-2">
                 <Input

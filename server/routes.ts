@@ -28825,6 +28825,89 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Quick Replies API (Chat Hub canned responses)
+  app.get("/api/quick-replies", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      await storage.ensureDefaultQuickReplies(ownerId);
+      const replies = await storage.getQuickReplies(ownerId);
+      res.json(replies);
+    } catch (error) {
+      console.error('Error fetching quick replies:', error);
+      res.status(500).json({ error: 'Failed to fetch quick replies' });
+    }
+  });
+
+  app.post("/api/quick-replies", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const { insertQuickReplySchema } = await import('@shared/schema');
+      const validated = insertQuickReplySchema.parse({
+        ...req.body,
+        userId: ownerId,
+      });
+      const reply = await storage.createQuickReply(validated);
+      res.status(201).json(reply);
+    } catch (error: any) {
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid quick reply', details: error.errors });
+      }
+      console.error('Error creating quick reply:', error);
+      res.status(500).json({ error: 'Failed to create quick reply' });
+    }
+  });
+
+  app.patch("/api/quick-replies/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const { updateQuickReplySchema } = await import('@shared/schema');
+      const validated = updateQuickReplySchema.parse(req.body);
+      const reply = await storage.updateQuickReply(req.params.id, ownerId, validated);
+      if (!reply) {
+        return res.status(404).json({ error: 'Quick reply not found' });
+      }
+      res.json(reply);
+    } catch (error: any) {
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid quick reply', details: error.errors });
+      }
+      console.error('Error updating quick reply:', error);
+      res.status(500).json({ error: 'Failed to update quick reply' });
+    }
+  });
+
+  app.delete("/api/quick-replies/:id", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const ok = await storage.deleteQuickReply(req.params.id, ownerId);
+      if (!ok) return res.status(404).json({ error: 'Quick reply not found' });
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting quick reply:', error);
+      res.status(500).json({ error: 'Failed to delete quick reply' });
+    }
+  });
+
+  app.post("/api/quick-replies/reorder", requireAuth, async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const ownerId = userContext.effectiveUserId;
+      const orderedIds = z.array(z.string()).parse(req.body?.orderedIds);
+      const replies = await storage.reorderQuickReplies(ownerId, orderedIds);
+      res.json(replies);
+    } catch (error: any) {
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid orderedIds', details: error.errors });
+      }
+      console.error('Error reordering quick replies:', error);
+      res.status(500).json({ error: 'Failed to reorder quick replies' });
+    }
+  });
+
   // Business Templates API (unified Templates Hub)
   // GET /api/business-templates - List all templates (optionally filter by family and tradeType)
   // If no tradeType query param, uses user's tradeType with fallback to 'general'

@@ -83,6 +83,7 @@ import {
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LogoUpload } from "./LogoUpload";
+import { QuickRepliesSettings } from "./QuickRepliesSettings";
 import { useToast } from "@/hooks/use-toast";
 import DataSafetyBanner from "./DataSafetyBanner";
 import { TemplateId, TemplateCustomization } from "@/lib/document-templates";
@@ -1412,6 +1413,13 @@ export default function Settings({
                 <Mail className="h-4 w-4 mr-1.5" />
                 <span className="hidden sm:inline">Notifications</span>
                 <span className="sm:hidden">Alerts</span>
+              </TabsTrigger>
+            )}
+            {canAccessBusinessSettings && (
+              <TabsTrigger value="communications" data-testid="tab-communications" className="flex-shrink-0">
+                <MessageSquare className="h-4 w-4 mr-1.5" />
+                <span className="hidden sm:inline">Communications</span>
+                <span className="sm:hidden">Comms</span>
               </TabsTrigger>
             )}
             {canAccessBilling && (
@@ -2869,6 +2877,12 @@ export default function Settings({
         {/* Data Export Tab */}
         {canAccessBusinessSettings && (
           <DataExportTab />
+        )}
+
+        {canAccessBusinessSettings && (
+          <TabsContent value="communications" className="space-y-6">
+            <QuickRepliesSettings />
+          </TabsContent>
         )}
 
         {/* Developer Tab - only in development mode */}
