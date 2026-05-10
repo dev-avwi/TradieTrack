@@ -31,12 +31,41 @@ const WEIGHT_TO_INTER: Record<string, string> = {
 
 const ANDROID_TEXT_FIX: TextStyle = { includeFontPadding: false, textAlignVertical: 'center' };
 
+// Maps an explicit Inter_X fontFamily back to the equivalent fontWeight so
+// that when we strip the family on iOS, React Native still renders the
+// intended visual weight via San Francisco's native weight axis.
+const INTER_TO_WEIGHT: Record<string, TextStyle['fontWeight']> = {
+  Inter_100Thin: '100',
+  Inter_200ExtraLight: '200',
+  Inter_300Light: '300',
+  Inter_400Regular: '400',
+  Inter_500Medium: '500',
+  Inter_600SemiBold: '600',
+  Inter_700Bold: '700',
+  Inter_800ExtraBold: '800',
+  Inter_900Black: '900',
+};
+
 function resolveBaseStyle(userStyle: unknown, isAndroid: boolean): TextStyle {
   const flat = (StyleSheet.flatten(userStyle as any) || {}) as TextStyle;
-  // iOS: leave fontFamily unset so React Native falls through to San
-  // Francisco. RN already honours fontWeight on the system font, so
-  // weights 100→900 all render with their true visual weight.
-  if (!isAndroid) return {};
+  if (!isAndroid) {
+    // iOS: leave fontFamily unset so RN falls through to San Francisco.
+    // SF natively honours fontWeight 100→900 with crisp hierarchy.
+    // If a component explicitly set fontFamily: 'Inter_…', strip it
+    // (override AFTER the user style applies — see patched render below)
+    // while preserving the implied fontWeight so the visual size stays.
+    const fam = flat.fontFamily;
+    if (typeof fam === 'string' && fam.startsWith('Inter_')) {
+      const inferredWeight = INTER_TO_WEIGHT[fam];
+      // RN ignores `fontFamily: undefined` in style merging, so use null
+      // (or the empty string) to actively clear it. `null as any` is safe
+      // here — the RN type defs disallow it but the runtime accepts it.
+      const override: TextStyle = { fontFamily: undefined as unknown as string };
+      if (inferredWeight && flat.fontWeight == null) override.fontWeight = inferredWeight;
+      return override;
+    }
+    return {};
+  }
   const androidFix = ANDROID_TEXT_FIX;
   if (flat.fontFamily) return androidFix;
   const w = flat.fontWeight != null ? String(flat.fontWeight) : '400';
