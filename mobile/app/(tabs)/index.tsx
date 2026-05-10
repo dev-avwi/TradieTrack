@@ -4839,14 +4839,14 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   timerJobListScroll: {
     gap: spacing.sm,
-    paddingRight: spacing.sm,
+    paddingRight: spacing.lg,
   },
   timerJobItem: {
     backgroundColor: colors.muted,
     borderRadius: radius.lg,
     padding: spacing.md,
-    minWidth: 140,
-    maxWidth: 180,
+    minWidth: 170,
+    maxWidth: 210,
     borderWidth: 1,
     borderColor: colors.border,
   },
