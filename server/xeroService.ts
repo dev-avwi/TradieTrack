@@ -1,5 +1,26 @@
 import { XeroClient, TokenSet, Contact, Phone, Address } from "xero-node";
+import { Issuer } from "openid-client";
 import { storage } from "./storage";
+
+// Xero rate-limits / Akamai-blocks repeated hits to its OIDC discovery endpoint
+// (`https://identity.xero.com/.well-known/openid-configuration`). The xero-node
+// SDK calls Issuer.discover on every new XeroClient instance, which means each
+// Connect/Test attempt re-discovers — hammering the endpoint until WAF returns
+// 403 Forbidden. Patch Issuer.discover to cache the result for the life of the
+// process so we only hit Xero's discovery endpoint once.
+const _origDiscover = Issuer.discover.bind(Issuer);
+const _discoveryCache = new Map<string, Promise<Issuer<any>>>();
+(Issuer as any).discover = function(url: string): Promise<Issuer<any>> {
+  let p = _discoveryCache.get(url);
+  if (!p) {
+    p = _origDiscover(url).catch((err) => {
+      _discoveryCache.delete(url); // don't cache failures
+      throw err;
+    });
+    _discoveryCache.set(url, p);
+  }
+  return p;
+};
 import type { XeroConnection, InsertClient, XeroSyncState } from "@shared/schema";
 import { encrypt, decrypt } from "./encryption";
 import crypto from "crypto";
