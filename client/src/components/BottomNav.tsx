@@ -32,9 +32,12 @@ export default function BottomNav({ onNavigate }: BottomNavProps) {
   const { canUseAIFeatures } = useFeatureAccess();
   const { openMobile, isMobile } = useSidebar();
 
+  // Hardened: see AppSidebar — same query, same render-loop concern.
   const { data: unreadCounts } = useQuery<UnreadCountsResponse>({
     queryKey: ['/api/chat/unread-counts'],
-    staleTime: 10000,
+    staleTime: 30_000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const navItems = getBottomNavItems({ isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode, hasProSubscription: canUseAIFeatures });

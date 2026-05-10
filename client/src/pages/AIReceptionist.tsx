@@ -200,6 +200,9 @@ function MyAvailabilityToggle() {
 
   const { data: myRole } = useQuery<{ teamMember?: { aiReceptionistAvailability?: boolean } }>({
     queryKey: ["/api/team/my-role"],
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
   });
 
   const available = localAvailable ?? (myRole?.teamMember?.aiReceptionistAvailability !== false);

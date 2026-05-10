@@ -431,6 +431,9 @@ export default function ChatHub() {
 
   const { data: unreadCounts = { teamChat: 0, directMessages: 0, jobChats: 0, sms: 0 } } = useQuery<UnreadCounts>({
     queryKey: ['/api/chat/unread-counts'],
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
   });
 
   const { data: teamMessages = [], isLoading: teamLoading } = useQuery<TeamChatMessage[]>({

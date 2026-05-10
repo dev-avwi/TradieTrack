@@ -49,8 +49,16 @@ export default function AppSidebar({ onLogout, onNavigate }: AppSidebarProps) {
   const { canUseAIFeatures } = useFeatureAccess();
 
   // Fetch unread counts for notification badges
+  // Hardened: don't retry, don't refetch on focus, and stale for 30s. The
+  // default fetcher throws on 4xx, so without these settings a 403 (e.g.
+  // owner without business_settings yet) was triggering React Query's retry
+  // logic which, combined with re-renders elsewhere, hammered the API
+  // ~10x/sec and showed up as the React #185 prod render-loop signature.
   const { data: unreadCounts } = useQuery<UnreadCounts>({
     queryKey: ['/api/chat/unread-counts'],
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
   });
 
   const filterOptions = { isTeam, isTradie, isOwner, isManager, userRole, isSimpleMode, hasProSubscription: canUseAIFeatures };

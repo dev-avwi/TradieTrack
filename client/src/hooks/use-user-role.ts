@@ -50,6 +50,7 @@ export function useUserRole() {
     queryKey: ["/api/team/my-role"],
     queryFn: fetchTeamRole,
     retry: false,
+    refetchOnWindowFocus: false,
     staleTime: 1000 * 60 * 5,
   });
 

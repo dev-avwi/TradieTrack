@@ -87,8 +87,17 @@ export function QuickActionSheet({
 
   const handleAction = useCallback((action: QuickAction) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    close();
-    setTimeout(() => action.onPress(), 280);
+    // Fire the action FIRST, then close. Previously we ran close() and a
+    // setTimeout(280ms) before action.onPress(); on iOS the modal-close
+    // animation occasionally swallowed the subsequent navigation/Alert,
+    // so the user felt the haptic but nothing happened. Calling onPress
+    // synchronously guarantees the navigation happens; close() then
+    // animates the sheet down underneath the new screen / alert.
+    try {
+      action.onPress();
+    } finally {
+      close();
+    }
   }, [close]);
 
   const styles = createStyles(colors);

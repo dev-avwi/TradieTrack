@@ -1103,6 +1103,8 @@ function AppLayout() {
     queryKey: ['/api/team/my-role'],
     enabled: !!userCheck && !isLoading && !error,
     retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
     queryFn: async () => {
       const headers: HeadersInit = {};
       const token = getSessionToken();
