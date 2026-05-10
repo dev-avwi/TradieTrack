@@ -59,6 +59,27 @@ psql "$DATABASE_URL" -c "CREATE TABLE IF NOT EXISTS number_port_requests (
 psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_port_requests_user ON number_port_requests (user_id);" 2>/dev/null || true
 psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_port_requests_status ON number_port_requests (status);" 2>/dev/null || true
 
+# Task #116 (Chat Hub Quick Replies): quick_replies table
+psql "$DATABASE_URL" -c "CREATE TABLE IF NOT EXISTS quick_replies (
+  id varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  user_id varchar NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label varchar(60) NOT NULL,
+  body text NOT NULL,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamp NOT NULL DEFAULT now()
+);" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS quick_replies_user_id_idx ON quick_replies (user_id);" 2>/dev/null || true
+
+# Task #115 (First-run sample data toggle): is_sample flag on core tables
+psql "$DATABASE_URL" -c "ALTER TABLE clients  ADD COLUMN IF NOT EXISTS is_sample boolean NOT NULL DEFAULT false;" 2>/dev/null || true
+psql "$DATABASE_URL" -c "ALTER TABLE jobs     ADD COLUMN IF NOT EXISTS is_sample boolean NOT NULL DEFAULT false;" 2>/dev/null || true
+psql "$DATABASE_URL" -c "ALTER TABLE quotes   ADD COLUMN IF NOT EXISTS is_sample boolean NOT NULL DEFAULT false;" 2>/dev/null || true
+psql "$DATABASE_URL" -c "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS is_sample boolean NOT NULL DEFAULT false;" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_clients_is_sample  ON clients  (user_id) WHERE is_sample = true;" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_jobs_is_sample     ON jobs     (user_id) WHERE is_sample = true;" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_quotes_is_sample   ON quotes   (user_id) WHERE is_sample = true;" 2>/dev/null || true
+psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS idx_invoices_is_sample ON invoices (user_id) WHERE is_sample = true;" 2>/dev/null || true
+
 # Drift guard rail (Task #108): refuse to deploy if schema.ts and the live DB
 # disagree after the ALTERs above. Logs the diff and exits non-zero.
 echo "Verifying schema is in sync with shared/schema.ts..."
