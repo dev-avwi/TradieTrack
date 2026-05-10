@@ -1,8 +1,29 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries } from "@/lib/queryClient";
+import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries, queryClient } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 import { trackEvent } from "@/lib/analytics";
+
+// Apply an optimistic status update across every cached quote list/detail
+// containing the given id, returning rollback snapshots for onError.
+async function applyOptimisticQuoteStatus(id: string, status: string) {
+  await queryClient.cancelQueries({ queryKey: ["/api/quotes"] });
+  const snapshots = queryClient.getQueriesData<any>({ queryKey: ["/api/quotes"] });
+  for (const [key, value] of snapshots) {
+    if (Array.isArray(value)) {
+      queryClient.setQueryData(key, value.map((q: any) => q?.id === id ? { ...q, status } : q));
+    } else if (value && typeof value === 'object' && (value as any).id === id) {
+      queryClient.setQueryData(key, { ...(value as any), status });
+    }
+  }
+  return snapshots;
+}
+
+function rollbackQuoteSnapshots(snapshots: ReturnType<typeof queryClient.getQueriesData<any>>) {
+  for (const [key, value] of snapshots) {
+    queryClient.setQueryData(key, value);
+  }
+}
 
 export function useQuotes(options?: { archived?: boolean }) {
   const archived = options?.archived ?? false;
@@ -88,8 +109,12 @@ export function useSendQuote() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onMutate: async (quoteId: string) => ({ snapshots: await applyOptimisticQuoteStatus(quoteId, 'sent') }),
+    onError: (_err, _id, ctx: any) => { if (ctx?.snapshots) rollbackQuoteSnapshots(ctx.snapshots); },
+    onSettled: () => {
       safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+    },
+    onSuccess: () => {
       trackEvent('quote_sent');
     },
   });
@@ -132,6 +157,70 @@ export function useConvertQuoteToInvoice() {
       safeInvalidateQueries({ queryKey: ["/api/quotes"] });
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
       safeInvalidateQueries({ queryKey: ["/api/invoices", { quoteId }] });
+    },
+  });
+}
+
+export function useCloneQuote() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/quotes/${id}/clone`);
+      return response.json();
+    },
+    onSuccess: () => {
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+    },
+  });
+}
+
+export function useConvertQuotePreview(id: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ["/api/quotes", id, "convert-preview"],
+    enabled: !!id && enabled,
+  });
+}
+
+export function useDeclineQuote() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/quotes/${id}/reject`);
+      return response.json();
+    },
+    onMutate: async (id: string) => ({ snapshots: await applyOptimisticQuoteStatus(id, 'declined') }),
+    onError: (_err, _id, ctx: any) => { if (ctx?.snapshots) rollbackQuoteSnapshots(ctx.snapshots); },
+    onSettled: (_data, _err, id) => {
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes", id] });
+    },
+  });
+}
+
+export function useUpdateQuoteStatus() {
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await apiRequest("PATCH", `/api/quotes/${id}`, { status });
+      return response.json();
+    },
+    onMutate: async ({ id, status }) => ({ snapshots: await applyOptimisticQuoteStatus(id, status) }),
+    onError: (_err, _vars, ctx: any) => { if (ctx?.snapshots) rollbackQuoteSnapshots(ctx.snapshots); },
+    onSettled: (_data, _err, vars) => {
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes", vars.id] });
+    },
+  });
+}
+
+export function useAcceptQuote() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/quotes/${id}/accept`);
+      return response.json();
+    },
+    onMutate: async (id: string) => ({ snapshots: await applyOptimisticQuoteStatus(id, 'accepted') }),
+    onError: (_err, _id, ctx: any) => { if (ctx?.snapshots) rollbackQuoteSnapshots(ctx.snapshots); },
+    onSettled: (_data, _err, id) => {
+      safeInvalidateQueries({ queryKey: ["/api/quotes"] });
+      safeInvalidateQueries({ queryKey: ["/api/quotes", id] });
     },
   });
 }

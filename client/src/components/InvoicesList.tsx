@@ -3,7 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Receipt, DollarSign, Clock, Send, CheckCircle, AlertCircle, FileText, LayoutGrid, List, MoreVertical, Archive, RotateCcw } from "lucide-react";
+import { Receipt, DollarSign, Clock, Send, CheckCircle, AlertCircle, FileText, LayoutGrid, List, MoreVertical, Archive, RotateCcw, Copy } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,13 +11,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import InvoiceCard from "./InvoiceCard";
-import { useInvoices, useRecentInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink, useUnarchiveInvoice, useArchiveInvoice, useDeleteInvoice } from "@/hooks/use-invoices";
+import { useInvoices, useRecentInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink, useUnarchiveInvoice, useArchiveInvoice, useDeleteInvoice, useCloneInvoice, useUpdateInvoiceStatus } from "@/hooks/use-invoices";
+import InlineStatusMenu from "./InlineStatusMenu";
 import { useClients } from "@/hooks/use-clients";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useUndoableMutation } from "@/hooks/use-undoable-mutation";
 import { CardListSkeleton } from "@/components/ui/list-skeletons";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, safeInvalidateQueries } from "@/lib/queryClient";
 import { formatHistoryDate, getStatusColor } from "@shared/dateUtils";
 import { PageShell } from "@/components/ui/page-shell";
 import { PageHeader } from "@/components/ui/page-shell";
@@ -91,6 +93,8 @@ export default function InvoicesList({
   const unarchiveInvoiceMutation = useUnarchiveInvoice();
   const archiveInvoiceMutation = useArchiveInvoice();
   const deleteInvoiceMutation = useDeleteInvoice();
+  const cloneInvoiceMutation = useCloneInvoice();
+  const updateInvoiceStatusMutation = useUpdateInvoiceStatus();
 
   const undoableArchiveInvoice = useUndoableMutation<{ id: string; number: string }>({
     mode: "eager",
@@ -117,6 +121,90 @@ export default function InvoicesList({
       queryClient.setQueryData(key, current.filter((inv) => inv.id !== id));
     },
   });
+
+  const handleDuplicateInvoice = async (id: string) => {
+    const invoice = invoices.find((inv: any) => inv.id === id);
+    try {
+      const result = await cloneInvoiceMutation.mutateAsync(id);
+      const newId = result?.id;
+      const t = toast({
+        title: "Invoice duplicated",
+        description: `${invoice?.number || 'Invoice'} → ${result?.number || 'New draft'}`,
+        duration: 8000,
+        action: newId ? (
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              t.dismiss();
+              try {
+                await deleteInvoiceMutation.mutateAsync(newId);
+                safeInvalidateQueries({ queryKey: ['/api/invoices'] });
+                toast({ title: 'Duplicate undone', duration: 3000 });
+              } catch (err: any) {
+                toast({ title: 'Undo failed', description: err?.message, variant: 'destructive' });
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
+        ) : undefined,
+      });
+      if (newId) {
+        setLocation(`/invoices/${newId}/edit`);
+      }
+    } catch (error: any) {
+      const parsedError = parseTradieFriendlyError(error);
+      toast({
+        title: parsedError.title || "Failed to duplicate invoice",
+        description: formatToastDescription(parsedError),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInvoiceStatusChange = async (id: string, nextStatus: string) => {
+    const invoice = invoices.find((inv: any) => inv.id === id);
+    const previousStatus = invoice?.status || 'draft';
+    try {
+      if (nextStatus === 'sent') {
+        await sendInvoiceMutation.mutateAsync(id);
+      } else if (nextStatus === 'paid') {
+        await markPaidMutation.mutateAsync(id);
+      } else {
+        await updateInvoiceStatusMutation.mutateAsync({ id, status: nextStatus });
+      }
+      // Cannot revert "paid" via PATCH (server blocks it), so skip undo for that case.
+      const canUndo = nextStatus !== 'paid' && previousStatus !== 'paid';
+      const t = toast({
+        title: `Invoice marked ${nextStatus}`,
+        description: `${invoice?.number || 'Invoice'} moved from ${previousStatus} to ${nextStatus}`,
+        duration: 8000,
+        action: canUndo ? (
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              t.dismiss();
+              try {
+                await updateInvoiceStatusMutation.mutateAsync({ id, status: previousStatus });
+                toast({ title: 'Status reverted', duration: 3000 });
+              } catch (err: any) {
+                toast({ title: 'Undo failed', description: err?.message, variant: 'destructive' });
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
+        ) : undefined,
+      });
+    } catch (error: any) {
+      const parsedError = parseTradieFriendlyError(error);
+      toast({
+        title: parsedError.title || "Failed to update status",
+        description: formatToastDescription(parsedError),
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleArchiveInvoice = (id: string) => {
     const inv = invoices.find((x: any) => x.id === id);
@@ -255,7 +343,9 @@ export default function InvoicesList({
       sentAt: invoice.sentAt ? new Date(invoice.sentAt).toLocaleDateString() : undefined,
       paidAt: invoice.paidAt ? new Date(invoice.paidAt).toLocaleDateString() : undefined,
       dueDate: invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : undefined,
-      xeroInvoiceId: invoice.xeroInvoiceId
+      xeroInvoiceId: invoice.xeroInvoiceId,
+      isXeroImport: invoice.isXeroImport,
+      lockedAt: invoice.lockedAt,
     };
   });
 
@@ -352,7 +442,19 @@ export default function InvoicesList({
       header: "Status",
       accessorKey: "status",
       sortable: true,
-      cell: (row) => <StatusBadge status={row.status} />,
+      cell: (row) => (
+        showArchived ? (
+          <StatusBadge status={row.status} />
+        ) : (
+          <InlineStatusMenu
+            type="invoice"
+            status={row.status}
+            disabled={row.status === 'paid' || !!row.lockedAt}
+            onSelect={(next) => handleInvoiceStatusChange(row.id, next)}
+            testIdPrefix={`invoice-table-status-${row.id}`}
+          />
+        )
+      ),
     },
     {
       id: "dueDate",
@@ -401,6 +503,12 @@ export default function InvoicesList({
                   Mark as Paid
                 </DropdownMenuItem>
               </>
+            )}
+            {!showArchived && (
+              <DropdownMenuItem onClick={() => handleDuplicateInvoice(row.id)} data-testid={`menu-duplicate-invoice-${row.id}`}>
+                <Copy className="h-4 w-4 mr-2" />
+                Duplicate
+              </DropdownMenuItem>
             )}
             {showArchived && (
               <DropdownMenuItem onClick={() => handleRestoreInvoice(row.id)}>
@@ -658,6 +766,9 @@ export default function InvoicesList({
               onSendClick={handleSendInvoice}
               onCreatePaymentLink={handleCreatePaymentLink}
               onMarkPaid={handleMarkPaid}
+              onStatusChange={!showArchived ? handleInvoiceStatusChange : undefined}
+              onDuplicate={!showArchived ? handleDuplicateInvoice : undefined}
+              isLocked={!!invoice.lockedAt}
               onArchive={!showArchived ? handleArchiveInvoice : undefined}
               onUnarchive={showArchived ? handleRestoreInvoice : undefined}
               onDelete={handleDeleteInvoice}

@@ -1,8 +1,27 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries, getSessionToken } from "@/lib/queryClient";
+import { apiRequest, offlineAwareApiRequest, safeInvalidateQueries, getSessionToken, queryClient } from "@/lib/queryClient";
 import { useMemo } from "react";
 import { partitionByRecent } from "@shared/dateUtils";
 import { trackEvent } from "@/lib/analytics";
+
+async function applyOptimisticInvoiceStatus(id: string, status: string) {
+  await queryClient.cancelQueries({ queryKey: ["/api/invoices"] });
+  const snapshots = queryClient.getQueriesData<any>({ queryKey: ["/api/invoices"] });
+  for (const [key, value] of snapshots) {
+    if (Array.isArray(value)) {
+      queryClient.setQueryData(key, value.map((inv: any) => inv?.id === id ? { ...inv, status } : inv));
+    } else if (value && typeof value === 'object' && (value as any).id === id) {
+      queryClient.setQueryData(key, { ...(value as any), status });
+    }
+  }
+  return snapshots;
+}
+
+function rollbackInvoiceSnapshots(snapshots: ReturnType<typeof queryClient.getQueriesData<any>>) {
+  for (const [key, value] of snapshots) {
+    queryClient.setQueryData(key, value);
+  }
+}
 
 export function useInvoices(options?: { archived?: boolean }) {
   const archived = options?.archived ?? false;
@@ -88,8 +107,12 @@ export function useSendInvoice() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onMutate: async (invoiceId: string) => ({ snapshots: await applyOptimisticInvoiceStatus(invoiceId, 'sent') }),
+    onError: (_err, _id, ctx: any) => { if (ctx?.snapshots) rollbackInvoiceSnapshots(ctx.snapshots); },
+    onSettled: () => {
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+    },
+    onSuccess: () => {
       trackEvent('invoice_sent');
     },
   });
@@ -131,8 +154,12 @@ export function useMarkInvoicePaid() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onMutate: async (invoiceId: string) => ({ snapshots: await applyOptimisticInvoiceStatus(invoiceId, 'paid') }),
+    onError: (_err, _id, ctx: any) => { if (ctx?.snapshots) rollbackInvoiceSnapshots(ctx.snapshots); },
+    onSettled: () => {
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+    },
+    onSuccess: () => {
       trackEvent('invoice_paid');
     },
   });
@@ -221,6 +248,33 @@ export function useUpdateMilestones() {
     onSuccess: (_data: any, variables: { invoiceId: string }) => {
       safeInvalidateQueries({ queryKey: ["/api/invoices"] });
       safeInvalidateQueries({ queryKey: ["/api/invoices", variables.invoiceId] });
+    },
+  });
+}
+
+export function useCloneInvoice() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/invoices/${id}/clone`);
+      return response.json();
+    },
+    onSuccess: () => {
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+    },
+  });
+}
+
+export function useUpdateInvoiceStatus() {
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const response = await apiRequest("PATCH", `/api/invoices/${id}/status`, { status });
+      return response.json();
+    },
+    onMutate: async ({ id, status }) => ({ snapshots: await applyOptimisticInvoiceStatus(id, status) }),
+    onError: (_err, _vars, ctx: any) => { if (ctx?.snapshots) rollbackInvoiceSnapshots(ctx.snapshots); },
+    onSettled: (_data, _err, vars) => {
+      safeInvalidateQueries({ queryKey: ["/api/invoices"] });
+      safeInvalidateQueries({ queryKey: ["/api/invoices", vars.id] });
     },
   });
 }

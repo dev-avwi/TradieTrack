@@ -6,9 +6,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, User, Calendar, ChevronRight, ArrowRight, MoreVertical, Archive, RotateCcw, Trash2 } from "lucide-react";
+import { FileText, User, Calendar, ChevronRight, ArrowRight, MoreVertical, Archive, RotateCcw, Trash2, Copy } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import XeroRibbon from "./XeroRibbon";
+import InlineStatusMenu from "./InlineStatusMenu";
 
 interface QuoteCardProps {
   id: string;
@@ -16,7 +17,7 @@ interface QuoteCardProps {
   client: string;
   jobTitle: string;
   total: number;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected';
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'declined' | string;
   validUntil?: string;
   sentAt?: string;
   isXeroImport?: boolean;
@@ -24,6 +25,8 @@ interface QuoteCardProps {
   onViewClick?: (id: string) => void;
   onSendClick?: (id: string) => void;
   onConvertToInvoice?: (id: string) => void;
+  onStatusChange?: (id: string, nextStatus: string) => void;
+  onDuplicate?: (id: string) => void;
   onArchive?: (id: string) => void;
   onUnarchive?: (id: string) => void;
   onDelete?: (id: string) => void;
@@ -43,6 +46,8 @@ export default function QuoteCard({
   onViewClick, 
   onSendClick,
   onConvertToInvoice,
+  onStatusChange,
+  onDuplicate,
   onArchive,
   onUnarchive,
   onDelete,
@@ -75,7 +80,16 @@ export default function QuoteCard({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-[15px]">{number}</h3>
-                  <StatusBadge status={status} />
+                  {onStatusChange && !isArchived ? (
+                    <InlineStatusMenu
+                      type="quote"
+                      status={status}
+                      onSelect={(next) => onStatusChange(id, next)}
+                      testIdPrefix={`quote-status-${id}`}
+                    />
+                  ) : (
+                    <StatusBadge status={status} />
+                  )}
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <User className="h-3 w-3" />
@@ -144,7 +158,7 @@ export default function QuoteCard({
                 </Button>
               )}
 
-              {(onArchive || onUnarchive || onDelete) && (
+              {(onArchive || onUnarchive || onDelete || onDuplicate) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -157,6 +171,12 @@ export default function QuoteCard({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="rounded-xl">
+                    {!isArchived && onDuplicate && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicate(id); }} data-testid={`menu-duplicate-quote-${id}`}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplicate
+                      </DropdownMenuItem>
+                    )}
                     {!isArchived && onArchive && (
                       <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(id); }} data-testid={`menu-archive-quote-${id}`}>
                         <Archive className="h-4 w-4 mr-2" />

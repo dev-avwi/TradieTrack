@@ -6,9 +6,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { FileText, User, Calendar, CreditCard, ChevronRight, MoreVertical, Archive, RotateCcw, Trash2 } from "lucide-react";
+import { FileText, User, Calendar, CreditCard, ChevronRight, MoreVertical, Archive, RotateCcw, Trash2, Copy } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import XeroRibbon from "./XeroRibbon";
+import InlineStatusMenu from "./InlineStatusMenu";
 
 interface InvoiceCardProps {
   id: string;
@@ -16,17 +17,20 @@ interface InvoiceCardProps {
   client: string;
   jobTitle: string;
   total: number;
-  status: 'draft' | 'sent' | 'paid' | 'overdue';
+  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled' | string;
   sentAt?: string;
   paidAt?: string;
   dueDate?: string;
   xeroInvoiceId?: string;
   isXeroImport?: boolean;
   isArchived?: boolean;
+  isLocked?: boolean;
   onViewClick?: (id: string) => void;
   onSendClick?: (id: string) => void;
   onCreatePaymentLink?: (id: string) => void;
   onMarkPaid?: (id: string) => void;
+  onStatusChange?: (id: string, nextStatus: string) => void;
+  onDuplicate?: (id: string) => void;
   onArchive?: (id: string) => void;
   onUnarchive?: (id: string) => void;
   onDelete?: (id: string) => void;
@@ -49,9 +53,12 @@ export default function InvoiceCard({
   onSendClick,
   onCreatePaymentLink,
   onMarkPaid,
+  onStatusChange,
+  onDuplicate,
   onArchive,
   onUnarchive,
   onDelete,
+  isLocked,
 }: InvoiceCardProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', {
@@ -81,7 +88,17 @@ export default function InvoiceCard({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-[15px]">{number}</h3>
-                  <StatusBadge status={status} />
+                  {onStatusChange && !isArchived ? (
+                    <InlineStatusMenu
+                      type="invoice"
+                      status={status}
+                      disabled={status === 'paid' || isLocked}
+                      onSelect={(next) => onStatusChange(id, next)}
+                      testIdPrefix={`invoice-status-${id}`}
+                    />
+                  ) : (
+                    <StatusBadge status={status} />
+                  )}
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <User className="h-3 w-3" />
@@ -147,7 +164,7 @@ export default function InvoiceCard({
                 </Button>
               )}
 
-              {(onArchive || onUnarchive || onDelete) && (
+              {(onArchive || onUnarchive || onDelete || onDuplicate) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -160,6 +177,12 @@ export default function InvoiceCard({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="rounded-xl">
+                    {!isArchived && onDuplicate && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDuplicate(id); }} data-testid={`menu-duplicate-invoice-${id}`}>
+                        <Copy className="h-4 w-4 mr-2" />
+                        Duplicate
+                      </DropdownMenuItem>
+                    )}
                     {!isArchived && onArchive && (
                       <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(id); }} data-testid={`menu-archive-invoice-${id}`}>
                         <Archive className="h-4 w-4 mr-2" />

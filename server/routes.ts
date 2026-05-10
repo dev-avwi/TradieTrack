@@ -25374,6 +25374,226 @@ Be specific about materials, colors, and features that would be included.`
     }
   });
 
+  // Convert preview - projects what the resulting invoice would look like without creating it
+  app.get("/api/quotes/:id/convert-preview", requireAuth, createPermissionMiddleware([PERMISSIONS.READ_QUOTES, PERMISSIONS.READ_INVOICES]), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const quote = await storage.getQuoteWithLineItems(req.params.id, userContext.effectiveUserId);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      if (quote.status !== 'accepted') {
+        return res.status(400).json({ error: "Only accepted quotes can be converted to invoices" });
+      }
+
+      const nextNumber = await storage.generateInvoiceNumber(userContext.effectiveUserId);
+      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+      res.json({
+        number: nextNumber,
+        title: quote.title,
+        clientId: quote.clientId,
+        dueDate,
+        subtotal: quote.subtotal,
+        gstAmount: quote.gstAmount,
+        total: quote.total,
+        lineItems: quote.lineItems.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+          sortOrder: item.sortOrder,
+        })),
+      });
+    } catch (error) {
+      console.error("Error building convert preview:", error);
+      res.status(500).json({ error: "Failed to build convert preview" });
+    }
+  });
+
+  // Clone quote - deep-copies header + line items, resets status to draft, clears Xero IDs and signatures
+  app.post("/api/quotes/:id/clone", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_QUOTES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const source = await storage.getQuoteWithLineItems(req.params.id, effectiveUserId);
+      if (!source) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+
+      const newNumber = await storage.generateQuoteNumber(effectiveUserId);
+      const cloneData: Record<string, unknown> = {
+        userId: effectiveUserId,
+        clientId: source.clientId,
+        jobId: source.jobId,
+        number: newNumber,
+        title: source.title,
+        description: source.description,
+        subtotal: source.subtotal,
+        gstAmount: source.gstAmount,
+        total: source.total,
+        validUntil: source.validUntil,
+        notes: source.notes,
+        photos: source.photos,
+        templateId: source.templateId,
+        familyKey: source.familyKey,
+        documentTemplate: source.documentTemplate || null,
+        documentTemplateSettings: source.documentTemplateSettings || null,
+        depositRequired: source.depositRequired || false,
+        depositPercent: source.depositPercent || null,
+        depositAmount: source.depositAmount || null,
+        depositPaid: false,
+        depositPaidAt: null,
+        isMultiOption: source.isMultiOption || false,
+        status: 'draft',
+        // Explicitly clear Xero IDs, acceptance/signature data
+        isXeroImport: false,
+        xeroQuoteId: null,
+        xeroContactId: null,
+        xeroSyncedAt: null,
+        acceptanceToken: null,
+        acceptedBy: null,
+        acceptanceIp: null,
+        acceptanceSignatureData: null,
+        declineReason: null,
+        sentAt: null,
+        acceptedAt: null,
+        rejectedAt: null,
+      };
+
+      const cloned = await storage.createQuote(cloneData as Parameters<typeof storage.createQuote>[0]);
+
+      for (const item of source.lineItems) {
+        await storage.createQuoteLineItem({
+          quoteId: cloned.id,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+          sortOrder: item.sortOrder,
+        }, effectiveUserId);
+      }
+
+      const result = await storage.getQuoteWithLineItems(cloned.id, effectiveUserId);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error cloning quote:", error);
+      res.status(500).json({ error: "Failed to clone quote" });
+    }
+  });
+
+  // Clone invoice - deep-copies header + line items, resets status to draft, clears Xero IDs and signatures
+  app.post("/api/invoices/:id/clone", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const effectiveUserId = userContext.effectiveUserId;
+      const source = await storage.getInvoiceWithLineItems(req.params.id, effectiveUserId);
+      if (!source) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      const newNumber = await storage.generateInvoiceNumber(effectiveUserId);
+      const cloneData: Record<string, unknown> = {
+        userId: effectiveUserId,
+        clientId: source.clientId,
+        jobId: source.jobId,
+        quoteId: null,
+        number: newNumber,
+        title: source.title,
+        description: source.description,
+        subtotal: source.subtotal,
+        gstAmount: source.gstAmount,
+        total: source.total,
+        // Preserve source payment terms: re-use the same term length (dueDate - createdAt)
+        // applied to "now". Falls back to 14 days if either timestamp is missing.
+        dueDate: (() => {
+          const sourceCreated = source.createdAt ? new Date(source.createdAt).getTime() : null;
+          const sourceDue = source.dueDate ? new Date(source.dueDate).getTime() : null;
+          const termMs = (sourceCreated && sourceDue && sourceDue > sourceCreated)
+            ? sourceDue - sourceCreated
+            : 14 * 24 * 60 * 60 * 1000;
+          return new Date(Date.now() + termMs);
+        })(),
+        notes: source.notes,
+        photos: source.photos,
+        templateId: source.templateId,
+        familyKey: source.familyKey,
+        documentTemplate: source.documentTemplate || null,
+        documentTemplateSettings: source.documentTemplateSettings || null,
+        allowOnlinePayment: source.allowOnlinePayment || false,
+        depositRequired: source.depositRequired || false,
+        depositPercent: source.depositPercent || null,
+        depositAmount: source.depositAmount || null,
+        depositPaid: false,
+        depositPaidAt: null,
+        retentionPercent: source.retentionPercent || null,
+        paymentMilestones: source.paymentMilestones || null,
+        status: 'draft',
+        // Explicitly clear Xero/QBO IDs, payment + lock state
+        isXeroImport: false,
+        xeroInvoiceId: null,
+        xeroContactId: null,
+        xeroSyncedAt: null,
+        quickbooksInvoiceId: null,
+        quickbooksSyncedAt: null,
+        sentAt: null,
+        paidAt: null,
+        receiptSentAt: null,
+        paymentReference: null,
+        paymentMethod: null,
+        stripePaymentIntentId: null,
+        stripeInvoiceId: null,
+        stripePaymentLink: null,
+        paymentToken: null,
+        amountPaid: '0.00',
+        lockedAt: null,
+        lockedReason: null,
+        calculationHash: null,
+      };
+
+      const cloned = await storage.createInvoice(cloneData as Parameters<typeof storage.createInvoice>[0]);
+
+      for (const item of source.lineItems) {
+        await storage.createInvoiceLineItem({
+          invoiceId: cloned.id,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+          sortOrder: item.sortOrder,
+        }, effectiveUserId);
+      }
+
+      const result = await storage.getInvoiceWithLineItems(cloned.id, effectiveUserId);
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error cloning invoice:", error);
+      res.status(500).json({ error: "Failed to clone invoice" });
+    }
+  });
+
+  // Generic invoice status update (for "Mark Cancelled" inline action)
+  app.patch("/api/invoices/:id/status", requireAuth, createPermissionMiddleware(PERMISSIONS.WRITE_INVOICES), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const { status } = req.body || {};
+      const allowed = ['draft', 'sent', 'cancelled', 'overdue'];
+      if (!allowed.includes(status)) {
+        return res.status(400).json({ error: `Invalid status. Use one of: ${allowed.join(', ')}` });
+      }
+      const existing = await storage.getInvoice(req.params.id, userContext.effectiveUserId);
+      if (!existing) return res.status(404).json({ error: "Invoice not found" });
+      if (existing.status === 'paid' || existing.lockedAt) {
+        return res.status(403).json({ error: "Cannot change status of a paid or locked invoice" });
+      }
+      const updated = await storage.updateInvoice(req.params.id, userContext.effectiveUserId, { status });
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating invoice status:", error);
+      res.status(500).json({ error: "Failed to update invoice status" });
+    }
+  });
+
   // Dashboard stats — SQL aggregation (no full-table loads)
   app.get("/api/dashboard/stats", requireAuth, async (req: any, res) => {
     try {

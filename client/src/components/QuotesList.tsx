@@ -3,7 +3,7 @@ import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { FileText, Clock, TrendingUp, Send, CheckCircle, XCircle, LayoutGrid, List, MoreVertical, DollarSign, Archive, RotateCcw } from "lucide-react";
+import { FileText, Clock, TrendingUp, Send, CheckCircle, XCircle, LayoutGrid, List, MoreVertical, DollarSign, Archive, RotateCcw, Copy } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,12 +11,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import QuoteCard from "./QuoteCard";
-import { useQuotes, useConvertQuoteToInvoice, useSendQuote, useRecentQuotes, useUnarchiveQuote, useArchiveQuote, useDeleteQuote } from "@/hooks/use-quotes";
+import { useQuotes, useConvertQuoteToInvoice, useSendQuote, useRecentQuotes, useUnarchiveQuote, useArchiveQuote, useDeleteQuote, useCloneQuote, useDeclineQuote, useAcceptQuote, useUpdateQuoteStatus } from "@/hooks/use-quotes";
+import InlineStatusMenu from "./InlineStatusMenu";
+import ConvertQuotePreviewDialog from "./ConvertQuotePreviewDialog";
+import { useLocation } from "wouter";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useUndoableMutation } from "@/hooks/use-undoable-mutation";
 import { CardListSkeleton } from "@/components/ui/list-skeletons";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, safeInvalidateQueries } from "@/lib/queryClient";
+import { useDeleteInvoice } from "@/hooks/use-invoices";
 import { formatHistoryDate, getStatusColor } from "@shared/dateUtils";
 import { PageShell } from "@/components/ui/page-shell";
 import { PageHeader } from "@/components/ui/page-shell";
@@ -63,7 +68,14 @@ export default function QuotesList({
   const [showOlderQuotes, setShowOlderQuotes] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
+  const [, navigate] = useLocation();
+  const cloneQuoteMutation = useCloneQuote();
+  const deleteInvoiceMutation = useDeleteInvoice();
+  const declineQuoteMutation = useDeclineQuote();
+  const acceptQuoteMutation = useAcceptQuote();
+  const updateQuoteStatusMutation = useUpdateQuoteStatus();
   const showArchived = activeFilter === 'archived';
   const { data = [], isLoading = true } = useQuotes({ archived: showArchived }) ?? {};
   const quotes = Array.isArray(data) ? data : [];
@@ -158,21 +170,137 @@ export default function QuotesList({
     }
   };
 
-  const handleConvertToInvoice = async (id: string) => {
+  // Open convert preview dialog before creating the invoice
+  const handleConvertToInvoice = (id: string) => {
     const quote = quotes.find((q: any) => q.id === id);
+    if (quote) {
+      setSelectedQuote(quote);
+      setConvertDialogOpen(true);
+    }
+  };
+
+  const handleConfirmConvert = async () => {
+    if (!selectedQuote) return;
+    const id = selectedQuote.id;
+    const quote = selectedQuote;
     try {
       const result = await convertToInvoiceMutation.mutateAsync(id);
       const invoiceNumber = result?.number || 'New Invoice';
+      const newInvoiceId = result?.id;
       const amount = result?.total ? new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(normalizeToDollars(result.total)) : '';
-      toast({
+      const t = toast({
         title: "Invoice created",
         description: `${quote?.number || 'Quote'} → ${invoiceNumber}${amount ? ` for ${amount}` : ''} - Ready to send to ${quote?.clientName || 'client'}`,
+        duration: 8000,
+        action: newInvoiceId ? (
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              t.dismiss();
+              try {
+                await deleteInvoiceMutation.mutateAsync(newInvoiceId);
+                safeInvalidateQueries({ queryKey: ['/api/invoices'] });
+                safeInvalidateQueries({ queryKey: ['/api/quotes'] });
+                toast({ title: 'Convert undone', duration: 3000 });
+              } catch (err: any) {
+                toast({ title: 'Undo failed', description: err?.message, variant: 'destructive' });
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
+        ) : undefined,
       });
+      setConvertDialogOpen(false);
       if (onConvertToInvoice) onConvertToInvoice(id);
     } catch (error: any) {
       const parsedError = parseTradieFriendlyError(error);
       toast({
         title: parsedError.title,
+        description: formatToastDescription(parsedError),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDuplicateQuote = async (id: string) => {
+    const quote = quotes.find((q: any) => q.id === id);
+    try {
+      const result = await cloneQuoteMutation.mutateAsync(id);
+      const newId = result?.id;
+      const t = toast({
+        title: "Quote duplicated",
+        description: `${quote?.number || 'Quote'} → ${result?.number || 'New draft'}`,
+        duration: 8000,
+        action: newId ? (
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              t.dismiss();
+              try {
+                await deleteQuoteMutation.mutateAsync(newId);
+                safeInvalidateQueries({ queryKey: ['/api/quotes'] });
+                toast({ title: 'Duplicate undone', duration: 3000 });
+              } catch (err: any) {
+                toast({ title: 'Undo failed', description: err?.message, variant: 'destructive' });
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
+        ) : undefined,
+      });
+      if (newId) {
+        navigate(`/quotes/${newId}/edit`);
+      }
+    } catch (error: any) {
+      const parsedError = parseTradieFriendlyError(error);
+      toast({
+        title: parsedError.title || "Failed to duplicate quote",
+        description: formatToastDescription(parsedError),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleQuoteStatusChange = async (id: string, nextStatus: string) => {
+    const quote = quotes.find((q: any) => q.id === id);
+    const previousStatus = quote?.status || 'draft';
+    try {
+      if (nextStatus === 'sent') {
+        await sendQuoteMutation.mutateAsync(id);
+      } else if (nextStatus === 'accepted') {
+        await acceptQuoteMutation.mutateAsync(id);
+      } else if (nextStatus === 'declined' || nextStatus === 'rejected') {
+        await declineQuoteMutation.mutateAsync(id);
+      } else {
+        await updateQuoteStatusMutation.mutateAsync({ id, status: nextStatus });
+      }
+      const t = toast({
+        title: `Quote marked ${nextStatus}`,
+        description: `${quote?.number || 'Quote'} moved from ${previousStatus} to ${nextStatus}`,
+        duration: 8000,
+        action: (
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              t.dismiss();
+              try {
+                await updateQuoteStatusMutation.mutateAsync({ id, status: previousStatus });
+                toast({ title: 'Status reverted', duration: 3000 });
+              } catch (err: any) {
+                toast({ title: 'Undo failed', description: err?.message, variant: 'destructive' });
+              }
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
+      });
+    } catch (error: any) {
+      const parsedError = parseTradieFriendlyError(error);
+      toast({
+        title: parsedError.title || "Failed to update status",
         description: formatToastDescription(parsedError),
         variant: "destructive",
       });
@@ -274,7 +402,18 @@ export default function QuotesList({
       header: "Status",
       accessorKey: "status",
       sortable: true,
-      cell: (row) => <StatusBadge status={row.status} />,
+      cell: (row) => (
+        showArchived ? (
+          <StatusBadge status={row.status} />
+        ) : (
+          <InlineStatusMenu
+            type="quote"
+            status={row.status}
+            onSelect={(next) => handleQuoteStatusChange(row.id, next)}
+            testIdPrefix={`quote-table-status-${row.id}`}
+          />
+        )
+      ),
     },
     {
       id: "validUntil",
@@ -319,6 +458,12 @@ export default function QuotesList({
               <DropdownMenuItem onClick={() => handleConvertToInvoice(row.id)}>
                 <DollarSign className="h-4 w-4 mr-2" />
                 Convert to Invoice
+              </DropdownMenuItem>
+            )}
+            {!showArchived && (
+              <DropdownMenuItem onClick={() => handleDuplicateQuote(row.id)} data-testid={`menu-duplicate-quote-${row.id}`}>
+                <Copy className="h-4 w-4 mr-2" />
+                Duplicate
               </DropdownMenuItem>
             )}
             {showArchived && (
@@ -574,6 +719,8 @@ export default function QuotesList({
               onViewClick={onViewQuote}
               onSendClick={handleSendQuote}
               onConvertToInvoice={handleConvertToInvoice}
+              onStatusChange={!showArchived ? handleQuoteStatusChange : undefined}
+              onDuplicate={!showArchived ? handleDuplicateQuote : undefined}
               onArchive={!showArchived ? handleArchiveQuote : undefined}
               onUnarchive={showArchived ? (id) => handleRestoreQuote(id) : undefined}
               onDelete={handleDeleteQuote}
@@ -600,6 +747,18 @@ export default function QuotesList({
           businessName={businessSettings?.businessName}
           onConfirmSend={handleConfirmSend}
           isPending={sendQuoteMutation.isPending}
+        />
+      )}
+
+      {selectedQuote && (
+        <ConvertQuotePreviewDialog
+          open={convertDialogOpen}
+          onOpenChange={setConvertDialogOpen}
+          quoteId={selectedQuote.id}
+          quoteNumber={selectedQuote.number}
+          clientName={selectedQuote.clientName}
+          onConfirm={handleConfirmConvert}
+          isPending={convertToInvoiceMutation.isPending}
         />
       )}
     </PageShell>
