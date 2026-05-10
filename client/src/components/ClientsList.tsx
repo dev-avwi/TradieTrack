@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { getSessionToken } from "@/lib/queryClient";
+import { getSessionToken, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -13,23 +13,15 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { PageShell, PageHeader } from "@/components/ui/page-shell";
 import { EmptyState } from "@/components/ui/compact-card";
 import { SearchBar, FilterChips } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import { CardListSkeleton } from "@/components/ui/list-skeletons";
 import KPIBox from "./KPIBox";
 import { useClients, useDeleteClient } from "@/hooks/use-clients";
 import { useToast } from "@/hooks/use-toast";
+import { useUndoableMutation } from "@/hooks/use-undoable-mutation";
 import ClientCard from "./ClientCard";
 import { cn } from "@/lib/utils";
 
@@ -56,12 +48,27 @@ export default function ClientsList({
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
   const { data = [], isLoading = true } = useClients() ?? {};
   const clients = Array.isArray(data) ? data : [];
   const deleteClient = useDeleteClient();
   const { toast } = useToast();
+
+  // Deferred undoable delete: actual DELETE only fires after the 8s window.
+  // We optimistically remove from the cache so the row disappears instantly; Undo restores it.
+  const undoableDeleteClient = useUndoableMutation<{ id: string; name: string }>({
+    mode: "deferred",
+    forward: ({ id }) => deleteClient.mutateAsync(id),
+    successTitle: ({ name }) => "Client deleted",
+    successDescription: ({ name }) => `${name} will be permanently removed`,
+    undoTitle: ({ name }) => `${name} restored`,
+    errorTitle: () => "Failed to delete client",
+    invalidateKeys: [["/api/clients"], ["/api/clients/segments"]],
+    optimistic: ({ id }) => {
+      const key = ["/api/clients"];
+      const current = (queryClient.getQueryData(key) as any[]) ?? [];
+      queryClient.setQueryData(key, current.filter((c) => c.id !== id));
+    },
+  });
 
   const { data: segments } = useQuery<Record<string, any>>({
     queryKey: ['/api/clients/segments'],
@@ -84,29 +91,7 @@ export default function ClientsList({
   });
 
   const handleDeleteClick = (client: { id: string; name: string }) => {
-    setClientToDelete(client);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!clientToDelete) return;
-    
-    try {
-      await deleteClient.mutateAsync(clientToDelete.id);
-      toast({
-        title: "Client deleted",
-        description: `${clientToDelete.name} has been removed.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to delete client",
-        description: error.message || "An error occurred while deleting the client.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteDialogOpen(false);
-      setClientToDelete(null);
-    }
+    undoableDeleteClient.trigger(client);
   };
 
   const tableColumns: ColumnDef<any>[] = [
@@ -482,22 +467,7 @@ export default function ClientsList({
 
       {/* Clients List - Table or Card View */}
       {isLoading ? (
-        <div className="space-y-3" data-testid="clients-loading">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} style={{ borderRadius: '14px' }}>
-              <CardContent className="p-4 animate-pulse">
-                <div className="space-y-3">
-                  <div className="h-5 w-48 bg-muted rounded" />
-                  <div className="h-4 w-32 bg-muted rounded" />
-                  <div className="flex gap-4">
-                    <div className="h-3 w-24 bg-muted rounded" />
-                    <div className="h-3 w-24 bg-muted rounded" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <CardListSkeleton count={4} data-testid="clients-loading" />
       ) : filteredClients.length === 0 ? (
         <EmptyState
           icon={Users}
@@ -547,27 +517,6 @@ export default function ClientsList({
         </div>
       )}
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent style={{ borderRadius: '14px' }}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Client</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{clientToDelete?.name}</strong>? This action cannot be undone. Any associated jobs, quotes, and invoices will remain but will no longer be linked to this client.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel style={{ borderRadius: '10px' }}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              style={{ borderRadius: '10px' }}
-              disabled={deleteClient.isPending}
-            >
-              {deleteClient.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </PageShell>
   );
 }

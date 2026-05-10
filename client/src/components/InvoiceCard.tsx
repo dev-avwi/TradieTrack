@@ -1,6 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, User, Calendar, CreditCard, ChevronRight } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FileText, User, Calendar, CreditCard, ChevronRight, MoreVertical, Archive, RotateCcw, Trash2 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import XeroRibbon from "./XeroRibbon";
 
@@ -16,10 +22,14 @@ interface InvoiceCardProps {
   dueDate?: string;
   xeroInvoiceId?: string;
   isXeroImport?: boolean;
+  isArchived?: boolean;
   onViewClick?: (id: string) => void;
   onSendClick?: (id: string) => void;
   onCreatePaymentLink?: (id: string) => void;
   onMarkPaid?: (id: string) => void;
+  onArchive?: (id: string) => void;
+  onUnarchive?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export default function InvoiceCard({ 
@@ -34,10 +44,14 @@ export default function InvoiceCard({
   dueDate,
   xeroInvoiceId,
   isXeroImport,
+  isArchived,
   onViewClick, 
   onSendClick,
   onCreatePaymentLink,
-  onMarkPaid 
+  onMarkPaid,
+  onArchive,
+  onUnarchive,
+  onDelete,
 }: InvoiceCardProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', {
@@ -132,7 +146,46 @@ export default function InvoiceCard({
                   Paid
                 </Button>
               )}
-              
+
+              {(onArchive || onUnarchive || onDelete) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => e.stopPropagation()}
+                      data-testid={`button-invoice-card-actions-${id}`}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rounded-xl">
+                    {!isArchived && onArchive && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(id); }} data-testid={`menu-archive-invoice-${id}`}>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    )}
+                    {isArchived && onUnarchive && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onUnarchive(id); }} data-testid={`menu-unarchive-invoice-${id}`}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Restore
+                      </DropdownMenuItem>
+                    )}
+                    {onDelete && (
+                      <DropdownMenuItem
+                        onClick={(e) => { e.stopPropagation(); onDelete(id); }}
+                        className="text-destructive focus:text-destructive"
+                        data-testid={`menu-delete-invoice-${id}`}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>
           </div>

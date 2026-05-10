@@ -11,10 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import InvoiceCard from "./InvoiceCard";
-import { useInvoices, useRecentInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink, useUnarchiveInvoice } from "@/hooks/use-invoices";
+import { useInvoices, useRecentInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink, useUnarchiveInvoice, useArchiveInvoice, useDeleteInvoice } from "@/hooks/use-invoices";
 import { useClients } from "@/hooks/use-clients";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
+import { useUndoableMutation } from "@/hooks/use-undoable-mutation";
+import { CardListSkeleton } from "@/components/ui/list-skeletons";
+import { queryClient } from "@/lib/queryClient";
 import { formatHistoryDate, getStatusColor } from "@shared/dateUtils";
 import { PageShell } from "@/components/ui/page-shell";
 import { PageHeader } from "@/components/ui/page-shell";
@@ -86,6 +89,43 @@ export default function InvoicesList({
   const invoices = Array.isArray(invoicesData) ? invoicesData : [];
   const clients = Array.isArray(clientsData) ? clientsData : [];
   const unarchiveInvoiceMutation = useUnarchiveInvoice();
+  const archiveInvoiceMutation = useArchiveInvoice();
+  const deleteInvoiceMutation = useDeleteInvoice();
+
+  const undoableArchiveInvoice = useUndoableMutation<{ id: string; number: string }>({
+    mode: "eager",
+    forward: ({ id }) => archiveInvoiceMutation.mutateAsync(id),
+    inverse: ({ id }) => unarchiveInvoiceMutation.mutateAsync(id),
+    successTitle: ({ number }) => "Invoice archived",
+    successDescription: ({ number }) => number,
+    undoTitle: ({ number }) => `${number} restored`,
+    errorTitle: () => "Failed to archive invoice",
+    invalidateKeys: [["/api/invoices"], ["/api/invoices", { archived: true }]],
+  });
+
+  const undoableDeleteInvoice = useUndoableMutation<{ id: string; number: string }>({
+    mode: "deferred",
+    forward: ({ id }) => deleteInvoiceMutation.mutateAsync(id),
+    successTitle: ({ number }) => "Invoice deleted",
+    successDescription: ({ number }) => `${number} will be permanently removed`,
+    undoTitle: ({ number }) => `${number} restored`,
+    errorTitle: () => "Failed to delete invoice",
+    invalidateKeys: [["/api/invoices"], ["/api/invoices", { archived: true }]],
+    optimistic: ({ id }) => {
+      const key = showArchived ? ["/api/invoices", { archived: true }] : ["/api/invoices"];
+      const current = (queryClient.getQueryData(key) as any[]) ?? [];
+      queryClient.setQueryData(key, current.filter((inv) => inv.id !== id));
+    },
+  });
+
+  const handleArchiveInvoice = (id: string) => {
+    const inv = invoices.find((x: any) => x.id === id);
+    undoableArchiveInvoice.trigger({ id, number: inv?.number || "Invoice" });
+  };
+  const handleDeleteInvoice = (id: string) => {
+    const inv = invoices.find((x: any) => x.id === id);
+    undoableDeleteInvoice.trigger({ id, number: inv?.number || "Invoice" });
+  };
 
   // Open confirmation dialog instead of sending directly
   const handleSendInvoice = (id: string) => {
@@ -563,22 +603,7 @@ export default function InvoicesList({
 
       {/* Invoices List - Table or Card View */}
       {isLoading ? (
-        <div className="space-y-3" data-testid="invoices-loading">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} style={{ borderRadius: '14px' }}>
-              <CardContent className="p-4 animate-pulse">
-                <div className="space-y-3">
-                  <div className="h-5 w-48 bg-muted rounded" />
-                  <div className="h-4 w-32 bg-muted rounded" />
-                  <div className="flex gap-4">
-                    <div className="h-3 w-24 bg-muted rounded" />
-                    <div className="h-3 w-24 bg-muted rounded" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <CardListSkeleton count={4} data-testid="invoices-loading" />
       ) : filteredInvoices.length === 0 ? (
         <EmptyState
           icon={Receipt}
@@ -628,10 +653,14 @@ export default function InvoicesList({
               dueDate={invoice.dueDate}
               xeroInvoiceId={invoice.xeroInvoiceId}
               isXeroImport={invoice.isXeroImport}
+              isArchived={showArchived}
               onViewClick={onViewInvoice}
               onSendClick={handleSendInvoice}
               onCreatePaymentLink={handleCreatePaymentLink}
               onMarkPaid={handleMarkPaid}
+              onArchive={!showArchived ? handleArchiveInvoice : undefined}
+              onUnarchive={showArchived ? handleRestoreInvoice : undefined}
+              onDelete={handleDeleteInvoice}
             />
           ))}
         </div>

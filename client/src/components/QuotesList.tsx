@@ -11,9 +11,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import QuoteCard from "./QuoteCard";
-import { useQuotes, useConvertQuoteToInvoice, useSendQuote, useRecentQuotes, useUnarchiveQuote } from "@/hooks/use-quotes";
+import { useQuotes, useConvertQuoteToInvoice, useSendQuote, useRecentQuotes, useUnarchiveQuote, useArchiveQuote, useDeleteQuote } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
+import { useUndoableMutation } from "@/hooks/use-undoable-mutation";
+import { CardListSkeleton } from "@/components/ui/list-skeletons";
+import { queryClient } from "@/lib/queryClient";
 import { formatHistoryDate, getStatusColor } from "@shared/dateUtils";
 import { PageShell } from "@/components/ui/page-shell";
 import { PageHeader } from "@/components/ui/page-shell";
@@ -67,6 +70,50 @@ export default function QuotesList({
   const { data: businessSettings } = useBusinessSettings();
   const { toast } = useToast();
   const unarchiveQuoteMutation = useUnarchiveQuote();
+  const archiveQuoteMutation = useArchiveQuote();
+  const deleteQuoteMutation = useDeleteQuote();
+
+  // Eager undoable archive (has inverse).
+  const undoableArchiveQuote = useUndoableMutation<{ id: string; number: string }>({
+    mode: "eager",
+    forward: ({ id }) => archiveQuoteMutation.mutateAsync(id),
+    inverse: ({ id }) => unarchiveQuoteMutation.mutateAsync(id),
+    successTitle: ({ number }) => "Quote archived",
+    successDescription: ({ number }) => number,
+    undoTitle: ({ number }) => `${number} restored`,
+    errorTitle: () => "Failed to archive quote",
+    invalidateKeys: [["/api/quotes"], ["/api/quotes", { archived: true }]],
+  });
+
+  // Deferred undoable delete (no inverse) — actual DELETE deferred 8s.
+  const undoableDeleteQuote = useUndoableMutation<{ id: string; number: string }>({
+    mode: "deferred",
+    forward: ({ id }) => deleteQuoteMutation.mutateAsync(id),
+    successTitle: ({ number }) => "Quote deleted",
+    successDescription: ({ number }) => `${number} will be permanently removed`,
+    undoTitle: ({ number }) => `${number} restored`,
+    errorTitle: () => "Failed to delete quote",
+    invalidateKeys: [["/api/quotes"], ["/api/quotes", { archived: true }]],
+    optimistic: ({ id }) => {
+      const key = showArchived ? ["/api/quotes", { archived: true }] : ["/api/quotes"];
+      const current = (queryClient.getQueryData(key) as any[]) ?? [];
+      queryClient.setQueryData(key, current.filter((q) => q.id !== id));
+    },
+  });
+
+  const handleArchiveQuote = (id: string) => {
+    const q = quotes.find((x: any) => x.id === id);
+    undoableArchiveQuote.trigger({ id, number: q?.number || "Quote" });
+  };
+  const handleDeleteQuote = (id: string) => {
+    const q = quotes.find((x: any) => x.id === id);
+    undoableDeleteQuote.trigger({ id, number: q?.number || "Quote" });
+  };
+  const handleUnarchiveQuote = (id: string) => {
+    const q = quotes.find((x: any) => x.id === id);
+    undoableArchiveQuote.trigger({ id, number: q?.number || "Quote" });
+    // Note: when isArchived true, calling onUnarchive directly via dropdown — handled below
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -475,22 +522,7 @@ export default function QuotesList({
 
       {/* Quotes List - Table or Card View */}
       {isLoading ? (
-        <div className="space-y-3" data-testid="quotes-loading">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} style={{ borderRadius: '14px' }}>
-              <CardContent className="p-4 animate-pulse">
-                <div className="space-y-3">
-                  <div className="h-5 w-48 bg-muted rounded" />
-                  <div className="h-4 w-32 bg-muted rounded" />
-                  <div className="flex gap-4">
-                    <div className="h-3 w-24 bg-muted rounded" />
-                    <div className="h-3 w-24 bg-muted rounded" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <CardListSkeleton count={4} data-testid="quotes-loading" />
       ) : filteredQuotes.length === 0 ? (
         <EmptyState
           icon={FileText}
@@ -538,9 +570,13 @@ export default function QuotesList({
               validUntil={quote.validUntil ? new Date(quote.validUntil).toLocaleDateString() : ''}
               sentAt={quote.sentAt ? new Date(quote.sentAt).toLocaleDateString() : undefined}
               isXeroImport={quote.isXeroImport}
+              isArchived={showArchived}
               onViewClick={onViewQuote}
               onSendClick={handleSendQuote}
               onConvertToInvoice={handleConvertToInvoice}
+              onArchive={!showArchived ? handleArchiveQuote : undefined}
+              onUnarchive={showArchived ? (id) => handleRestoreQuote(id) : undefined}
+              onDelete={handleDeleteQuote}
             />
           ))}
         </div>

@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb, Columns3, Calendar, Receipt, Timer, AlertTriangle, Bot, Globe, Phone } from "lucide-react";
+import { Plus, Briefcase, User, Clock, MapPin, MoreVertical, Edit, FileText, CheckCircle, AlertCircle, LayoutGrid, List, ChevronRight, Play, ArrowRight, Clipboard, Lightbulb, Columns3, Calendar, Receipt, Timer, AlertTriangle, Bot, Globe, Phone, Archive } from "lucide-react";
 import { getJobUrgency } from "@/lib/jobUrgency";
 import PasteJobModal from "./PasteJobModal";
 import XeroRibbon from "./XeroRibbon";
@@ -17,9 +17,10 @@ import { PageShell, PageHeader, SectionTitle } from "@/components/ui/page-shell"
 import { EmptyState } from "@/components/ui/compact-card";
 import { FilterChips, SearchBar } from "@/components/ui/filter-chips";
 import { DataTable, ColumnDef, StatusBadge } from "@/components/ui/data-table";
-import { useJobs, useUpdateJob, useRecentJobs, useJobNextActions, usePrefetchJob, seedJobCacheFromList, type NextAction } from "@/hooks/use-jobs";
+import { useJobs, useUpdateJob, useRecentJobs, useJobNextActions, usePrefetchJob, seedJobCacheFromList, useArchiveJob, useUnarchiveJob, type NextAction } from "@/hooks/use-jobs";
 import { useGenerateQuoteFromJob } from "@/hooks/use-quotes";
 import { useToast } from "@/hooks/use-toast";
+import { useUndoableMutation } from "@/hooks/use-undoable-mutation";
 import { useAppMode } from "@/hooks/use-app-mode";
 import { formatHistoryDate } from "@shared/dateUtils";
 import { queryClient } from "@/lib/queryClient";
@@ -201,6 +202,13 @@ export default function JobsList({
               <FileText className="h-4 w-4 mr-2" />
               Generate Quote
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleArchiveJob(row.id)}
+              data-testid={`menu-archive-job-${row.id}`}
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              Archive Job
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -218,6 +226,25 @@ export default function JobsList({
   const { toast } = useToast();
   const updateJobMutation = useUpdateJob();
   const generateQuoteMutation = useGenerateQuoteFromJob();
+  const archiveJobMutation = useArchiveJob();
+  const unarchiveJobMutation = useUnarchiveJob();
+
+  // Eager undoable archive: archive fires immediately, Undo unarchives.
+  const undoableArchiveJob = useUndoableMutation<{ id: string; title: string }>({
+    mode: "eager",
+    forward: ({ id }) => archiveJobMutation.mutateAsync(id),
+    inverse: ({ id }) => unarchiveJobMutation.mutateAsync(id),
+    successTitle: ({ title }) => "Job archived",
+    successDescription: ({ title }) => title,
+    undoTitle: ({ title }) => `${title} restored`,
+    errorTitle: () => "Failed to archive job",
+    invalidateKeys: [["/api/jobs"], ["/api/jobs", { archived: true }]],
+  });
+
+  const handleArchiveJob = (id: string) => {
+    const job = jobs.find((j: any) => j.id === id);
+    undoableArchiveJob.trigger({ id, title: job?.title || "Job" });
+  };
 
   // Status display labels for toast messages
   const statusLabels: Record<JobStatus, string> = {
@@ -872,6 +899,13 @@ export default function JobsList({
                             <DropdownMenuItem onClick={() => handleGenerateQuote(job.id)}>
                               <FileText className="h-4 w-4 mr-2" />
                               Generate Quote
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleArchiveJob(job.id)}
+                              data-testid={`menu-archive-job-card-${job.id}`}
+                            >
+                              <Archive className="h-4 w-4 mr-2" />
+                              Archive Job
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

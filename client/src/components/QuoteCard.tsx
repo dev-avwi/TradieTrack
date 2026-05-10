@@ -1,6 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, User, Calendar, ChevronRight, ArrowRight } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FileText, User, Calendar, ChevronRight, ArrowRight, MoreVertical, Archive, RotateCcw, Trash2 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import XeroRibbon from "./XeroRibbon";
 
@@ -14,9 +20,13 @@ interface QuoteCardProps {
   validUntil?: string;
   sentAt?: string;
   isXeroImport?: boolean;
+  isArchived?: boolean;
   onViewClick?: (id: string) => void;
   onSendClick?: (id: string) => void;
   onConvertToInvoice?: (id: string) => void;
+  onArchive?: (id: string) => void;
+  onUnarchive?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 export default function QuoteCard({ 
@@ -29,9 +39,13 @@ export default function QuoteCard({
   validUntil,
   sentAt,
   isXeroImport,
+  isArchived,
   onViewClick, 
   onSendClick,
-  onConvertToInvoice 
+  onConvertToInvoice,
+  onArchive,
+  onUnarchive,
+  onDelete,
 }: QuoteCardProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-AU', {
@@ -129,7 +143,46 @@ export default function QuoteCard({
                   Invoice
                 </Button>
               )}
-              
+
+              {(onArchive || onUnarchive || onDelete) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => e.stopPropagation()}
+                      data-testid={`button-quote-card-actions-${id}`}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rounded-xl">
+                    {!isArchived && onArchive && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(id); }} data-testid={`menu-archive-quote-${id}`}>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    )}
+                    {isArchived && onUnarchive && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onUnarchive(id); }} data-testid={`menu-unarchive-quote-${id}`}>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Restore
+                      </DropdownMenuItem>
+                    )}
+                    {onDelete && (
+                      <DropdownMenuItem
+                        onClick={(e) => { e.stopPropagation(); onDelete(id); }}
+                        className="text-destructive focus:text-destructive"
+                        data-testid={`menu-delete-quote-${id}`}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>
           </div>

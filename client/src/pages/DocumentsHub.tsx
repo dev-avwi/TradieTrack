@@ -38,6 +38,8 @@ import { useQuotes, useSendQuote, useConvertQuoteToInvoice, useDeleteQuote } fro
 import { useInvoices, useSendInvoice, useMarkInvoicePaid, useCreatePaymentLink, useDeleteInvoice } from "@/hooks/use-invoices";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
+import { useUndoableMutation } from "@/hooks/use-undoable-mutation";
+import { queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { SendConfirmationDialog } from "@/components/SendConfirmationDialog";
@@ -536,8 +538,6 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [markPaidDialogOpen, setMarkPaidDialogOpen] = useState(false);
-  const [deleteQuoteDialogOpen, setDeleteQuoteDialogOpen] = useState(false);
-  const [deleteInvoiceDialogOpen, setDeleteInvoiceDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   
   // Handle create action after state is updated
@@ -572,6 +572,36 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   const createPaymentLinkMutation = useCreatePaymentLink();
   const deleteQuoteMutation = useDeleteQuote();
   const deleteInvoiceMutation = useDeleteInvoice();
+
+  // Deferred undoable deletes — actual DELETE deferred for the 8s undo window.
+  const undoableDeleteQuoteDoc = useUndoableMutation<{ id: string; number: string }>({
+    mode: "deferred",
+    forward: ({ id }) => deleteQuoteMutation.mutateAsync(id),
+    successTitle: ({ number }) => "Quote deleted",
+    successDescription: ({ number }) => `${number} will be permanently removed`,
+    undoTitle: ({ number }) => `${number} restored`,
+    errorTitle: () => "Failed to delete quote",
+    invalidateKeys: [["/api/quotes"]],
+    optimistic: ({ id }) => {
+      const key = ["/api/quotes"];
+      const current = (queryClient.getQueryData(key) as any[]) ?? [];
+      queryClient.setQueryData(key, current.filter((q) => q.id !== id));
+    },
+  });
+  const undoableDeleteInvoiceDoc = useUndoableMutation<{ id: string; number: string }>({
+    mode: "deferred",
+    forward: ({ id }) => deleteInvoiceMutation.mutateAsync(id),
+    successTitle: ({ number }) => "Invoice deleted",
+    successDescription: ({ number }) => `${number} will be permanently removed`,
+    undoTitle: ({ number }) => `${number} restored`,
+    errorTitle: () => "Failed to delete invoice",
+    invalidateKeys: [["/api/invoices"]],
+    optimistic: ({ id }) => {
+      const key = ["/api/invoices"];
+      const current = (queryClient.getQueryData(key) as any[]) ?? [];
+      queryClient.setQueryData(key, current.filter((inv) => inv.id !== id));
+    },
+  });
 
   const invoicesByQuoteId = useMemo(() => {
     const map = new Map<string, any>();
@@ -773,37 +803,11 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
   };
   
   const handleDeleteQuote = (quote: any) => {
-    setSelectedDocument(quote);
-    setDeleteQuoteDialogOpen(true);
+    undoableDeleteQuoteDoc.trigger({ id: quote.id, number: quote.number || "Quote" });
   };
-  
-  const handleConfirmDeleteQuote = async () => {
-    if (!selectedDocument) return;
-    try {
-      await deleteQuoteMutation.mutateAsync(selectedDocument.id);
-      toast({ title: "Quote deleted", description: `${selectedDocument.number || 'Quote'} has been deleted` });
-    } catch (error: any) {
-      toast({ title: "Failed to delete quote", description: error.message || "Please try again", variant: "destructive" });
-    }
-    setDeleteQuoteDialogOpen(false);
-    setSelectedDocument(null);
-  };
-  
+
   const handleDeleteInvoice = (invoice: any) => {
-    setSelectedDocument(invoice);
-    setDeleteInvoiceDialogOpen(true);
-  };
-  
-  const handleConfirmDeleteInvoice = async () => {
-    if (!selectedDocument) return;
-    try {
-      await deleteInvoiceMutation.mutateAsync(selectedDocument.id);
-      toast({ title: "Invoice deleted", description: `${selectedDocument.number || 'Invoice'} has been deleted` });
-    } catch (error: any) {
-      toast({ title: "Failed to delete invoice", description: error.message || "Please try again", variant: "destructive" });
-    }
-    setDeleteInvoiceDialogOpen(false);
-    setSelectedDocument(null);
+    undoableDeleteInvoiceDoc.trigger({ id: invoice.id, number: invoice.number || "Invoice" });
   };
   
   const handleCreate = () => {
@@ -1415,27 +1419,6 @@ export default function DocumentsHub({ onNavigate }: DocumentsHubProps) {
         isPending={markPaidMutation.isPending}
       />
       
-      <ConfirmationDialog
-        open={deleteQuoteDialogOpen}
-        onOpenChange={setDeleteQuoteDialogOpen}
-        title="Delete Quote"
-        description={`Are you sure you want to delete ${selectedDocument?.number || 'this quote'}? This action cannot be undone.`}
-        confirmLabel="Delete"
-        variant="destructive"
-        onConfirm={handleConfirmDeleteQuote}
-        isPending={deleteQuoteMutation.isPending}
-      />
-      
-      <ConfirmationDialog
-        open={deleteInvoiceDialogOpen}
-        onOpenChange={setDeleteInvoiceDialogOpen}
-        title="Delete Invoice"
-        description={`Are you sure you want to delete ${selectedDocument?.number || 'this invoice'}? This action cannot be undone.`}
-        confirmLabel="Delete"
-        variant="destructive"
-        onConfirm={handleConfirmDeleteInvoice}
-        isPending={deleteInvoiceMutation.isPending}
-      />
     </Tabs>
   );
 }

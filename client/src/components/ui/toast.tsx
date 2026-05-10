@@ -38,17 +38,36 @@ const toastVariants = cva(
   }
 )
 
+type ToastRootProps = React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
+  VariantProps<typeof toastVariants> & {
+    /** When true and `duration` is set, render an animated countdown progress bar at the bottom of the toast. */
+    showProgress?: boolean
+  }
+
 const Toast = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Root>,
-  React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-    VariantProps<typeof toastVariants>
->(({ className, variant, ...props }, ref) => {
+  ToastRootProps
+>(({ className, variant, showProgress, duration, children, ...props }, ref) => {
   return (
     <ToastPrimitives.Root
       ref={ref}
+      duration={duration}
       className={cn(toastVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {children}
+      {showProgress && duration && duration > 0 ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 overflow-hidden bg-foreground/10"
+        >
+          <div
+            className="h-full origin-left bg-foreground/60 group-[.destructive]:bg-destructive-foreground/70 animate-toast-progress"
+            style={{ animationDuration: `${duration}ms` }}
+          />
+        </div>
+      ) : null}
+    </ToastPrimitives.Root>
   )
 })
 Toast.displayName = ToastPrimitives.Root.displayName
