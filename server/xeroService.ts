@@ -178,13 +178,56 @@ export async function handleCallback(url: string, userId: string): Promise<XeroC
     );
   }
 
+  // Bypass xero-node's updateTenants() (which hides the real /connections error
+  // behind a wrapped string throw). Call /connections directly so we can capture
+  // status, body, Xero-correlation-id, and www-authenticate verbatim.
   let tenants: any[] = [];
-  let updateTenantsError: any = null;
   try {
-    await xero.updateTenants();
-    tenants = xero.tenants || [];
+    const connRes = await fetch('https://api.xero.com/connections', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${tokenSet.access_token}`,
+        'Accept': 'application/json',
+      },
+    });
+    const respText = await connRes.text();
+    const correlationId = connRes.headers.get('xero-correlation-id') || '';
+    const wwwAuth = connRes.headers.get('www-authenticate') || '';
+    let respBody: any = null;
+    try { respBody = JSON.parse(respText); } catch { respBody = respText; }
+
+    console.log('[Xero] /connections response:', {
+      status: connRes.status,
+      correlationId,
+      wwwAuth,
+      body: respBody,
+      amr,
+      jwtScopes,
+      jwtAud: (() => { try { const at = tokenSet.access_token||''; const p = at.split('.'); return p.length===3 ? JSON.parse(Buffer.from(p[1],'base64url').toString()).aud : null; } catch { return null; } })(),
+    });
+
+    if (connRes.status === 401) {
+      const detail = respBody?.Detail || respBody?.detail || '';
+      throw new Error(
+        `Xero rejected your token (HTTP 401 ${detail || 'Unauthorized'}). www-authenticate: ${wwwAuth || 'none'}. ` +
+        `Xero correlation ID: ${correlationId || 'none'}. ` +
+        `This usually means the Xero login you used during consent doesn't have API access to any organisation. ` +
+        `Make sure the email you sign in with on the Xero authorise screen is the same one that has access to Linkup2care in Xero.`
+      );
+    }
+    if (!connRes.ok) {
+      throw new Error(
+        `Xero /connections returned HTTP ${connRes.status}: ${typeof respBody === 'string' ? respBody.slice(0, 200) : JSON.stringify(respBody).slice(0, 200)}. Correlation ID: ${correlationId}`
+      );
+    }
+    if (!Array.isArray(respBody)) {
+      throw new Error(`Xero /connections returned an unexpected body shape (not an array). Correlation ID: ${correlationId}`);
+    }
+    tenants = respBody;
   } catch (err: any) {
-    updateTenantsError = err;
+    if (err?.message && /Xero (rejected|\/connections)/.test(err.message)) {
+      throw err; // already a friendly message from above
+    }
     // xero-node sometimes throws a PLAIN STRING (e.g. raw response body) for
     // /connections failures, sometimes an axios-style Error with .response,
     // sometimes an openid-client OPError with .statusCode. Handle all shapes.
