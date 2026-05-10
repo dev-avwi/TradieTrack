@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import GettingStartedChecklist from "./GettingStartedChecklist";
+import TodayScheduleCard from "./TodayScheduleCard";
 import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
 import FloatingActionButton from "./FloatingActionButton";
@@ -905,111 +906,21 @@ export default function TeamOwnerDashboard({
 
         {/* RIGHT COLUMN - Today's Jobs + Activity stacking */}
         <div className="space-y-4 lg:space-y-6">
-        {/* TODAY'S JOBS */}
-        <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="ios-section-title flex items-center gap-2.5">
-            <div 
-              className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
-            >
-              <CalendarDays className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} />
-            </div>
-            Today's Jobs
-          </h2>
-          {todaysJobs.length > 0 && onViewJobs && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-xs h-8 px-3 rounded-xl press-scale"
-              onClick={onViewJobs}
-              data-testid="button-view-all-jobs"
-            >
-              View All
-              <ChevronRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
+        {/* TODAY'S JOBS — drag-to-reorder, weather + drive-time strip,
+            smart context-aware empty state */}
+        <TodayScheduleCard
+          jobs={todaysJobs}
+          onCreateJob={onCreateJob}
+          onViewAll={onViewJobs}
+          onViewJob={(id) => onNavigate?.(`/jobs/${id}`)}
+          onNavigate={onNavigate}
+          renderRowActions={(job) => (
+            <>
+              {getStatusBadge(job.status)}
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </>
           )}
-        </div>
-
-        {todaysJobs.length === 0 ? (
-          <div className="feed-card card-padding text-center" data-testid="no-jobs-card">
-            <div 
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}
-            >
-              <Briefcase className="h-8 w-8 text-muted-foreground opacity-50" />
-            </div>
-            <p className="ios-body text-muted-foreground mb-4">No jobs scheduled for today</p>
-            {onCreateJob && (
-              <Button 
-                size="lg"
-                className="text-white font-semibold h-12 px-6 rounded-xl press-scale"
-                style={{ backgroundColor: 'hsl(var(--trade))' }}
-                onClick={onCreateJob}
-                data-testid="button-schedule-job"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Schedule a Job
-              </Button>
-            )}
-          </div>
-        ) : (
-          <div className="feed-gap">
-            {todaysJobs.slice(0, 5).map((job: any, index: number) => (
-              <div 
-                key={job.id}
-                className="feed-card border card-press cursor-pointer"
-                onClick={() => onNavigate?.(`/jobs/${job.id}`)}
-                data-testid={`job-card-${job.id}`}
-              >
-                <div className="card-padding">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div 
-                        className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: 'hsl(var(--trade) / 0.1)' }}
-                      >
-                        <span className="font-bold text-lg" style={{ color: 'hsl(var(--trade))' }}>
-                          {formatJobTime(job.scheduledAt).split(' ')[0]}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="ios-label">
-                            {formatJobTime(job.scheduledAt).split(' ')[1]}
-                          </span>
-                          {getStatusBadge(job.status)}
-                        </div>
-                        <h3 className="font-medium line-clamp-1 mt-0.5">{job.title}</h3>
-                        {job.assignedToName && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <User className="h-3 w-3" />
-                            {job.assignedToName}
-                          </p>
-                        )}
-                        {job.address && (
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-muted-foreground flex items-center gap-1 mt-1 underline underline-offset-2 hover:text-foreground transition-colors"
-                            data-testid={`address-link-${job.id}`}
-                          >
-                            <Navigation className="h-3 w-3 flex-shrink-0" />
-                            <span className="line-clamp-1">{job.address}</span>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        </section>
+        />
 
         {/* RECENT ACTIVITY - in right column */}
         <ActivityFeed 

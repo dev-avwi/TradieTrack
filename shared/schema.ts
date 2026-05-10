@@ -776,6 +776,7 @@ export const jobs = pgTable("jobs", {
   cancellationReason: text("cancellation_reason"), // Reason for cancellation if status is cancelled
   scheduledAt: timestamp("scheduled_at"),
   scheduledTime: text("scheduled_time"), // Time of day in HH:MM format
+  scheduleOrder: integer("schedule_order"), // Manual ordering for "Today's Schedule" drag-to-reorder (nulls fall back to scheduledAt sort)
   estimatedDuration: integer("estimated_duration").default(60), // Duration in minutes
   assignedTo: text("assigned_to"),
   notes: text("notes"),

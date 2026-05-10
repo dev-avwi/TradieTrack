@@ -16170,7 +16170,15 @@ Be specific about materials, colors, and features that would be included.`
           };
         })
         .sort((a, b) => {
-          // Sort by scheduled date, then by status
+          // scheduleOrder only applies WITHIN the today cohort — never
+          // promotes today jobs ahead of past/future jobs.
+          const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+          const todayEnd = new Date(todayStart); todayEnd.setDate(todayEnd.getDate() + 1);
+          const isToday = (j: any) => j.scheduledAt &&
+            new Date(j.scheduledAt) >= todayStart && new Date(j.scheduledAt) < todayEnd;
+          if (isToday(a) && isToday(b) && a.scheduleOrder != null && b.scheduleOrder != null) {
+            return (a.scheduleOrder as number) - (b.scheduleOrder as number);
+          }
           if (a.scheduledAt && b.scheduledAt) {
             return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
           }
@@ -16484,12 +16492,208 @@ Be specific about materials, colors, and features that would be included.`
             clientEmail: client?.email || null,
           };
         })
-        .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
+        .sort((a, b) => {
+          const aHasOrder = a.scheduleOrder != null;
+          const bHasOrder = b.scheduleOrder != null;
+          if (aHasOrder && bHasOrder) return (a.scheduleOrder as number) - (b.scheduleOrder as number);
+          if (aHasOrder) return -1;
+          if (bHasOrder) return 1;
+          return new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime();
+        });
 
       res.json(todaysJobs);
     } catch (error) {
       console.error("Error fetching today's jobs:", error);
       res.status(500).json({ error: "Failed to fetch today's jobs" });
+    }
+  });
+
+  // Persist drag-to-reorder for "Today's Schedule" — assigns sequential
+  // scheduleOrder values to the supplied jobIds. Owner/manager scope only;
+  // worker scope can reorder but only for their own assigned jobs.
+  // READ_JOBS + the scope check below — workers are allowed to reorder their
+  // own assigned today jobs without holding WRITE_JOBS (which they don't).
+  app.patch("/api/jobs/today/reorder", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
+    try {
+      const schema = z.object({
+        jobIds: z.array(z.string().min(1)).min(1).max(100),
+        // Optional ISO date (YYYY-MM-DD) — defaults to server "today" in
+        // local timezone. Validated to ensure submitted IDs all fall on
+        // that calendar day so reorders can't smuggle cross-day changes.
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: 'Invalid payload', details: parsed.error.issues });
+      const { jobIds, date } = parsed.data;
+      if (new Set(jobIds).size !== jobIds.length) {
+        return res.status(400).json({ error: 'jobIds must be unique' });
+      }
+      const userContext = await getUserContext(req.userId);
+      const uid = userContext.effectiveUserId;
+
+      const dayStart = date ? new Date(`${date}T00:00:00`) : new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+
+      const allJobs = await storage.getJobs(uid);
+      const inScopeToday = allJobs.filter((j: any) => {
+        if (!j.scheduledAt) return false;
+        const t = new Date(j.scheduledAt);
+        if (t < dayStart || t >= dayEnd) return false;
+        if (userContext.isOwner || userContext.permissions.includes('view_all')) return true;
+        return j.assignedTo === userContext.teamMemberId || j.assignedTo === userContext.userId;
+      });
+      const allowed = new Set(inScopeToday.map((j: any) => j.id));
+      for (const id of jobIds) {
+        if (!allowed.has(id)) {
+          return res.status(403).json({ error: 'One or more jobs are not in scope for the requested date' });
+        }
+      }
+
+      // Assign 10, 20, 30… so future inserts can wedge between values.
+      const submitted = new Set(jobIds);
+      for (let idx = 0; idx < jobIds.length; idx++) {
+        await storage.updateJob(jobIds[idx], uid, { scheduleOrder: (idx + 1) * 10 });
+      }
+      // Clear stale order on omitted same-day jobs.
+      for (const j of inScopeToday) {
+        if (!submitted.has(j.id) && j.scheduleOrder != null) {
+          await storage.updateJob(j.id, uid, { scheduleOrder: null });
+        }
+      }
+      res.json({ success: true, count: jobIds.length, date: dayStart.toISOString().slice(0, 10) });
+    } catch (error: any) {
+      console.error("Error reordering today's jobs:", error);
+      res.status(500).json({ error: error?.message || "Failed to reorder" });
+    }
+  });
+
+  // Total drive time + distance for today's jobs in current scheduleOrder.
+  // Uses OSRM via calculateRouteETA pairwise. Falls back to haversine when OSRM
+  // fails. Server-side keeps OSRM rate-limit pressure in one place + reuses
+  // any future caching layer without touching the client.
+  app.get("/api/jobs/today/route", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const uid = userContext.effectiveUserId;
+      let jobs = await storage.getJobs(uid);
+      const hasViewAll = userContext.permissions.includes('view_all') || userContext.isOwner;
+      if (!hasViewAll) {
+        // Even when teamMemberId is missing, restrict to jobs explicitly
+        // assigned to this user — never fall through to business-wide
+        // route metrics for non-view_all users.
+        jobs = jobs.filter((j: any) =>
+          (userContext.teamMemberId && j.assignedTo === userContext.teamMemberId) ||
+          j.assignedTo === userContext.userId
+        );
+      }
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+      const todays = jobs
+        .filter((j: any) => j.scheduledAt && new Date(j.scheduledAt) >= today && new Date(j.scheduledAt) < tomorrow)
+        .filter((j: any) => j.latitude != null && j.longitude != null)
+        .sort((a: any, b: any) => {
+          const aHas = a.scheduleOrder != null, bHas = b.scheduleOrder != null;
+          if (aHas && bHas) return a.scheduleOrder - b.scheduleOrder;
+          if (aHas) return -1; if (bHas) return 1;
+          return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
+        });
+      if (todays.length < 2) {
+        return res.json({ durationMinutes: 0, distanceKm: 0, segments: 0, jobsWithLocation: todays.length, source: 'none' });
+      }
+      let totalMinutes = 0, totalKm = 0, source: 'osrm' | 'haversine' | 'mixed' = 'osrm';
+      let osrmFailures = 0;
+      for (let i = 0; i < todays.length - 1; i++) {
+        const from = todays[i], to = todays[i + 1];
+        const fLat = parseFloat(String(from.latitude)), fLng = parseFloat(String(from.longitude));
+        const tLat = parseFloat(String(to.latitude)), tLng = parseFloat(String(to.longitude));
+        const eta = await calculateRouteETA(fLat, fLng, tLat, tLng);
+        if (eta) {
+          totalMinutes += eta.durationMinutes;
+          totalKm += eta.distanceKm;
+        } else {
+          osrmFailures++;
+          const km = haversineDistance(fLat, fLng, tLat, tLng);
+          totalKm += km;
+          totalMinutes += Math.ceil((km / 50) * 60); // assume 50 km/h average
+        }
+      }
+      if (osrmFailures === todays.length - 1) source = 'haversine';
+      else if (osrmFailures > 0) source = 'mixed';
+      res.json({
+        durationMinutes: totalMinutes,
+        distanceKm: Math.round(totalKm * 10) / 10,
+        segments: todays.length - 1,
+        jobsWithLocation: todays.length,
+        source,
+      });
+    } catch (error: any) {
+      console.error("Error computing today's route:", error);
+      res.status(500).json({ error: "Failed to compute route" });
+    }
+  });
+
+  // Smart empty-state counts for today's schedule. Returns the three
+  // signals that drive the contextual CTA when no jobs are scheduled.
+  app.get("/api/dashboard/today-empty-state", requireAuth, createPermissionMiddleware(PERMISSIONS.READ_JOBS), async (req: any, res) => {
+    try {
+      const userContext = await getUserContext(req.userId);
+      const uid = userContext.effectiveUserId;
+
+      // Run all three counts in parallel; each has its own safety wrapper
+      // so a failure in one section doesn't blank the others.
+      const safeCount = async (fn: () => Promise<number>): Promise<number> => {
+        try { return await fn(); } catch { return 0; }
+      };
+
+      // Workers shouldn't see business-level financial signals like accepted
+      // quotes or overdue invoices on their dashboard — only owners/managers do.
+      const canSeeFinancials = userContext.isOwner ||
+        userContext.permissions.includes('view_all') ||
+        userContext.permissions.includes('manage_invoices') ||
+        userContext.permissions.includes('manage_quotes');
+
+      const [acceptedUnscheduled, unreadChat, overdueInvoices] = await Promise.all([
+        canSeeFinancials ? safeCount(async () => {
+          const allQuotes = await storage.getQuotes(uid);
+          const allJobs = await storage.getJobs(uid);
+          const jobsById = new Map(allJobs.map((j: any) => [j.id, j]));
+          return allQuotes.filter((q: any) => {
+            if (q.status !== 'accepted') return false;
+            if (!q.jobId) return true; // accepted, no job created yet
+            const j: any = jobsById.get(q.jobId);
+            if (!j) return true;
+            return !j.scheduledAt; // job exists but not scheduled
+          }).length;
+        }) : Promise.resolve(0),
+        safeCount(async () => {
+          const ctx: { hasAccess?: boolean; businessOwnerId?: string } | null =
+            await getTeamChatContext(req.userId).catch(() => null);
+          let team = 0, sms = 0, dm = 0;
+          if (ctx?.hasAccess && ctx?.businessOwnerId) {
+            team = await storage.getUnreadTeamChatCount(ctx.businessOwnerId, req.userId).catch(() => 0);
+            const convs = await storage.getSmsConversationsByBusiness(ctx.businessOwnerId).catch(() => [] as any[]);
+            sms = convs.reduce((t: number, c: any) => t + (c.unreadCount || 0), 0);
+          }
+          dm = await storage.getUnreadDirectMessageCount(req.userId).catch(() => 0);
+          return team + sms + dm;
+        }),
+        canSeeFinancials ? safeCount(async () => {
+          const all = await storage.getInvoices(uid);
+          const now = new Date();
+          return all.filter((inv: any) => {
+            if (inv.archivedAt) return false;
+            if (inv.status === 'paid' || inv.status === 'draft' || inv.status === 'cancelled') return false;
+            return inv.dueDate && new Date(inv.dueDate) < now;
+          }).length;
+        }) : Promise.resolve(0),
+      ]);
+
+      res.json({ acceptedUnscheduledQuotes: acceptedUnscheduled, unreadChat, overdueInvoices });
+    } catch (error: any) {
+      console.error("Error fetching today empty state counts:", error);
+      res.status(500).json({ error: "Failed to fetch counts" });
     }
   });
 
@@ -25586,7 +25790,13 @@ Be specific about materials, colors, and features that would be included.`
                 clientEmail: client?.email || null,
               };
             })
-            .sort((a: any, b: any) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
+            .sort((a: any, b: any) => {
+              const aHas = a.scheduleOrder != null, bHas = b.scheduleOrder != null;
+              if (aHas && bHas) return a.scheduleOrder - b.scheduleOrder;
+              if (aHas) return -1;
+              if (bHas) return 1;
+              return new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime();
+            });
         }),
 
         // ---- teamPresence (mirrors /api/team/presence) ----
@@ -26209,6 +26419,14 @@ Be specific about materials, colors, and features that would be included.`
               };
             })
             .sort((a: any, b: any) => {
+              // scheduleOrder only applies within the today cohort.
+              const ts = new Date(); ts.setHours(0, 0, 0, 0);
+              const te = new Date(ts); te.setDate(te.getDate() + 1);
+              const isToday = (j: any) => j.scheduledAt &&
+                new Date(j.scheduledAt) >= ts && new Date(j.scheduledAt) < te;
+              if (isToday(a) && isToday(b) && a.scheduleOrder != null && b.scheduleOrder != null) {
+                return a.scheduleOrder - b.scheduleOrder;
+              }
               if (a.scheduledAt && b.scheduledAt) return new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime();
               if (a.scheduledAt) return -1;
               if (b.scheduledAt) return 1;

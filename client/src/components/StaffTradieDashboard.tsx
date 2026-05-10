@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useState, useEffect, useRef } from "react";
+import TodayScheduleCard from "./TodayScheduleCard";
 import { 
   Briefcase, 
   MapPin,
@@ -816,92 +817,36 @@ export default function StaffTradieDashboard({
         </section>
       )}
 
-      {/* Today's Jobs - Empty State when no jobs today but has upcoming */}
-      {todaysJobs.length === 0 && activeJobs.length > 0 && (
-        <section className="space-y-3" data-testid="today-empty-state">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Today
-          </h2>
-          <Card className="border-dashed bg-muted/30">
-            <CardContent className="text-center py-8">
-              <Calendar className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">No jobs assigned today</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">Check with your manager for today's schedule</p>
-            </CardContent>
-          </Card>
-        </section>
-      )}
+      {/* Legacy "No jobs assigned today" empty state removed — the smart
+          empty state inside TodayScheduleCard below is now the single
+          source of truth for the no-jobs case. */}
 
-      {/* Today's Jobs */}
-      {todaysJobs.length > 1 && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Today's Schedule
-            </h2>
-            <Badge variant="secondary">{todaysJobs.length}</Badge>
-          </div>
-          
-          <div className="space-y-2">
-            {todaysJobs.filter(job => job.id !== nextJob?.id).slice(0, 5).map((job) => (
-              <Card 
-                key={job.id}
-                className="cursor-pointer hover-elevate"
-                onClick={() => onViewJob?.(job.id)}
-                data-testid={`job-card-${job.id}`}
-              >
-                <CardContent className="py-3 px-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div 
-                        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: 'hsl(var(--muted))' }}
-                      >
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{job.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {job.scheduledAt && formatTime(job.scheduledAt)}
-                          {job.clientName && ` - ${job.clientName}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {activeTimeEntry?.jobId === job.id ? (
-                        <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); stopTimer.mutate(); }}>
-                          <Square className="w-3 h-3 mr-1" />
-                          {formatElapsedTime()}
-                        </Button>
-                      ) : (
-                        <>
-                          {getStatusBadge(job.status)}
-                          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); startWork.mutate(job); }}>
-                            <Play className="w-3 h-3 mr-1" />
-                            Start
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {todaysJobs.filter(job => job.id !== nextJob?.id).length > 5 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground"
-                onClick={() => onViewJob && onViewJob(todaysJobs[0]?.id)}
-              >
-                +{todaysJobs.filter(job => job.id !== nextJob?.id).length - 5} more jobs today
+      {/* Today's Jobs (drag-to-reorder, weather + drive-time strip).
+          Includes ALL of today's jobs — including the highlighted "Next Job"
+          — so the persisted order, route summary, and reorder UI all agree
+          on a single canonical list. */}
+      <TodayScheduleCard
+          jobs={todaysJobs}
+          smartEmptyEnabled
+          onViewJob={(id) => onViewJob?.(id)}
+          onNavigate={onNavigate}
+          renderRowActions={(job) => (
+            activeTimeEntry?.jobId === job.id ? (
+              <Button size="sm" variant="destructive" onClick={(e) => { e.stopPropagation(); stopTimer.mutate(); }}>
+                <Square className="w-3 h-3 mr-1" />
+                {formatElapsedTime()}
               </Button>
-            )}
-          </div>
-        </section>
-      )}
+            ) : (
+              <>
+                {getStatusBadge(job.status)}
+                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); startWork.mutate(job); }}>
+                  <Play className="w-3 h-3 mr-1" />
+                  Start
+                </Button>
+              </>
+            )
+          )}
+        />
 
       {/* This Week Overview */}
       {thisWeeksJobs.length > 0 && (

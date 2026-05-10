@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import GettingStartedChecklist from "./GettingStartedChecklist";
+import TodayScheduleCard from "./TodayScheduleCard";
 import TrustBanner from "./TrustBanner";
 import ActivityFeed from "./ActivityFeed";
 import FloatingActionButton from "./FloatingActionButton";
@@ -517,103 +518,40 @@ export default function OwnerManagerDashboard({
           </CardContent>
         </Card>
 
-        <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-4 py-3 px-4">
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" style={{ color: 'hsl(var(--trade))' }} aria-hidden="true" />
-            Today's Schedule
-          </CardTitle>
-          {todaysJobs.length > 0 && onViewJobs && (
-            <Button variant="ghost" size="sm" onClick={onViewJobs} data-testid="button-view-all-jobs">
-              All Jobs <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent className="pt-0 px-4 pb-4">
-          {todaysJobs.length === 0 ? (
-            <div className="text-center py-6">
-              <Briefcase className="h-8 w-8 text-muted-foreground/25 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground mb-3">No jobs on today</p>
-              {onCreateJob && (
-                <Button 
-                  size="sm"
-                  onClick={onCreateJob}
-                  data-testid="button-schedule-job"
-                >
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  Schedule a Job
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {todaysJobs.slice(0, 5).map((job: any) => (
-                <div 
-                  key={job.id}
-                  className="flex items-center gap-3 p-2.5 cursor-pointer hover-elevate rounded-md"
-                  onClick={() => onNavigate?.(`/jobs/${job.id}`)}
-                  data-testid={`job-card-${job.id}`}
-                >
-                  <div className="flex-shrink-0 w-14 text-center">
-                    <p className="text-sm font-bold" style={{ color: 'hsl(var(--trade))' }}>
-                      {formatJobTime(job.scheduledAt)}
-                    </p>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium truncate">{job.title}</span>
-                      {getStatusBadge(job.status)}
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                      {job.clientName && (
-                        <span className="flex items-center gap-1 truncate">
-                          <User className="h-3 w-3 flex-shrink-0" />
-                          {job.clientName}
-                        </span>
-                      )}
-                      {job.address && (
-                        <span 
-                          className="flex items-center gap-1 truncate cursor-pointer"
-                          style={{ color: 'hsl(var(--trade))' }}
-                          onClick={(e) => handleNavigate(job.address, e)}
-                          data-testid={`address-link-${job.id}`}
-                        >
-                          <Navigation className="h-3 w-3 flex-shrink-0" />
-                          Map
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {job.clientPhone && (
-                      <>
-                        <Button variant="ghost" size="icon" onClick={(e) => handleCall(job.clientPhone, e)} data-testid={`button-call-${job.id}`}>
-                          <Phone className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={(e) => handleSMS(job.clientPhone, e)} data-testid={`button-sms-${job.id}`}>
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    {getStatusButton(job)}
-                  </div>
-                </div>
-              ))}
-              {todaysJobs.length > 5 && onViewJobs && (
+        <TodayScheduleCard
+          jobs={todaysJobs}
+          onCreateJob={onCreateJob}
+          onViewAll={onViewJobs}
+          onViewJob={(id) => onNavigate?.(`/jobs/${id}`)}
+          onNavigate={onNavigate}
+          renderRowActions={(job) => (
+            <>
+              {job.address && (
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="w-full text-muted-foreground mt-1"
-                  onClick={onViewJobs}
+                  size="icon"
+                  onClick={(e) => handleNavigate(job.address, e)}
+                  data-testid={`address-link-${job.id}`}
+                  title="Open in Maps"
                 >
-                  +{todaysJobs.length - 5} more jobs today
-                  <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                  <Navigation className="h-4 w-4" />
                 </Button>
               )}
-            </div>
+              {job.clientPhone && (
+                <>
+                  <Button variant="ghost" size="icon" onClick={(e) => handleCall(job.clientPhone, e)} data-testid={`button-call-${job.id}`}>
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={(e) => handleSMS(job.clientPhone, e)} data-testid={`button-sms-${job.id}`}>
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+              {getStatusBadge(job.status)}
+              {getStatusButton(job)}
+            </>
           )}
-        </CardContent>
-      </Card>
+        />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-4">
