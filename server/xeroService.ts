@@ -148,23 +148,103 @@ export async function handleCallback(url: string, userId: string): Promise<XeroC
     console.warn('[Xero] Could not decode access_token for diagnostic:', logErr);
   }
 
-  let tenants;
+  // Detect legacy Sign-In-with-Xero accounts that have no API access. The JWT
+  // includes `amr: ['legacy']` for these, and /connections will 401 even though
+  // the access_token nominally carries the accounting.* scopes.
+  let amr: string[] | undefined;
+  let jwtScopes: string[] = [];
+  try {
+    const at = tokenSet.access_token || '';
+    const parts = at.split('.');
+    const payload = parts.length === 3
+      ? JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))
+      : null;
+    amr = payload?.amr;
+    jwtScopes = Array.isArray(payload?.scope)
+      ? payload.scope
+      : typeof payload?.scope === 'string'
+        ? payload.scope.split(/\s+/)
+        : [];
+  } catch {
+    // already logged in the diagnostic above
+  }
+
+  const hasAccountingScope = jwtScopes.some(s => s.startsWith('accounting.'));
+  if (!hasAccountingScope) {
+    throw new Error(
+      "Your Xero login doesn't have accounting access. The token Xero issued only contains identity scopes (no accounting.*). " +
+      "This means the email you signed in with is a 'Sign In with Xero' identity account, not a full Xero subscription. " +
+      "Please sign in with the email that owns or is invited to your Xero organisation."
+    );
+  }
+
+  let tenants: any[] = [];
+  let updateTenantsError: any = null;
   try {
     await xero.updateTenants();
-    tenants = xero.tenants;
+    tenants = xero.tenants || [];
   } catch (err: any) {
-    const status = err?.response?.statusCode || err?.response?.status;
-    const wwwAuth = err?.response?.headers?.['www-authenticate'] || '';
-    if (status === 401 && /insufficient_scope/i.test(wwwAuth)) {
+    updateTenantsError = err;
+    // Inspect the error VERY defensively — different xero-node / openid-client
+    // versions wrap upstream errors differently (axios-style .response.status,
+    // openid-client OPError with .statusCode, generic Error with body in
+    // .message, etc.). We dig through every plausible field.
+    const status =
+      err?.response?.statusCode ??
+      err?.response?.status ??
+      err?.statusCode ??
+      err?.status;
+    const wwwAuth =
+      err?.response?.headers?.['www-authenticate'] ||
+      err?.headers?.['www-authenticate'] ||
+      '';
+    const detailBody = err?.response?.body || err?.body || {};
+    const detail = (detailBody?.Detail || detailBody?.detail || '') as string;
+    const errMsg = String(err?.message || '');
+
+    console.error('[Xero] updateTenants failed:', {
+      status,
+      wwwAuth,
+      detail,
+      errMsg,
+      errCtor: err?.constructor?.name,
+      amr,
+      jwtScopes,
+    });
+
+    const looksLikeInsufficientScope =
+      /insufficient_scope/i.test(wwwAuth) ||
+      /insufficient_scope/i.test(errMsg) ||
+      /AuthorizationUnsuccessful/i.test(detail) ||
+      (status === 401 && jwtScopes.length > 0);
+
+    if (looksLikeInsufficientScope) {
+      const isLegacy = Array.isArray(amr) && amr.includes('legacy');
+      if (isLegacy) {
+        throw new Error(
+          "Your Xero login is a legacy 'Sign In with Xero' account, not a full Xero accounting subscription. " +
+          "Xero issued an identity-only token — its API rejected the call to list your organisations. " +
+          "Please sign in with the email that owns/has been invited to your Xero accounting organisation, " +
+          "or migrate this Xero login by logging into xero.com once and accepting any pending account upgrade."
+        );
+      }
       throw new Error(
-        "Xero didn't grant accounting access. This usually means the Xero account you signed in with has no organisation set up, or you didn't select an organisation on the Xero authorise screen. Please create/select a Xero organisation and try again."
+        "Xero authorised the connection but rejected the request to list your organisations (insufficient_scope). " +
+        "On the Xero authorise screen, make sure you SELECT an organisation (don't just click 'Allow access' on a blank screen) and that the user you're signing in as has been added to that organisation in Xero."
       );
     }
-    throw err;
+
+    // Anything else — surface the upstream error verbatim so the user (and we)
+    // can see what's wrong instead of a generic "Connection failed".
+    throw new Error(
+      `Xero rejected the connection (HTTP ${status ?? '?'}): ${detail || errMsg || 'unknown error'}`
+    );
   }
-  
+
   if (!tenants || tenants.length === 0) {
-    throw new Error("No Xero organizations found for this account. Please add an organisation in Xero and try again.");
+    throw new Error(
+      "No Xero organisations were returned for this login. On the Xero authorise screen you need to tick at least one organisation before clicking 'Allow access'. Please disconnect and try again, making sure to select your organisation."
+    );
   }
 
   const tenant = tenants[0];
