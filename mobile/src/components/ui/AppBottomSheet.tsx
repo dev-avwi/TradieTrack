@@ -87,17 +87,28 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     useEffect(() => {
       if (visible === undefined) return;
       if (visible) {
+        // @gorhom/bottom-sheet v5 needs the BottomSheetModal to *register* with
+        // the BottomSheetModalProvider before present() actually does anything.
+        // Ref attachment is sync but registration is async, so a single
+        // present() (or one rAF deferral) silently no-ops on first open of
+        // many sheets ("Assign Worker", "Preview", etc).
+        //
+        // Solution: call present() repeatedly across several frames. Extra
+        // present() calls on an already-open sheet are safe no-ops, so the
+        // worst case is a few wasted calls.
         let cancelled = false;
+        let attempts = 0;
+        const maxAttempts = 8;
         const tryPresent = () => {
           if (cancelled) return;
-          const ref = sheetRef.current;
-          if (ref) {
-            ref.present();
-          } else {
-            // Ref still not attached — retry on next frame.
-            requestAnimationFrame(tryPresent);
+          sheetRef.current?.present();
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(tryPresent, 40);
           }
         };
+        // First attempt on next frame (lets BottomSheetModal mount), then
+        // re-attempt every 40ms for ~320ms total.
         requestAnimationFrame(tryPresent);
         return () => {
           cancelled = true;
