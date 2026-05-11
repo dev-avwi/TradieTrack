@@ -421,37 +421,41 @@ export default function InvoicesScreen() {
               </View>
 
               <View style={styles.kpiGrid}>
-                <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('all')} >
-                  <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
-                    <Feather name="dollar-sign" size={16} color={colors.primary} />
-                  </View>
-                  <Text style={styles.kpiLabel} numberOfLines={1}>Total Value</Text>
-                  <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalAll, false)}</Text>
-                </PressableRow>
-                
-                <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('sent')} >
-                  <View style={[styles.kpiIconContainer, { backgroundColor: colors.warningLight }]}>
-                    <Feather name="alert-circle" size={16} color={colors.warning} />
-                  </View>
-                  <Text style={styles.kpiLabel} numberOfLines={1}>Unpaid</Text>
-                  <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalOutstanding, false)}</Text>
-                </PressableRow>
-                
-                <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('paid')} >
-                  <View style={[styles.kpiIconContainer, { backgroundColor: colors.successLight }]}>
-                    <Feather name="check-circle" size={16} color={colors.success} />
-                  </View>
-                  <Text style={styles.kpiLabel} numberOfLines={1}>Paid</Text>
-                  <Text style={[styles.kpiValue, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalPaid, false)}</Text>
-                </PressableRow>
-                
-                <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('overdue')} >
-                  <View style={[styles.kpiIconContainer, { backgroundColor: colors.destructiveLight }]}>
-                    <Feather name="clock" size={16} color={colors.destructive} />
-                  </View>
-                  <Text style={styles.kpiLabel} numberOfLines={1}>Overdue</Text>
-                  <Text style={[styles.kpiValue, { color: colors.destructive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalOverdue, false)}</Text>
-                </PressableRow>
+                <View style={styles.kpiRow}>
+                  <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('all')} >
+                    <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
+                      <Feather name="dollar-sign" size={16} color={colors.primary} />
+                    </View>
+                    <Text style={styles.kpiLabel} numberOfLines={1}>Total Value</Text>
+                    <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalAll, false)}</Text>
+                  </PressableRow>
+
+                  <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('sent')} >
+                    <View style={[styles.kpiIconContainer, { backgroundColor: colors.warningLight }]}>
+                      <Feather name="alert-circle" size={16} color={colors.warning} />
+                    </View>
+                    <Text style={styles.kpiLabel} numberOfLines={1}>Unpaid</Text>
+                    <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalOutstanding, false)}</Text>
+                  </PressableRow>
+                </View>
+
+                <View style={styles.kpiRow}>
+                  <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('paid')} >
+                    <View style={[styles.kpiIconContainer, { backgroundColor: colors.successLight }]}>
+                      <Feather name="check-circle" size={16} color={colors.success} />
+                    </View>
+                    <Text style={styles.kpiLabel} numberOfLines={1}>Paid</Text>
+                    <Text style={[styles.kpiValue, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalPaid, false)}</Text>
+                  </PressableRow>
+
+                  <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('overdue')} >
+                    <View style={[styles.kpiIconContainer, { backgroundColor: colors.destructiveLight }]}>
+                      <Feather name="clock" size={16} color={colors.destructive} />
+                    </View>
+                    <Text style={styles.kpiLabel} numberOfLines={1}>Overdue</Text>
+                    <Text style={[styles.kpiValue, { color: colors.destructive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalOverdue, false)}</Text>
+                  </PressableRow>
+                </View>
               </View>
 
               <View style={styles.searchBar}>
@@ -616,13 +620,17 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
+  kpiRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
   kpiCard: {
-    width: '48%',
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     padding: spacing.md,

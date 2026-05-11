@@ -6018,6 +6018,8 @@ export default function JobDetailScreen() {
                 <TouchableOpacity
                   style={[styles.mainActionButton, {
                     flex: 1,
+                    flexBasis: 0,
+                    minWidth: 0,
                     borderWidth: 1.5,
                     borderColor: colors.info,
                     backgroundColor: colors.card,
@@ -6043,6 +6045,8 @@ export default function JobDetailScreen() {
                 <TouchableOpacity
                   style={[styles.mainActionButton, {
                     flex: 1,
+                    flexBasis: 0,
+                    minWidth: 0,
                     borderWidth: 1.5,
                     borderColor: colors.info,
                     backgroundColor: colors.card,
@@ -6064,7 +6068,7 @@ export default function JobDetailScreen() {
               )}
               
               <PressableRow
-                style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1 }]}
+                style={[styles.mainActionButton, { backgroundColor: statusColor, flex: 1, flexBasis: 0, minWidth: 0 }]}
                 onPress={handleStatusChange}
 
                 data-testid="button-main-action"
