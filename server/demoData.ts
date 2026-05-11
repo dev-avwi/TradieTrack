@@ -23,7 +23,7 @@ export const VISITOR_USER = {
 };
 
 export const DEMO_WORKER = {
-  email: 'demo.worker@jobrunner.com.au',
+  email: 'worker@jobrunner.com.au',
   password: 'worker123',
   name: 'Jake Morrison',
   phone: '+61412555888',
