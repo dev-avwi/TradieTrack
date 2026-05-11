@@ -103,6 +103,17 @@ async function processFailedSmsMessages() {
     const msg = error?.message || '';
     if (msg.includes('does not exist') || msg.includes('relation')) {
       // Table not yet created — skip silently
+    } else if (
+      msg.includes('Connection terminated') ||
+      msg.includes('connection timeout') ||
+      msg.includes('ECONNRESET') ||
+      msg.includes('ETIMEDOUT') ||
+      msg.includes('socket hang up') ||
+      error?.code === 'ECONNRESET' ||
+      error?.code === 'ETIMEDOUT'
+    ) {
+      // Transient Neon pool drop — log warn, skip alert. Will retry next tick.
+      logger.warn('background', 'SMS retry scheduler skipped tick (transient DB connection)', { metadata: { error: msg } });
     } else {
       logger.error('background', 'Failed SMS retry scheduler error', { error });
     }
@@ -208,7 +219,20 @@ export async function processFailedEmailMessages() {
     }
   } catch (err: any) {
     const m = err?.message || '';
-    if (!m.includes('does not exist') && !m.includes('relation')) {
+    if (m.includes('does not exist') || m.includes('relation')) {
+      // Table not yet created — skip silently
+    } else if (
+      m.includes('Connection terminated') ||
+      m.includes('connection timeout') ||
+      m.includes('ECONNRESET') ||
+      m.includes('ETIMEDOUT') ||
+      m.includes('socket hang up') ||
+      err?.code === 'ECONNRESET' ||
+      err?.code === 'ETIMEDOUT'
+    ) {
+      // Transient Neon pool drop — log warn, skip alert. Will retry next tick.
+      logger.warn('background', 'Email retry scheduler skipped tick (transient DB connection)', { metadata: { error: m } });
+    } else {
       logger.error('background', 'Email retry scheduler error', { error: err });
     }
   } finally {
