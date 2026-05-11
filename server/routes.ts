@@ -36092,8 +36092,20 @@ Respond with JSON in this format:
   app.post("/api/team-locations", requireAuth, async (req: any, res) => {
     try {
       const userId = req.userId!;
-      const { latitude, longitude, accuracy, heading, speed, timestamp, batteryLevel, isCharging, activityType } = req.body;
-      
+      let { latitude, longitude, accuracy, heading, speed, timestamp, batteryLevel, isCharging, activityType } = req.body;
+
+      // Demo pin override — keep demo worker's pin AND breadcrumb trail at the
+      // scripted job site regardless of the phone's real GPS. See storage.ts
+      // upsertTradieStatus for the matching override on other code paths.
+      const DEMO_PINNED_LOCATIONS: Record<string, { lat: number; lng: number }> = {
+        '9be6ed6c-c472-4e07-b1e5-f7d42291d4ae': { lat: -16.8989487, lng: 145.7530458 },
+      };
+      const pin = DEMO_PINNED_LOCATIONS[userId];
+      if (pin) {
+        latitude = pin.lat;
+        longitude = pin.lng;
+      }
+
       if (latitude === undefined || longitude === undefined) {
         return res.status(400).json({ error: 'Latitude and longitude required' });
       }

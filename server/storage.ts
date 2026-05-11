@@ -4756,6 +4756,27 @@ export class PostgresStorage implements IStorage {
   }
 
   async upsertTradieStatus(data: InsertTradieStatus): Promise<TradieStatus> {
+    // Demo pin override: force certain demo users to a fixed location regardless
+    // of incoming GPS pings. Used so demo videos can be recorded from anywhere
+    // while the worker pin stays at the scripted job site.
+    const DEMO_PINNED_LOCATIONS: Record<string, { lat: string; lng: string; address: string }> = {
+      // Jake Morrison (demo worker) → 12 Collins Avenue, Edge Hill QLD 4870
+      '9be6ed6c-c472-4e07-b1e5-f7d42291d4ae': {
+        lat: '-16.8989487',
+        lng: '145.7530458',
+        address: '12 Collins Avenue, Edge Hill QLD 4870',
+      },
+    };
+    const pin = DEMO_PINNED_LOCATIONS[data.userId];
+    if (pin) {
+      data = {
+        ...data,
+        currentLatitude: pin.lat,
+        currentLongitude: pin.lng,
+        currentAddress: pin.address,
+      } as InsertTradieStatus;
+    }
+
     const existing = await this.getTradieStatus(data.userId);
     if (existing) {
       const [result] = await db.update(tradieStatus)
@@ -8030,6 +8051,14 @@ Thank you for your prompt attention to this matter.`,
   }
 
   async createLocationPing(ping: InsertLocationPing): Promise<LocationPing> {
+    // Demo pin override — see upsertTradieStatus for rationale.
+    const DEMO_PINNED_PING_USERS: Record<string, { lat: string; lng: string }> = {
+      '9be6ed6c-c472-4e07-b1e5-f7d42291d4ae': { lat: '-16.8989487', lng: '145.7530458' },
+    };
+    const pin = DEMO_PINNED_PING_USERS[ping.userId];
+    if (pin) {
+      ping = { ...ping, latitude: pin.lat, longitude: pin.lng } as InsertLocationPing;
+    }
     const [result] = await db.insert(locationPings).values(ping).returning();
     return result;
   }
