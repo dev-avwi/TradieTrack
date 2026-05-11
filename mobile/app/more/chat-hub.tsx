@@ -173,9 +173,9 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: pageShell.paddingHorizontal,
     paddingTop: pageShell.paddingTop,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
     backgroundColor: colors.background,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     gap: spacing.sm,
   },
   headerContent: {
@@ -193,7 +193,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   quickActionsContainer: {
     flexDirection: 'row',
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingBottom: spacing.sm,
+    paddingBottom: spacing.md,
     gap: spacing.sm,
   },
   quickActionButton: {
@@ -230,8 +230,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,
-    paddingBottom: spacing.sm,
-    marginTop: spacing.sm,
+    paddingBottom: spacing.md,
+    marginTop: spacing.xs,
   },
   searchInput: {
     flexDirection: 'row',
@@ -255,7 +255,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   filterContainer: {
     paddingBottom: 0,
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     flexGrow: 0,
   },
   filterContainerContent: {
@@ -330,8 +330,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: pageShell.paddingHorizontal,
-    marginTop: spacing.md,
-    paddingBottom: spacing.sm,
+    marginTop: spacing.lg,
+    paddingBottom: spacing.md,
     gap: spacing.sm,
   },
   sectionTitle: {

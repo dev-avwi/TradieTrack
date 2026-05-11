@@ -6016,20 +6016,12 @@ export default function JobDetailScreen() {
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               {job.workerStatus === 'on_my_way' ? (
                 <TouchableOpacity
-                  style={{
+                  style={[styles.mainActionButton, {
                     flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: spacing.xs,
-                    paddingVertical: spacing.md,
-                    paddingHorizontal: spacing.md,
-                    borderRadius: radius.lg,
                     borderWidth: 1.5,
                     borderColor: colors.info,
                     backgroundColor: colors.card,
-                    minHeight: 52,
-                  }}
+                  }]}
                   onPress={() => {
                     const { openMapsWithPreference } = require('../../src/lib/maps-store');
                     if (job.latitude && job.longitude) {
@@ -6043,27 +6035,19 @@ export default function JobDetailScreen() {
                   data-testid="button-directions"
                 >
                   <Feather name="map" size={18} color={colors.info} />
-                  <Text style={{ color: colors.info, fontWeight: '600', fontSize: 14 }}>
+                  <Text style={{ color: colors.info, fontWeight: '600', fontSize: 14, marginLeft: spacing.xs }}>
                     Directions
                   </Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  style={{
+                  style={[styles.mainActionButton, {
                     flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: spacing.xs,
-                    paddingVertical: spacing.md,
-                    paddingHorizontal: spacing.md,
-                    borderRadius: radius.lg,
-                    borderWidth: 2,
+                    borderWidth: 1.5,
                     borderColor: colors.info,
                     backgroundColor: colors.card,
                     opacity: isSendingOnMyWay ? 0.6 : 1,
-                    minHeight: 52,
-                  }}
+                  }]}
                   onPress={handleOnMyWay}
                   activeOpacity={0.8}
                   disabled={isSendingOnMyWay}
@@ -7479,9 +7463,26 @@ export default function JobDetailScreen() {
           {portalEnabled && portalLinks.length > 0 && (
             <View style={{ gap: spacing.sm }}>
               <TouchableOpacity
-                onPress={() => {
-                  const url = portalLinks[0].url;
-                  if (url) Linking.openURL(url);
+                onPress={async () => {
+                  let url = portalLinks[0]?.url;
+                  if (!url) {
+                    showToast({ type: 'error', message: 'No portal link available' });
+                    return;
+                  }
+                  // Ensure URL has a protocol — Linking.openURL silently no-ops on bare hostnames.
+                  if (!/^https?:\/\//i.test(url)) {
+                    url = 'https://' + url;
+                  }
+                  try {
+                    const supported = await Linking.canOpenURL(url);
+                    if (!supported) {
+                      showToast({ type: 'error', message: "Can't open this link", description: url });
+                      return;
+                    }
+                    await Linking.openURL(url);
+                  } catch (e: any) {
+                    showToast({ type: 'error', message: 'Failed to open portal', description: e?.message || String(e) });
+                  }
                 }}
                 activeOpacity={0.7}
                 style={{ 

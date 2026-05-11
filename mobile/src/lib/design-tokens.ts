@@ -296,10 +296,11 @@ export const typography = {
     letterSpacing: -0.2,
   },
   // iOS Body - 15px on web (.ios-body)
+  // Bumped to weight 500 for a bolder "tradie" feel — body text was reading too thin at 400.
   body: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.medium,
     fontSize: 15,
-    fontWeight: '400' as const,
+    fontWeight: '500' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },

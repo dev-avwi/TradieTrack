@@ -303,8 +303,9 @@ function createStyles(colors: ThemeColors) {
       color: colors.foreground,
     },
     catalogButton: {
-      width: 48,
+      flex: 1,
       height: 48,
+      paddingVertical: 14,
       borderRadius: 12,
       backgroundColor: colors.background,
       alignItems: 'center',

@@ -201,21 +201,24 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     paddingVertical: 9,
   },
   bubbleOutbound: {
-    backgroundColor: colors.isDark ? `${colors.primary}80` : `${colors.primary}22`,
+    // Use a fixed brand blue so light mode reads as "blue iMessage-style" rather than dark navy.
+    // Dark mode gets a slightly deeper shade for contrast.
+    backgroundColor: colors.isDark ? '#1D4ED8' : '#3B82F6',
     borderRadius: 18,
     borderBottomRightRadius: 4,
   },
   bubbleInbound: {
-    backgroundColor: colors.isDark ? colors.muted : `${colors.muted}`,
+    backgroundColor: colors.isDark ? colors.muted : '#F1F3F5',
     borderRadius: 18,
     borderBottomLeftRadius: 4,
   },
   bubbleText: {
     fontSize: 15,
     lineHeight: 21,
+    fontWeight: '500',
   },
   bubbleTextOutbound: {
-    color: colors.isDark ? colors.primaryForeground : colors.foreground,
+    color: '#FFFFFF',
   },
   bubbleTextInbound: {
     color: colors.foreground,
@@ -225,7 +228,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     marginTop: 3,
   },
   bubbleTimeOutbound: {
-    color: colors.isDark ? `${colors.primaryForeground}80` : colors.mutedForeground,
+    color: 'rgba(255,255,255,0.75)',
     textAlign: 'right',
   },
   bubbleTimeInbound: {

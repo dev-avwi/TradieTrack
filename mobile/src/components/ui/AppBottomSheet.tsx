@@ -77,10 +77,34 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     // Declarative visibility support: drive the imperative bottom-sheet API
     // from a boolean prop so existing `<Modal visible={x}>` call-sites can
     // migrate with a single tag change.
+    //
+    // We defer present() to the next frame because @gorhom/bottom-sheet's
+    // BottomSheetModal needs to register itself with the BottomSheetModalProvider
+    // before present() will actually do anything. Without the deferral, calling
+    // present() in the same tick as the ref attaches silently no-ops, which is
+    // why some sheets (Assign Worker, Proof Pack Preview) were "not opening".
+    // We also retry once on the following frame as a safety net for slower devices.
     useEffect(() => {
       if (visible === undefined) return;
-      if (visible) sheetRef.current?.present();
-      else sheetRef.current?.dismiss();
+      if (visible) {
+        let cancelled = false;
+        const tryPresent = () => {
+          if (cancelled) return;
+          const ref = sheetRef.current;
+          if (ref) {
+            ref.present();
+          } else {
+            // Ref still not attached — retry on next frame.
+            requestAnimationFrame(tryPresent);
+          }
+        };
+        requestAnimationFrame(tryPresent);
+        return () => {
+          cancelled = true;
+        };
+      } else {
+        sheetRef.current?.dismiss();
+      }
     }, [visible]);
 
     const computedSnapPoints = useMemo(() => {
