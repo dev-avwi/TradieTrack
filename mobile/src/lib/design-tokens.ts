@@ -296,19 +296,20 @@ export const typography = {
     letterSpacing: -0.2,
   },
   // iOS Body - 15px on web (.ios-body)
-  // Bumped to weight 500 for a bolder "tradie" feel — body text was reading too thin at 400.
+  // Bumped to weight 700 to match the "Attention Needed" feel app-wide
+  // (Ayden wanted general body text thicker, like that section).
   body: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.bold,
     fontSize: 15,
-    fontWeight: '500' as const,
+    fontWeight: '700' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
-  // Body semibold
+  // Body semibold (now bold to match the new heavier body weight)
   bodySemibold: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.bold,
     fontSize: 15,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },

@@ -212,19 +212,8 @@ export const requireAuth = async (req: any, res: any, next: any) => {
   });
   Sentry.setTag("businessName", user.businessName || "unknown");
 
-  if (isDemoSession) {
-    const method = req.method.toUpperCase();
-    if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
-      const path = req.originalUrl.toLowerCase();
-      const readOnlyExceptions = ['/api/auth/logout', '/api/admin/reset-demo-data'];
-      if (!readOnlyExceptions.some(ex => path.startsWith(ex))) {
-        return res.status(403).json({
-          error: "This is a read-only demo. Create your free account to start managing real jobs!",
-          isDemo: true
-        });
-      }
-    }
-  }
+  // Demo sessions are now fully writable (the demo owner account behaves like
+  // a real account for live demos). Read-only enforcement has been removed.
 
   next();
 };
