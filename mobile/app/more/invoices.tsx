@@ -425,32 +425,32 @@ export default function InvoicesScreen() {
                   <View style={[styles.kpiIconContainer, { backgroundColor: colors.primaryLight }]}>
                     <Feather name="dollar-sign" size={16} color={colors.primary} />
                   </View>
-                  <Text style={styles.kpiLabel}>Total Value</Text>
-                  <Text style={styles.kpiValue}>{formatCurrency(totalAll, false)}</Text>
+                  <Text style={styles.kpiLabel} numberOfLines={1}>Total Value</Text>
+                  <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalAll, false)}</Text>
                 </PressableRow>
                 
                 <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('sent')} >
                   <View style={[styles.kpiIconContainer, { backgroundColor: colors.warningLight }]}>
                     <Feather name="alert-circle" size={16} color={colors.warning} />
                   </View>
-                  <Text style={styles.kpiLabel}>Unpaid</Text>
-                  <Text style={styles.kpiValue}>{formatCurrency(totalOutstanding, false)}</Text>
+                  <Text style={styles.kpiLabel} numberOfLines={1}>Unpaid</Text>
+                  <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalOutstanding, false)}</Text>
                 </PressableRow>
                 
                 <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('paid')} >
                   <View style={[styles.kpiIconContainer, { backgroundColor: colors.successLight }]}>
                     <Feather name="check-circle" size={16} color={colors.success} />
                   </View>
-                  <Text style={styles.kpiLabel}>Paid</Text>
-                  <Text style={[styles.kpiValue, { color: colors.success }]}>{formatCurrency(totalPaid, false)}</Text>
+                  <Text style={styles.kpiLabel} numberOfLines={1}>Paid</Text>
+                  <Text style={[styles.kpiValue, { color: colors.success }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalPaid, false)}</Text>
                 </PressableRow>
                 
                 <PressableRow style={styles.kpiCard} onPress={() => setActiveFilter('overdue')} >
                   <View style={[styles.kpiIconContainer, { backgroundColor: colors.destructiveLight }]}>
                     <Feather name="clock" size={16} color={colors.destructive} />
                   </View>
-                  <Text style={styles.kpiLabel}>Overdue</Text>
-                  <Text style={[styles.kpiValue, { color: colors.destructive }]}>{formatCurrency(totalOverdue, false)}</Text>
+                  <Text style={styles.kpiLabel} numberOfLines={1}>Overdue</Text>
+                  <Text style={[styles.kpiValue, { color: colors.destructive }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>{formatCurrency(totalOverdue, false)}</Text>
                 </PressableRow>
               </View>
 

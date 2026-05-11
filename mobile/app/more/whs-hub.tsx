@@ -1499,7 +1499,7 @@ export default function WhsHubScreen() {
 
           {showFab && (
             <TouchableOpacity
-              style={styles.fab}
+              style={[styles.fab, { bottom: bottomNavHeight + spacing.md }]}
               onPress={fabAction}
               activeOpacity={0.85}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

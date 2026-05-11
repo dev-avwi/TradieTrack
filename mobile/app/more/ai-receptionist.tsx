@@ -557,16 +557,19 @@ export default function AIReceptionistScreen() {
     try {
       const res = await api.post<{ lastLatencyMs: number; latencyStatus: 'optimal' | 'amber' | 'warn'; lastLatencyCheckedAt: string }>('/api/ai-receptionist/measure-latency');
       const data = res.data;
-      if (data) {
-        setConfig(prev => prev ? { ...prev, lastLatencyMs: data.lastLatencyMs, latencyStatus: data.latencyStatus, lastLatencyCheckedAt: data.lastLatencyCheckedAt } : prev);
-        const label = data.latencyStatus === 'optimal'
+      if (data && typeof data.lastLatencyMs === 'number' && Number.isFinite(data.lastLatencyMs)) {
+        const ms = data.lastLatencyMs;
+        const status: 'optimal' | 'amber' | 'warn' =
+          data.latencyStatus || (ms < 1000 ? 'optimal' : ms < 1200 ? 'amber' : 'warn');
+        setConfig(prev => prev ? { ...prev, lastLatencyMs: ms, latencyStatus: status, lastLatencyCheckedAt: data.lastLatencyCheckedAt } : prev);
+        const label = status === 'optimal'
           ? 'Excellent — under 1000ms target'
-          : data.latencyStatus === 'amber'
-            ? 'Acceptable, but above 1000ms target'
+          : status === 'amber'
+            ? 'Acceptable — between 1000ms and 1200ms'
             : 'Slow — exceeds 1200ms ceiling';
-        Alert.alert(`Estimated response time: ${data.lastLatencyMs}ms`, label);
+        Alert.alert(`Estimated response time: ${ms}ms`, label);
       } else {
-        Alert.alert('Test failed', res.error || 'Could not measure latency');
+        Alert.alert('Test failed', res.error || 'Could not measure latency. Please try again in a moment.');
       }
     } catch (e: any) {
       Alert.alert('Test failed', e?.message || 'Could not measure latency');
@@ -1115,7 +1118,10 @@ export default function AIReceptionistScreen() {
             const serverLatency = config?.lastLatencyMs ?? null;
             const serverStatus = config?.latencyStatus ?? null;
             const hasServerValue = typeof serverLatency === 'number' && serverLatency > 0;
-            const status: 'optimal' | 'amber' | 'warn' = serverStatus ?? 'amber';
+            const status: 'optimal' | 'amber' | 'warn' = serverStatus
+              ?? (hasServerValue
+                ? (serverLatency! < 1000 ? 'optimal' : serverLatency! < 1200 ? 'amber' : 'warn')
+                : 'amber');
             const latencyColor = status === 'optimal' ? colors.success : status === 'amber' ? '#f59e0b' : '#ef4444';
             const latencyLabel = status === 'optimal' ? 'Fast' : status === 'amber' ? 'Acceptable' : 'Slow';
             const displayLatency = hasServerValue ? serverLatency : null;
