@@ -72,11 +72,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   style={({ pressed }) => [
                     styles.btn,
                     {
-                      backgroundColor: pressed
-                        ? colors.muted
-                        : isDark
-                          ? colors.muted
-                          : colors.background,
+                      backgroundColor: pressed ? colors.elevate1 ?? colors.muted : colors.muted,
                       borderColor: colors.border,
                     },
                   ]}

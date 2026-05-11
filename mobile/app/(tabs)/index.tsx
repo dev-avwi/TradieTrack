@@ -3221,78 +3221,94 @@ function OwnerDashboardScreen() {
           {isStaffUser ? 'My Stats' : 'Overview'}
         </Text>
         <View style={styles.kpiGrid}>
-          <KPICard
-            title={isStaffUser ? "My Jobs" : "Jobs Today"}
-            value={jobsToday}
-            icon="briefcase"
-            iconBg={colors.primaryLight}
-            iconColor={colors.primary}
-            onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
-          />
           {isStaffUser ? (
             <>
-              <KPICard
-                title="In Progress"
-                value={myAllJobs.filter(j => j.status === 'in_progress').length}
-                icon="clock"
-                iconBg={colors.warningLight}
-                iconColor={colors.warning}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'in_progress' } })}
-              />
-              <KPICard
-                title="Completed"
-                value={myAllJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
-                icon="check-circle"
-                iconBg={colors.successLight}
-                iconColor={colors.success}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
-              />
-              <KPICard
-                title="Assigned"
-                value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
-                icon="clipboard"
-                iconBg={colors.muted}
-                iconColor={colors.mutedForeground}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
-              />
+              <View style={styles.kpiRow}>
+                <KPICard
+                  title="My Jobs"
+                  value={jobsToday}
+                  icon="briefcase"
+                  iconBg={colors.primaryLight}
+                  iconColor={colors.primary}
+                  onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
+                />
+                <KPICard
+                  title="In Progress"
+                  value={myAllJobs.filter(j => j.status === 'in_progress').length}
+                  icon="clock"
+                  iconBg={colors.warningLight}
+                  iconColor={colors.warning}
+                  onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'in_progress' } })}
+                />
+              </View>
+              <View style={styles.kpiRow}>
+                <KPICard
+                  title="Completed"
+                  value={myAllJobs.filter(j => j.status === 'done' || j.status === 'invoiced').length}
+                  icon="check-circle"
+                  iconBg={colors.successLight}
+                  iconColor={colors.success}
+                  onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
+                />
+                <KPICard
+                  title="Assigned"
+                  value={myAllJobs.filter(j => j.status === 'scheduled' || j.status === 'pending').length}
+                  icon="clipboard"
+                  iconBg={colors.muted}
+                  iconColor={colors.mutedForeground}
+                  onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
+                />
+              </View>
             </>
           ) : (
             <>
-              {businessSettings?.aiReceptionistEnabled ? (
+              <View style={styles.kpiRow}>
                 <KPICard
-                  title="AI Phone"
-                  value={businessSettings?.aiReceptionistMode === 'always_on_transfer' ? 'Live' : businessSettings?.aiReceptionistMode === 'after_hours' ? 'After Hrs' : 'Active'}
-                  icon="phone"
-                  iconBg={colors.successLight}
-                  iconColor={colors.success}
-                  onPress={() => router.push('/more/ai-receptionist')}
+                  title="Jobs Today"
+                  value={jobsToday}
+                  icon="briefcase"
+                  iconBg={colors.primaryLight}
+                  iconColor={colors.primary}
+                  onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
                 />
-              ) : (
+                {businessSettings?.aiReceptionistEnabled ? (
+                  <KPICard
+                    title="AI Phone"
+                    value={businessSettings?.aiReceptionistMode === 'always_on_transfer' ? 'Live' : businessSettings?.aiReceptionistMode === 'after_hours' ? 'After Hrs' : 'Active'}
+                    icon="phone"
+                    iconBg={colors.successLight}
+                    iconColor={colors.success}
+                    onPress={() => router.push('/more/ai-receptionist')}
+                  />
+                ) : (
+                  <KPICard
+                    title="Overdue"
+                    value={overdueCount}
+                    icon="alert-circle"
+                    iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
+                    iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
+                    onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
+                  />
+                )}
+              </View>
+              <View style={styles.kpiRow}>
                 <KPICard
-                  title="Overdue"
-                  value={overdueCount}
-                  icon="alert-circle"
-                  iconBg={overdueCount > 0 ? colors.destructiveLight : colors.muted}
-                  iconColor={overdueCount > 0 ? colors.destructive : colors.mutedForeground}
-                  onPress={() => router.push('/more/documents?tab=invoices&filter=overdue')}
+                  title="To Invoice"
+                  value={toInvoiceCount}
+                  icon="file-plus"
+                  iconBg={toInvoiceCount > 0 ? colors.warningLight : colors.muted}
+                  iconColor={toInvoiceCount > 0 ? colors.warning : colors.mutedForeground}
+                  onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
                 />
-              )}
-              <KPICard
-                title="To Invoice"
-                value={toInvoiceCount}
-                icon="file-plus"
-                iconBg={toInvoiceCount > 0 ? colors.warningLight : colors.muted}
-                iconColor={toInvoiceCount > 0 ? colors.warning : colors.mutedForeground}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'done' } })}
-              />
-              <KPICard
-                title="Assigned"
-                value={allJobs.filter((j: any) => j.status === 'scheduled' || j.status === 'in_progress').length}
-                icon="users"
-                iconBg={colors.primaryLight}
-                iconColor={colors.primary}
-                onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
-              />
+                <KPICard
+                  title="Assigned"
+                  value={allJobs.filter((j: any) => j.status === 'scheduled' || j.status === 'in_progress').length}
+                  icon="users"
+                  iconBg={colors.primaryLight}
+                  iconColor={colors.primary}
+                  onPress={() => router.push({ pathname: '/(tabs)/jobs', params: { filter: 'scheduled' } })}
+                />
+              </View>
             </>
           )}
         </View>
@@ -4089,13 +4105,16 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
 
   kpiGrid: {
+    gap: spacing.md,
+  },
+  kpiRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.md,
   },
   kpiCard: {
     flex: 1,
-    minWidth: '46%',
+    flexBasis: 0,
+    minWidth: 0,
     backgroundColor: colors.card,
     borderRadius: radius.xl,
     borderWidth: 1,

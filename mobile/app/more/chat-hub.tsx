@@ -566,8 +566,8 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     backgroundColor: colors.successLight,
     marginHorizontal: pageShell.paddingHorizontal,
     marginBottom: spacing.sm,
-    marginTop: spacing.sm,
-    padding: spacing.md,
+    marginTop: 0,
+    padding: spacing.sm,
     borderRadius: radius['2xl'],
     gap: spacing.sm,
     ...shadows.sm,
@@ -1349,7 +1349,7 @@ export default function ChatHubScreen() {
 
     if (twilioConnected) {
       return (
-        <PressableRow style={styles.twilioConnectedBanner} onPress={() => { confirm({ title: 'Business Number', message: `Your number is ${twilioStatus.phoneNumber ? formatPhoneDisplay(twilioStatus.phoneNumber) : 'connected'}.\n\nThis number is used for SMS messaging here and AI Receptionist calls.`, confirmText: 'Phone Numbers', cancelText: 'OK' }).then((ok) => { if (ok) router.push('/more/phone-numbers' as never); }); }} >
+        <PressableRow style={styles.twilioConnectedBanner} onPress={() => router.push('/more/phone-numbers' as never)} >
           <View style={styles.twilioConnectedIcon}>
             <Feather name="check" size={16} color={colors.white} />
           </View>
