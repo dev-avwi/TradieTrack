@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useCallback, forwardRef } from 'react';
+import { ReactNode, useRef, useCallback, forwardRef, useMemo } from 'react';
 import {
   Pressable,
   PressableProps,
@@ -6,6 +6,7 @@ import {
   Easing,
   Platform,
   StyleProp,
+  StyleSheet,
   ViewStyle,
   View,
   GestureResponderEvent,
@@ -94,6 +95,22 @@ const PressableRow = forwardRef<View, PressableRowProps>(function PressableRow(
       }
     : undefined;
 
+  const outerLayoutStyle = useMemo<ViewStyle>(() => {
+    const flat = (StyleSheet.flatten(style) as ViewStyle) || {};
+    const out: ViewStyle = {};
+    const keys: (keyof ViewStyle)[] = [
+      'flex', 'flexGrow', 'flexShrink', 'flexBasis',
+      'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight',
+      'alignSelf', 'position', 'top', 'right', 'bottom', 'left', 'zIndex',
+      'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
+      'marginHorizontal', 'marginVertical', 'marginStart', 'marginEnd',
+    ];
+    for (const k of keys) {
+      if (flat[k] !== undefined) (out as Record<string, unknown>)[k] = flat[k];
+    }
+    return out;
+  }, [style]);
+
   if (isAndroid) {
     return (
       <Pressable
@@ -116,6 +133,7 @@ const PressableRow = forwardRef<View, PressableRowProps>(function PressableRow(
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
+      style={outerLayoutStyle}
       {...rest}
     >
       <Animated.View style={[style, { transform: [{ scale }], opacity }]}>
