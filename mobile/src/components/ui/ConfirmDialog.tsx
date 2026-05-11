@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, ReactNode } from 'react';
-import { Modal, View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { Alert, Modal, View, Text, Pressable, StyleSheet, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../lib/theme';
 import { radius, spacing, typography, shadows } from '../../lib/design-tokens';
@@ -23,11 +23,39 @@ interface PendingState extends ConfirmDialogOptions {
   resolve: (value: boolean) => void;
 }
 
+function nativeConfirm(options: ConfirmDialogOptions): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const buttons: Array<{ text: string; style?: 'default' | 'cancel' | 'destructive'; onPress: () => void }> = [];
+    if (options.showCancel !== false) {
+      buttons.push({
+        text: options.cancelText ?? 'Cancel',
+        style: 'cancel',
+        onPress: () => resolve(false),
+      });
+    }
+    buttons.push({
+      text: options.confirmText ?? 'Confirm',
+      style: options.destructive ? 'destructive' : 'default',
+      onPress: () => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        resolve(true);
+      },
+    });
+    Alert.alert(options.title, options.message, buttons, {
+      cancelable: options.showCancel !== false,
+      onDismiss: () => resolve(false),
+    });
+  });
+}
+
 export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<PendingState | null>(null);
   const { colors, isDark } = useTheme();
 
   const confirm = useCallback((options: ConfirmDialogOptions) => {
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      return nativeConfirm(options);
+    }
     return new Promise<boolean>((resolve) => {
       setPending({ ...options, resolve });
     });
