@@ -10631,7 +10631,7 @@ export default function JobDetailScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View>
+        <View style={{ flex: 1 }}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Assign Workers</Text>
               <TouchableOpacity onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}>

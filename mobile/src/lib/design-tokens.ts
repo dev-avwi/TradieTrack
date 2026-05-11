@@ -315,17 +315,17 @@ export const typography = {
   },
   // iOS Caption - 13px on web (.ios-caption)
   caption: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.semibold,
     fontSize: 13,
-    fontWeight: '400' as const,
+    fontWeight: '600' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
   // Small caption
   captionSmall: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.semibold,
     fontSize: 12,
-    fontWeight: '400' as const,
+    fontWeight: '600' as const,
     lineHeight: 16,
     letterSpacing: -0.05,
   },
@@ -339,9 +339,9 @@ export const typography = {
   },
   // Button text - 14px
   button: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.bold,
     fontSize: 14,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
     lineHeight: 20,
     letterSpacing: -0.1,
   },
@@ -362,9 +362,9 @@ export const typography = {
   },
   // Aliases used by various screens (kept here so they stay typed)
   bodySmall: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.semibold,
     fontSize: 13,
-    fontWeight: '400' as const,
+    fontWeight: '600' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },

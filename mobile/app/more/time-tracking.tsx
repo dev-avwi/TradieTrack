@@ -592,20 +592,28 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     fontSize: 18,
   },
   modalSaveButton: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
+    minHeight: 36,
     backgroundColor: colors.primary,
     borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalSaveButtonDisabled: {
-    backgroundColor: colors.muted,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    opacity: 0.45,
   },
   modalSaveText: {
     ...typography.button,
     color: colors.primaryForeground,
+    fontWeight: '700' as const,
   },
   modalSaveTextDisabled: {
-    color: colors.mutedForeground,
+    color: colors.primaryForeground,
   },
   modalContent: {
     flex: 1,
