@@ -23,6 +23,7 @@ import {
   AppState,
   AppStateStatus,
   ActionSheetIOS,
+  InteractionManager,
 } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -2289,11 +2290,18 @@ export default function JobDetailScreen() {
     if (!job || isLoading || !navAction) return;
     if (navActionFiredRef.current === navAction) return;
     navActionFiredRef.current = navAction;
-    if (navAction === 'assign') {
-      setShowAssignModal(true);
-    } else if (navAction === 'invoice') {
-      router.replace(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
-    }
+    // Wait for the stack-transition animation + initial layout to finish
+    // before opening the sheet. Without this, gorhom's BottomSheetModal can
+    // call present() while the screen is still animating in and silently
+    // no-op — the user lands on the page with no sheet visible.
+    const handle = InteractionManager.runAfterInteractions(() => {
+      if (navAction === 'assign') {
+        setShowAssignModal(true);
+      } else if (navAction === 'invoice') {
+        router.replace(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
+      }
+    });
+    return () => handle.cancel();
   }, [job, isLoading, navAction, client]);
 
   useEffect(() => {

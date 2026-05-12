@@ -301,9 +301,9 @@ export const typography = {
   // SF-Bold "Attention Needed" header on iOS — Inter 700 was rendering
   // noticeably thinner than SF 700 at the same nominal weight.
   body: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.medium,
     fontSize: 15,
-    fontWeight: '400' as const,
+    fontWeight: '500' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
@@ -363,9 +363,9 @@ export const typography = {
   },
   // Aliases used by various screens (kept here so they stay typed)
   bodySmall: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.medium,
     fontSize: 13,
-    fontWeight: '400' as const,
+    fontWeight: '500' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
