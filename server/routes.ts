@@ -8411,24 +8411,23 @@ Be specific about materials, colors, and features that would be included.`
       let settings = await storage.getBusinessSettings(req.userId);
       const user = await storage.getUser(req.userId);
 
-      // Auto-heal: workers/team members invited to someone else's business
-      // never get their own business_settings row created during signup, so
-      // the mobile onboarding gate (`!businessSettings?.onboardingCompleted`)
-      // permanently traps them on the wizard. Create a minimal row marked
-      // complete so they go straight into the app.
+      // Auto-heal: any authenticated user reaching this endpoint without a
+      // business_settings row gets a minimal one created with onboarding
+      // already marked complete. Owners always get a row at signup, so this
+      // only fires for invited workers/subcontractors who would otherwise be
+      // permanently trapped on the mobile onboarding wizard
+      // (`!businessSettings?.onboardingCompleted` is true when row is missing).
       if (!settings && user) {
-        const isTeamMember =
-          user.role === 'worker' ||
-          user.role === 'subcontractor' ||
-          user.teamOwnerId ||
-          user.activeTeamId;
-        if (isTeamMember) {
+        try {
           settings = await storage.createBusinessSettings({
             userId: req.userId,
             businessName: 'Worker Profile',
             onboardingCompleted: true,
             onboardingLevel: 0,
           } as any);
+          console.log(`[business-settings] auto-healed missing row for user ${user.email} (role=${user.role})`);
+        } catch (createErr: any) {
+          console.error('[business-settings] auto-heal create failed:', createErr?.message || createErr);
         }
       }
 
