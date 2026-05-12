@@ -2280,17 +2280,21 @@ export default function JobDetailScreen() {
     };
   }, [id]);
 
+  // Fire the auto-open exactly once per navAction value, regardless of how
+  // many times `job` refetches. Previously a query refetch would clear the
+  // 400ms timer and restart it, so on slow connections the Assign Workers
+  // sheet never actually opened from the dashboard alert.
+  const navActionFiredRef = useRef<string | null>(null);
   useEffect(() => {
     if (!job || isLoading || !navAction) return;
-    const timer = setTimeout(() => {
-      if (navAction === 'assign') {
-        setShowAssignModal(true);
-      } else if (navAction === 'invoice') {
-        router.replace(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
-      }
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [job, isLoading, navAction]);
+    if (navActionFiredRef.current === navAction) return;
+    navActionFiredRef.current = navAction;
+    if (navAction === 'assign') {
+      setShowAssignModal(true);
+    } else if (navAction === 'invoice') {
+      router.replace(`/more/invoice/new?jobId=${job.id}${client ? `&clientId=${client.id}` : ''}`);
+    }
+  }, [job, isLoading, navAction, client]);
 
   useEffect(() => {
     if (timerError) {
