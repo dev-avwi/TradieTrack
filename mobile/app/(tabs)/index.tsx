@@ -528,10 +528,14 @@ function TimeTrackingWidget() {
   useEffect(() => {
     loadDashboardData();
     loadTodaysJobs();
-    // Refresh dashboard data every 90 seconds (was 15s — drained battery / mobile data on site).
-    // On-focus refresh via useFocusEffect + foreground refresh via AppState below cover most cases;
-    // this interval is a long-stop only.
-    const interval = setInterval(loadDashboardData, 90000);
+    // Refresh dashboard data every 12 seconds so newly-assigned jobs appear on
+    // the worker's phone within seconds of the owner assigning them — push
+    // notifications can't be relied on in dev builds. On-focus refresh and
+    // foreground AppState refresh below cover the rest.
+    const interval = setInterval(() => {
+      loadDashboardData();
+      loadTodaysJobs();
+    }, 12000);
 
     // Auto-refresh when app comes to foreground
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
