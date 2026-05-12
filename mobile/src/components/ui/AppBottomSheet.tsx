@@ -65,13 +65,46 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     const insets = useSafeAreaInsets();
     const sheetRef = useRef<BottomSheetModal>(null);
 
+    // Track in-flight present() retry loops so a dismiss() can cancel them
+    // (otherwise a queued present() would re-open the sheet right after close).
+    const presentRetryCancelRef = useRef<{ cancel: () => void } | null>(null);
+
+    const presentWithRetry = useCallback(() => {
+      // Cancel any prior retry loop before starting a new one.
+      presentRetryCancelRef.current?.cancel();
+      let cancelled = false;
+      let attempts = 0;
+      const maxAttempts = 8;
+      const tryPresent = () => {
+        if (cancelled) return;
+        sheetRef.current?.present();
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(tryPresent, 40);
+        }
+      };
+      requestAnimationFrame(tryPresent);
+      const handle = {
+        cancel: () => {
+          cancelled = true;
+        },
+      };
+      presentRetryCancelRef.current = handle;
+    }, []);
+
+    const dismissAndCancel = useCallback(() => {
+      presentRetryCancelRef.current?.cancel();
+      presentRetryCancelRef.current = null;
+      sheetRef.current?.dismiss();
+    }, []);
+
     useImperativeHandle(
       ref,
       () => ({
-        present: () => sheetRef.current?.present(),
-        dismiss: () => sheetRef.current?.dismiss(),
+        present: presentWithRetry,
+        dismiss: dismissAndCancel,
       }),
-      []
+      [presentWithRetry, dismissAndCancel]
     );
 
     // Declarative visibility support: drive the imperative bottom-sheet API
@@ -87,36 +120,11 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     useEffect(() => {
       if (visible === undefined) return;
       if (visible) {
-        // @gorhom/bottom-sheet v5 needs the BottomSheetModal to *register* with
-        // the BottomSheetModalProvider before present() actually does anything.
-        // Ref attachment is sync but registration is async, so a single
-        // present() (or one rAF deferral) silently no-ops on first open of
-        // many sheets ("Assign Worker", "Preview", etc).
-        //
-        // Solution: call present() repeatedly across several frames. Extra
-        // present() calls on an already-open sheet are safe no-ops, so the
-        // worst case is a few wasted calls.
-        let cancelled = false;
-        let attempts = 0;
-        const maxAttempts = 8;
-        const tryPresent = () => {
-          if (cancelled) return;
-          sheetRef.current?.present();
-          attempts++;
-          if (attempts < maxAttempts) {
-            setTimeout(tryPresent, 40);
-          }
-        };
-        // First attempt on next frame (lets BottomSheetModal mount), then
-        // re-attempt every 40ms for ~320ms total.
-        requestAnimationFrame(tryPresent);
-        return () => {
-          cancelled = true;
-        };
+        presentWithRetry();
       } else {
-        sheetRef.current?.dismiss();
+        dismissAndCancel();
       }
-    }, [visible]);
+    }, [visible, presentWithRetry, dismissAndCancel]);
 
     const computedSnapPoints = useMemo(() => {
       if (snapPoints && snapPoints.length > 0) return snapPoints;
