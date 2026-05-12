@@ -1519,6 +1519,21 @@ async function handleCaptureLead(args: any, userId: string, callId: string): Pro
           const full = `${m.firstName || ''} ${m.lastName || ''}`.replace(/\s+/g, ' ').trim();
           if (full) canonicals.push(full);
         }
+        // Also match against existing clients and recent leads — a customer
+        // who has called or been quoted before is the most likely caller, and
+        // we already have the canonical spelling of their name on file.
+        try {
+          const clients = await storage.getClients(userId);
+          for (const c of clients || []) {
+            if (c.name) canonicals.push(c.name);
+          }
+        } catch {}
+        try {
+          const leads = await storage.getLeads(userId);
+          for (const l of (leads || []).slice(0, 100)) {
+            if (l.name) canonicals.push(l.name);
+          }
+        } catch {}
         const normalised = normalizeCallerName(callerName, canonicals);
         if (normalised !== callerName) {
           console.log(`[Vapi] Normalised caller name "${callerName}" → "${normalised}" (matched known person)`);
