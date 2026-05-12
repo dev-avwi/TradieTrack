@@ -315,25 +315,25 @@ export const typography = {
   },
   // iOS Caption - 13px on web (.ios-caption)
   caption: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.bold,
     fontSize: 13,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
   // Small caption
   captionSmall: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.bold,
     fontSize: 12,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
     lineHeight: 16,
     letterSpacing: -0.05,
   },
-  // iOS Label - 11px on web (.ios-label)
+  // iOS Label - 11px on web (.ios-label) — section labels like "START JOB"
   label: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.bold,
     fontSize: 11,
-    fontWeight: '500' as const,
+    fontWeight: '700' as const,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
   },
@@ -362,9 +362,9 @@ export const typography = {
   },
   // Aliases used by various screens (kept here so they stay typed)
   bodySmall: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.bold,
     fontSize: 13,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
