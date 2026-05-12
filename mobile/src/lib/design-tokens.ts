@@ -240,6 +240,7 @@ export const fontFamilies = {
   semibold: 'Inter_600SemiBold',
   bold: 'Inter_700Bold',
   extrabold: 'Inter_800ExtraBold',
+  black: 'Inter_900Black',
 } as const;
 
 // === TYPOGRAPHY (matches web's iOS-style system from index.css) ===
@@ -249,33 +250,33 @@ export const fontFamilies = {
 export const typography = {
   // iOS Large Title - 32-34px on web
   largeTitle: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.black,
     fontSize: 32,
-    fontWeight: '800' as const,
+    fontWeight: '900' as const,
     lineHeight: 38,
     letterSpacing: -0.5,
   },
   // iOS Section Title - 22-24px on web (.ios-section-title)
   sectionTitle: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.black,
     fontSize: 22,
-    fontWeight: '800' as const,
+    fontWeight: '900' as const,
     lineHeight: 28,
     letterSpacing: -0.4,
   },
-  // Page title (legacy) - same as section title
+  // Page title (legacy) - same as section title — used by dashboard greeting
   pageTitle: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.black,
     fontSize: 22,
-    fontWeight: '800' as const,
+    fontWeight: '900' as const,
     lineHeight: 28,
     letterSpacing: -0.4,
   },
   // Headline
   headline: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.black,
     fontSize: 20,
-    fontWeight: '800' as const,
+    fontWeight: '900' as const,
     lineHeight: 26,
     letterSpacing: -0.4,
   },
