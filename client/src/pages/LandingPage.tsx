@@ -947,7 +947,7 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-gray-900">AI Receptionist</h4>
-                    <p className="text-sm text-gray-500">$60/month add-on</p>
+                    <p className="text-sm text-gray-500">$30/month add-on</p>
                   </div>
                 </div>
                 <ul className="space-y-2 mb-5">
@@ -1058,7 +1058,7 @@ export default function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">Mobile App</h3>
-                  <p className="text-sm text-gray-500">iOS & Android</p>
+                  <p className="text-sm text-gray-500">iOS available · Android coming soon</p>
                 </div>
               </div>
               <p className="text-gray-600 mb-6">
@@ -1081,19 +1081,17 @@ export default function LandingPage() {
                   </div>
                 </a>
                 
-                <a 
-                  href="https://play.google.com/store/apps/details?id=com.jobrunner.app"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 bg-black text-white rounded-lg px-5 py-3 hover:bg-gray-800 transition-colors"
-                  data-testid="download-google-play"
+                <div
+                  className="relative flex items-center justify-center gap-3 bg-gray-400 text-white rounded-lg px-5 py-3 cursor-not-allowed"
+                  data-testid="download-google-play-coming-soon"
+                  aria-disabled="true"
                 >
                   <SiGoogleplay className="w-5 h-5" />
                   <div className="text-left">
-                    <div className="text-[9px] uppercase tracking-wider opacity-80">Get it on</div>
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Coming soon to</div>
                     <div className="text-base font-semibold -mt-0.5">Google Play</div>
                   </div>
-                </a>
+                </div>
               </div>
               </div>
             </AnimatedSection>
@@ -1380,19 +1378,17 @@ export default function LandingPage() {
                     <div className="text-sm font-semibold -mt-0.5">App Store</div>
                   </div>
                 </a>
-                <a 
-                  href="https://play.google.com/store/apps/details?id=com.jobrunner.app"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white rounded-lg py-3 px-4 transition-colors"
-                  data-testid="popup-google-play"
+                <div
+                  className="flex-1 flex items-center justify-center gap-2 bg-gray-400 text-white rounded-lg py-3 px-4 cursor-not-allowed"
+                  data-testid="popup-google-play-coming-soon"
+                  aria-disabled="true"
                 >
                   <SiGoogleplay className="w-5 h-5" />
                   <div className="text-left">
-                    <div className="text-[9px] uppercase tracking-wider opacity-80">Get it on</div>
+                    <div className="text-[9px] uppercase tracking-wider opacity-80">Coming soon to</div>
                     <div className="text-sm font-semibold -mt-0.5">Google Play</div>
                   </div>
-                </a>
+                </div>
               </div>
 
               {/* Dismiss link */}

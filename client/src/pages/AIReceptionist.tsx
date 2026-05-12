@@ -617,7 +617,7 @@ export default function AIReceptionist() {
               </div>
               <div className="bg-muted/50 rounded-md p-4 mb-6 w-full">
                 <p className="text-sm text-muted-foreground">Available as an add-on with Pro or Team plan</p>
-                <p className="text-2xl font-bold mt-1">$60/month</p>
+                <p className="text-2xl font-bold mt-1">$30/month</p>
               </div>
               <Button onClick={() => setLocation("/settings/subscription")} data-testid="button-upgrade-ai-receptionist">
                 <Sparkles className="h-4 w-4 mr-2" />

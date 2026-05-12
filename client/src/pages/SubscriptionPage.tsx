@@ -358,12 +358,12 @@ export default function SubscriptionPage() {
                 {status?.addons?.aiReceptionistEnabled ? (
                   <>
                     <p className="font-semibold text-green-600">Active</p>
-                    <p className="text-xs text-muted-foreground capitalize">{status.addons.aiReceptionistMode?.replace(/_/g, ' ') || 'Enabled'} · $60/mo</p>
+                    <p className="text-xs text-muted-foreground capitalize">{status.addons.aiReceptionistMode?.replace(/_/g, ' ') || 'Enabled'} · $30/mo</p>
                   </>
                 ) : (
                   <>
                     <p className="font-semibold text-muted-foreground">Not Active</p>
-                    <p className="text-xs text-muted-foreground">$60/mo add-on</p>
+                    <p className="text-xs text-muted-foreground">$30/mo add-on</p>
                   </>
                 )}
               </div>
@@ -611,7 +611,7 @@ export default function SubscriptionPage() {
             <CardTitle className="flex items-center gap-2">
               <Headphones className="h-5 w-5 text-blue-600" />
               Add-On: AI Receptionist
-              <Badge variant="outline" className="ml-auto text-xs">$60/month</Badge>
+              <Badge variant="outline" className="ml-auto text-xs">$30/month</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -655,7 +655,7 @@ export default function SubscriptionPage() {
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">$60 AUD/month</p>
+                <p className="text-sm font-medium">$30 AUD/month</p>
                 <p className="text-xs text-muted-foreground">Includes dedicated number, AI voice agent, call logs, and lead capture. Requires Pro or Team plan.</p>
               </div>
               {hasPaidPlan ? (
