@@ -8409,10 +8409,32 @@ Be specific about materials, colors, and features that would be included.`
   app.get("/api/business-settings", requireAuth, async (req: any, res) => {
     try {
       let settings = await storage.getBusinessSettings(req.userId);
+      const user = await storage.getUser(req.userId);
+
+      // Auto-heal: workers/team members invited to someone else's business
+      // never get their own business_settings row created during signup, so
+      // the mobile onboarding gate (`!businessSettings?.onboardingCompleted`)
+      // permanently traps them on the wizard. Create a minimal row marked
+      // complete so they go straight into the app.
+      if (!settings && user) {
+        const isTeamMember =
+          user.role === 'worker' ||
+          user.role === 'subcontractor' ||
+          user.teamOwnerId ||
+          user.activeTeamId;
+        if (isTeamMember) {
+          settings = await storage.createBusinessSettings({
+            userId: req.userId,
+            businessName: 'Worker Profile',
+            onboardingCompleted: true,
+            onboardingLevel: 0,
+          } as any);
+        }
+      }
+
       if (!settings) {
         return res.status(404).json({ error: "Business settings not found" });
       }
-      const user = await storage.getUser(req.userId);
 
       if (!settings.onboardingCompleted && user) {
         const hasTeam = user.teamOwnerId || user.activeTeamId;
