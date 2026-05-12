@@ -450,6 +450,14 @@ if (process.env.DATABASE_URL) {
 
   app.use((req, res, next) => {
     res.setHeader('Permissions-Policy', 'geolocation=(self), microphone=(self), camera=(self), payment=(self)');
+    // Explicit indexing directive for crawlers. Overrides any upstream
+    // X-Robots-Tag: noindex (e.g. some platform preview domains) so the
+    // production site is indexable by Google/Bing. Auth/admin paths are
+    // still excluded via robots.txt.
+    res.setHeader(
+      'X-Robots-Tag',
+      'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+    );
     next();
   });
 
