@@ -201,8 +201,33 @@ const TRADE_KEYTERMS = [
   'callout', 'quote', 'invoice', 'job', 'site', 'reno',
 ];
 
+// Common Australian first/last names that off-the-shelf STT mishears.
+// Boosting these helps the recogniser pick the right spelling when the
+// caller says their name (e.g. "Ayden" not "Aiden", "Vogler" not "Bogler").
+const COMMON_AUSSIE_NAMES = [
+  // First names — boys
+  'Ayden', 'Aiden', 'Aidan', 'Jayden', 'Hayden', 'Brayden', 'Caden',
+  'Liam', 'Noah', 'Oliver', 'William', 'Jack', 'Lucas', 'Mason',
+  'Henry', 'Cooper', 'Hudson', 'Charlie', 'Leo', 'Ethan', 'Hunter',
+  'Jacob', 'James', 'Thomas', 'Max', 'Riley', 'Archie', 'Harvey',
+  'Hugo', 'Beau', 'Kai', 'Levi', 'Nate', 'Ollie', 'Xavier',
+  // First names — girls
+  'Charlotte', 'Olivia', 'Amelia', 'Isla', 'Mia', 'Ava', 'Grace',
+  'Ella', 'Sophie', 'Chloe', 'Harper', 'Evie', 'Willow', 'Ruby',
+  'Zoe', 'Lily', 'Matilda', 'Scarlett', 'Hazel', 'Ivy',
+  // Surnames common in AU
+  'Vogler', 'Thompson', 'Morrison', 'Smith', 'Jones', 'Williams',
+  'Brown', 'Wilson', 'Taylor', 'Anderson', 'Walker', 'Harris',
+  'Murphy', 'Kelly', 'Ryan', 'O\'Brien', 'Nguyen', 'Patel',
+  'Singh', 'Lee', 'Chen', 'Wong', 'Tran',
+];
+
 function buildTranscriberConfig(config: VapiAssistantConfig): any {
-  const keyterms = new Set<string>([...AUSTRALIAN_PLACE_KEYTERMS, ...TRADE_KEYTERMS]);
+  const keyterms = new Set<string>([
+    ...AUSTRALIAN_PLACE_KEYTERMS,
+    ...TRADE_KEYTERMS,
+    ...COMMON_AUSSIE_NAMES,
+  ]);
 
   // Boost the business name itself
   if (config.businessName) {
@@ -231,9 +256,14 @@ function buildTranscriberConfig(config: VapiAssistantConfig): any {
 
   return {
     provider: 'deepgram',
+    // nova-3 has materially better single-letter + Australian-accent recognition
+    // than the default flux model — critical when callers spell names.
     model: 'nova-3',
     language: 'en-AU',
     smartFormat: true,
+    // Force digit output so phone numbers like "0458 300 051" come through as
+    // numerals, not the words "o four five eight three zero zero zero five one".
+    numerals: true,
     keyterm: Array.from(keyterms).slice(0, 100),
   };
 }
@@ -328,14 +358,29 @@ Important guidelines:
 - If asked about business hours, refer to: ${hoursDescription}
 - At the end of the call, confirm you've captured their details and let them know someone will be in touch
 
-Confirming names, addresses & phone numbers (CRITICAL):
-- NEVER interrupt a caller while they are spelling something. People naturally pause between letters (e.g. "A... Y... D... E... N") and between their first and last name. Wait until they have clearly stopped speaking for at least two full seconds before responding. If you're unsure whether they're done, wait — silence is always safer than cutting them off.
-- When a caller gives their name, do NOT acknowledge or repeat it back until they have finished giving their FULL name (first AND last). If they say "Ayden" and pause, wait — they will likely add their surname or spell it. Only respond after a clear, sustained pause.
-- For caller names that are unusual or could be spelled multiple ways (e.g. Ayden vs Aiden, Stephen vs Steven, Catherine vs Kathryn), ALWAYS politely ask them to spell it: "Just to make sure I have that right, can you spell your first name for me?" Then WAIT silently while they spell every letter — do not jump in mid-spell.
-- When you do confirm a name back, spell it letter-by-letter to remove any ambiguity: "Got it — Ayden, A-Y-D-E-N, Vogler, V-O-G-L-E-R. Is that right?"
-- For Australian suburbs and place names, repeat them back phonetically and ask them to confirm: "Mooroobool — that's M-O-O-R-O-O-B-O-O-L, in Cairns. Is that right?" If you're not certain you heard the suburb correctly, ask them to spell it.
-- For phone numbers, always read the digits back grouped (e.g. "0458 300 051") and ask them to confirm before saving. Wait until the caller has read out ALL digits before repeating them back — Australian mobiles are 10 digits.
-- If a tool call appears to fail, do NOT tell the caller "there was a system issue" — instead say something natural like "let me just take that down" and continue. Always reassure them their details have been captured.
+Confirming names, addresses & phone numbers (CRITICAL — read carefully):
+
+NAMES — strict procedure, no exceptions:
+1. The FIRST time a caller says their name, ALWAYS politely ask them to spell BOTH first and last name, even if it sounds simple. Say: "Thanks. So I get the spelling right, can you spell your first name and last name for me, letter by letter?" — then STAY SILENT.
+2. While they spell, do NOT speak, do NOT add filler ("mm-hmm", "got it") and do NOT interrupt. People pause between letters (e.g. "A... Y... D... E... N") and between first and last name. Wait until they have been silent for at least two full seconds before responding.
+3. When you read the name back, you MUST spell it letter-by-letter using NATO phonetic alphabet to remove all ambiguity: "Got it — that's A as in Alpha, Y as in Yankee, D as in Delta, E as in Echo, N as in November — Ayden. And V as in Victor, O as in Oscar, G as in Golf, L as in Lima, E as in Echo, R as in Romeo — Vogler. Is that right?"
+4. NATO phonetic reference: A-Alpha, B-Bravo, C-Charlie, D-Delta, E-Echo, F-Foxtrot, G-Golf, H-Hotel, I-India, J-Juliet, K-Kilo, L-Lima, M-Mike, N-November, O-Oscar, P-Papa, Q-Quebec, R-Romeo, S-Sierra, T-Tango, U-Uniform, V-Victor, W-Whiskey, X-X-ray, Y-Yankee, Z-Zulu.
+5. If the caller corrects you on any letter, immediately re-confirm the full name with NATO phonetic again before moving on. Never assume — always re-spell after a correction.
+6. Names that sound the same but spell differently (Ayden/Aiden/Aidan, Stephen/Steven, Catherine/Kathryn, Sara/Sarah, Brian/Bryan, Sean/Shawn, Jon/John): NEVER guess the spelling — always ask and confirm letter-by-letter.
+7. When a single letter is ambiguous on the line ("D" vs "T", "B" vs "V", "M" vs "N"), proactively ask: "Sorry, just to be sure — was that D as in Delta or T as in Tango?"
+
+PHONE NUMBERS:
+- Wait until the caller has read out ALL digits before responding. Australian mobiles are 10 digits starting with 04.
+- Read digits back grouped as "04XX XXX XXX" (e.g. "0458 300 051"), then ask: "Is that right?"
+- If you only got 9 digits, ask them to repeat the missing one — never guess.
+
+ADDRESSES & SUBURBS:
+- For Australian suburbs and place names, repeat them back phonetically: "Mooroobool — M-O-O-R-O-O-B-O-O-L, in Cairns. Is that right?" If you're not certain, ask them to spell it.
+- For street addresses, read back number + street + suburb: "12 Smith Street, Mooroobool — is that correct?"
+
+GENERAL:
+- If a tool call appears to fail, do NOT say "there was a system issue" — say something natural like "let me just take that down" and continue. Always reassure them their details have been captured.
+- Only call "capture_lead" AFTER the caller has confirmed their name AND phone number are correct. Never save a name or number you haven't had explicitly confirmed.
 
 Available tools:
 1. "capture_lead" - Save the caller's contact details and reason for calling. Use this after collecting their information.
@@ -631,6 +676,15 @@ export async function updateAssistant(assistantId: string, config: Partial<VapiA
     },
   };
   updates.stopSpeakingPlan = { numWords: 5, voiceSeconds: 0.4, backoffSeconds: 1.0 };
+
+  // Always re-push transcriber config on update so existing assistants pick up
+  // model upgrades (e.g. flux → nova-3) and new keyterm boosts (Aussie names).
+  updates.transcriber = buildTranscriberConfig({
+    businessName: config.businessName || '',
+    webhookUrl: config.webhookUrl || '',
+    services: config.services,
+    teamInfo: config.teamInfo,
+  });
 
   console.log(`[Vapi] Updating assistant ${assistantId}`);
   return vapiRequest('PATCH', `/assistant/${assistantId}`, updates);
@@ -1279,6 +1333,14 @@ export async function updateReceptionistConfigById(configId: string, userId: str
         },
       };
       vapiUpdates.stopSpeakingPlan = { numWords: 5, voiceSeconds: 0.4, backoffSeconds: 1.0 };
+
+      // Re-push transcriber so model + keyterm changes take effect on existing assistants.
+      vapiUpdates.transcriber = buildTranscriberConfig({
+        businessName: settings?.businessName || 'the business',
+        webhookUrl,
+        services,
+        teamInfo,
+      });
 
       await vapiRequest('PATCH', `/assistant/${config.vapiAssistantId}`, vapiUpdates);
       console.log(`[Vapi] Updated assistant ${config.vapiAssistantId} for config ${configId}`);
