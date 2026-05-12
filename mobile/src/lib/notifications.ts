@@ -71,6 +71,7 @@ class NotificationService {
   private onNotificationTapped?: (notification: NotificationPayload, action?: string) => void;
   private isInitializing: boolean = false;
   private isInitialized: boolean = false;
+  private isRegisteredWithBackend: boolean = false;
 
   /**
    * Initialize push notifications
@@ -80,6 +81,10 @@ class NotificationService {
     // Guard: prevent multiple initializations
     if (this.isInitialized && this.pushToken) {
       if (__DEV__) console.log('[Notifications] Already initialized, returning existing token');
+      // Backend registration may have failed previously (e.g. auth race) — retry now
+      if (!this.isRegisteredWithBackend) {
+        await this.registerTokenWithBackend();
+      }
       return this.pushToken;
     }
     
@@ -266,15 +271,50 @@ class NotificationService {
     if (!this.pushToken) return;
     
     try {
-      await api.post('/api/push-tokens', {
+      const res = await api.post('/api/push-tokens', {
         token: this.pushToken,
         platform: Platform.OS,
         deviceName: Device.deviceName,
       });
-      if (__DEV__) console.log('[Notifications] Token registered with backend');
+      // api.post returns { data, error, status } — treat 2xx as success
+      const status = (res as any)?.status ?? 0;
+      const ok = status >= 200 && status < 300;
+      if (ok) {
+        this.isRegisteredWithBackend = true;
+        if (__DEV__) console.log('[Notifications] Token registered with backend');
+      } else {
+        this.isRegisteredWithBackend = false;
+        if (__DEV__) console.warn('[Notifications] Backend register returned non-2xx:', status);
+      }
     } catch (error) {
+      this.isRegisteredWithBackend = false;
       if (__DEV__) console.error('[Notifications] Failed to register token:', error);
     }
+  }
+
+  /**
+   * Public: ensure the current device's push token is registered with the
+   * backend for the currently-logged-in user. Safe to call repeatedly — it
+   * is a no-op if already registered. Call this after login.
+   */
+  async ensureRegisteredWithBackend(): Promise<void> {
+    // If never initialized, do a full init
+    if (!this.isInitialized || !this.pushToken) {
+      await this.initialize();
+      return;
+    }
+    if (!this.isRegisteredWithBackend) {
+      await this.registerTokenWithBackend();
+    }
+  }
+
+  /**
+   * Public: clear backend-registration flag so the next ensureRegistered
+   * will re-POST the token. Call this on logout so the next user re-binds
+   * the device to their account.
+   */
+  resetBackendRegistration(): void {
+    this.isRegisteredWithBackend = false;
   }
 
   /**

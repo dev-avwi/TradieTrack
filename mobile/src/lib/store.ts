@@ -4,6 +4,7 @@ import offlineStorage, { useOfflineStore } from './offline-storage';
 import { clearRoleCache } from './role-cache';
 import { useThemeStore, ThemeMode } from './theme-store';
 import locationTracking from './location-tracking';
+import notificationService from './notifications';
 
 // ============ TYPES ============
 
@@ -315,6 +316,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     await offlineStorage.fullSync();
 
+    // Ensure this device's push token is bound to the now-logged-in user.
+    // If the token failed to register on app boot (e.g. before auth was
+    // ready), this retries; if it never initialized, this triggers init.
+    notificationService.ensureRegisteredWithBackend().catch(() => {});
+
     return true;
   },
 
@@ -329,6 +335,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await locationTracking.stopJobTracking();
     await locationTracking.stopTracking();
     locationTracking.setSubcontractorMode(false);
+    notificationService.resetBackendRegistration();
     await api.logout();
     set({ 
       user: null, 
