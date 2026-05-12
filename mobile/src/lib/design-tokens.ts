@@ -301,32 +301,32 @@ export const typography = {
   // SF-Bold "Attention Needed" header on iOS — Inter 700 was rendering
   // noticeably thinner than SF 700 at the same nominal weight.
   body: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 15,
-    fontWeight: '500' as const,
-    lineHeight: 22,
-    letterSpacing: -0.1,
-  },
-  bodySemibold: {
     fontFamily: fontFamilies.semibold,
     fontSize: 15,
     fontWeight: '600' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
+  bodySemibold: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 15,
+    fontWeight: '700' as const,
+    lineHeight: 22,
+    letterSpacing: -0.1,
+  },
   // iOS Caption - 13px on web (.ios-caption)
   caption: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.medium,
     fontSize: 13,
-    fontWeight: '400' as const,
+    fontWeight: '500' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
   // Small caption
   captionSmall: {
-    fontFamily: fontFamilies.regular,
+    fontFamily: fontFamilies.medium,
     fontSize: 12,
-    fontWeight: '400' as const,
+    fontWeight: '500' as const,
     lineHeight: 16,
     letterSpacing: -0.05,
   },
@@ -363,9 +363,9 @@ export const typography = {
   },
   // Aliases used by various screens (kept here so they stay typed)
   bodySmall: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.semibold,
     fontSize: 13,
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
