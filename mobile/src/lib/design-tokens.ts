@@ -249,49 +249,49 @@ export const fontFamilies = {
 export const typography = {
   // iOS Large Title - 32-34px on web
   largeTitle: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 32,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
     lineHeight: 38,
     letterSpacing: -0.5,
   },
   // iOS Section Title - 22-24px on web (.ios-section-title)
   sectionTitle: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 22,
-    fontWeight: '600' as const,
+    fontWeight: '800' as const,
     lineHeight: 28,
     letterSpacing: -0.4,
   },
   // Page title (legacy) - same as section title
   pageTitle: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 22,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
     lineHeight: 28,
     letterSpacing: -0.4,
   },
   // Headline
   headline: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 20,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
     lineHeight: 26,
     letterSpacing: -0.4,
   },
   // iOS Card Title - 17px on web (.ios-card-title)
   cardTitle: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 17,
-    fontWeight: '600' as const,
+    fontWeight: '800' as const,
     lineHeight: 23,
     letterSpacing: -0.2,
   },
   // Subtitle (section headers)
   subtitle: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 16,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
     lineHeight: 22,
     letterSpacing: -0.2,
   },
