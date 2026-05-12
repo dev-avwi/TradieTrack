@@ -222,6 +222,70 @@ const COMMON_AUSSIE_NAMES = [
   'Singh', 'Lee', 'Chen', 'Wong', 'Tran',
 ];
 
+// Levenshtein edit distance — used by normalizeCallerName below to snap
+// misheard names to their canonical spelling.
+function editDistance(a: string, b: string): number {
+  a = a.toLowerCase();
+  b = b.toLowerCase();
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+// If the AI captured a caller name that closely matches a known person on
+// the business (owner or team member), snap it to the canonical spelling.
+// This is the safety net for cases where Deepgram still mishears Australian
+// names ("Aiden Bogler" → "Ayden Vogler") even after keyterm boosting.
+// Match rules:
+//   - Full name compared against each canonical: edit distance ≤ 3
+//   - First name compared if full match too far: edit distance ≤ 2
+// Returns the original name unchanged if no close match found.
+export function normalizeCallerName(captured: string, canonicals: string[]): string {
+  if (!captured || !canonicals || canonicals.length === 0) return captured;
+  const cleaned = captured.replace(/\s+/g, ' ').trim();
+  if (cleaned.length < 3) return captured;
+
+  let best: { name: string; dist: number } | null = null;
+  const maxFullDist = Math.min(3, Math.floor(cleaned.length / 3));
+
+  for (const canon of canonicals) {
+    if (!canon) continue;
+    const c = canon.replace(/\s+/g, ' ').trim();
+    if (!c) continue;
+    const d = editDistance(cleaned, c);
+    if (d <= maxFullDist && (!best || d < best.dist)) {
+      best = { name: c, dist: d };
+    }
+  }
+  if (best) return best.name;
+
+  // First-name fallback (handles "Aidan" → "Ayden" when last name was missed entirely)
+  const firstCaptured = cleaned.split(' ')[0];
+  if (firstCaptured.length >= 4) {
+    for (const canon of canonicals) {
+      if (!canon) continue;
+      const firstCanon = canon.split(/\s+/)[0];
+      if (!firstCanon) continue;
+      const d = editDistance(firstCaptured, firstCanon);
+      if (d <= 2 && (!best || d < best.dist)) {
+        best = { name: canon, dist: d };
+      }
+    }
+  }
+
+  return best ? best.name : captured;
+}
+
 function buildTranscriberConfig(config: VapiAssistantConfig): any {
   const keyterms = new Set<string>([
     ...AUSTRALIAN_PLACE_KEYTERMS,
@@ -1434,9 +1498,36 @@ async function handleCaptureLead(args: any, userId: string, callId: string): Pro
       return { result: `Details already recorded. Reference number: ${existingCall.leadId.slice(0, 8)}` };
     }
 
-    const callerName = args.caller_name || 'Unknown Caller';
+    let callerName = args.caller_name || 'Unknown Caller';
     const callerPhone = args.caller_phone || null;
     const callerEmail = args.caller_email || null;
+
+    // Safety net: snap mishears like "Aiden Bogler" / "Aidan Voller" to the
+    // canonical spelling of any known person on this business (owner or team
+    // member). Runs on the server so the lead is correct in JobRunner even
+    // when the speech-to-text layer still gets the name slightly wrong.
+    if (callerName && callerName !== 'Unknown Caller') {
+      try {
+        const canonicals: string[] = [];
+        const owner = await storage.getUser(userId);
+        if (owner) {
+          const ownerFull = `${owner.firstName || ''} ${owner.lastName || ''}`.replace(/\s+/g, ' ').trim();
+          if (ownerFull) canonicals.push(ownerFull);
+        }
+        const teamMembers = await storage.getTeamMembers(userId);
+        for (const m of teamMembers || []) {
+          const full = `${m.firstName || ''} ${m.lastName || ''}`.replace(/\s+/g, ' ').trim();
+          if (full) canonicals.push(full);
+        }
+        const normalised = normalizeCallerName(callerName, canonicals);
+        if (normalised !== callerName) {
+          console.log(`[Vapi] Normalised caller name "${callerName}" → "${normalised}" (matched known person)`);
+          callerName = normalised;
+        }
+      } catch (e) {
+        console.warn('[Vapi] Caller name normalisation failed (non-fatal):', e);
+      }
+    }
     const jobType = args.job_type || args.intent || 'General enquiry';
     const address = args.address || null;
     const urgency = args.urgency || null;
