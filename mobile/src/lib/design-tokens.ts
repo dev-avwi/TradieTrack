@@ -296,20 +296,20 @@ export const typography = {
     letterSpacing: -0.2,
   },
   // iOS Body - 15px on web (.ios-body)
-  // Bumped to weight 700 to match the "Attention Needed" feel app-wide
-  // (Ayden wanted general body text thicker, like that section).
+  // Bumped to weight 800 (Inter ExtraBold) so it visually matches the System
+  // SF-Bold "Attention Needed" header on iOS — Inter 700 was rendering
+  // noticeably thinner than SF 700 at the same nominal weight.
   body: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 15,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
-  // Body semibold (now bold to match the new heavier body weight)
   bodySemibold: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 15,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
@@ -339,9 +339,9 @@ export const typography = {
   },
   // Button text - 14px
   button: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.extrabold,
     fontSize: 14,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
     lineHeight: 20,
     letterSpacing: -0.1,
   },

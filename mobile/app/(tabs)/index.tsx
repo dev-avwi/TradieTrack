@@ -1287,7 +1287,7 @@ function OperationalAlertsCard() {
             <View style={{ width: 28, height: 28, borderRadius: radius.md, backgroundColor: colorWithOpacity(colors.destructive, 0.12), alignItems: 'center', justifyContent: 'center' }}>
               <Feather name="radio" size={14} color={colors.destructive} />
             </View>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.foreground }}>Attention Needed</Text>
+            <Text style={{ ...typography.body, color: colors.foreground }}>Attention Needed</Text>
             {visibleUrgent > 0 && (
               <View style={{ backgroundColor: colorWithOpacity(colors.destructive, 0.15), paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm }}>
                 <Text style={{ fontSize: 11, fontWeight: '600', color: colors.destructive }}>{visibleUrgent} urgent</Text>
