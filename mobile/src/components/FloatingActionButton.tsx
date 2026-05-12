@@ -149,16 +149,18 @@ const createStyles = (colors: ThemeColors, isTabletStyle: boolean) => StyleSheet
   menuGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: isTabletStyle ? 'center' : 'space-between',
+    justifyContent: isTabletStyle ? 'center' : 'flex-start',
     gap: isTabletStyle ? spacing.sm : 0,
     rowGap: spacing.xs,
   },
   menuItem: {
     alignItems: 'center',
-    // Phone: flex-based so 4 items always fit one row at any screen width
-    // (fixed 76dp + gaps overflowed on 360dp Android, causing 3+1 wrap).
-    // Tablet: keep fixed width so the 6-item popup grid stays tidy.
-    ...(isTabletStyle ? { width: 85 } : { flex: 1, minWidth: 0 }),
+    // Phone: deterministic 25% width forces 4 items per row on every screen
+    // size and on every platform. flex:1 + flexWrap was unreliable on
+    // Android — the intrinsic label width could win the layout pass and
+    // push the 4th item onto a second row (3+1). Fixed % is bulletproof.
+    // Tablet: fixed width keeps the 6-item popup grid tidy.
+    ...(isTabletStyle ? { width: 85 } : { width: '25%' }),
     paddingVertical: isTabletStyle ? spacing.sm : spacing.xs,
   },
   menuItemIcon: {
@@ -393,7 +395,7 @@ export function FloatingActionButton({ isTeamOwner = false, onAssignPress, fabSt
                         color={iconColor} 
                       />
                     </View>
-                    <Text style={styles.menuItemLabel}>{action.label}</Text>
+                    <Text style={styles.menuItemLabel} numberOfLines={1} ellipsizeMode="tail">{action.label}</Text>
                   </TouchableOpacity>
                 );
               })}
