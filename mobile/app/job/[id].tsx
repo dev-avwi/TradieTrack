@@ -49,7 +49,7 @@ import { AIPhotoAnalysisModal } from '../../src/components/AIPhotoAnalysis';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
-import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetScrollView } from '../../src/components/ui/AppBottomSheet';
 import { MobileSendModal } from '../../src/components/MobileSendModal';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { getAvatarColor } from '../../src/lib/avatar-colors';

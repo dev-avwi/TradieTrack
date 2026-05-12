@@ -21,7 +21,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/lib/theme';
 import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
-import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetScrollView } from '../../src/components/ui/AppBottomSheet';
 import { api } from '../../src/lib/api';
 import { spacing, radius, shadows, typography, pageShell, iconSizes, sizes, componentStyles } from '../../src/lib/design-tokens';
 import { getBottomNavHeight } from '../../src/components/BottomNav';

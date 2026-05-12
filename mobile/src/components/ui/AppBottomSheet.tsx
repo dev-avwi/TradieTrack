@@ -3,16 +3,24 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
+  useState,
   ReactNode,
 } from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
 import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetScrollView,
-  BottomSheetBackdropProps,
+  StyleSheet,
+  View,
+  Text,
+  Pressable,
+  Modal,
+  Animated,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import {
+  BottomSheetScrollView as GorhomBottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
@@ -44,6 +52,38 @@ export interface AppBottomSheetProps {
   visible?: boolean;
 }
 
+/**
+ * Parse a snap point ("85%", 0.85, 600, "600") into a target sheet height
+ * in pixels relative to the screen height.
+ */
+function resolveSheetHeight(
+  snapPoints: (string | number)[] | undefined,
+  enableDynamicSizing: boolean,
+  screenHeight: number,
+): number {
+  if (snapPoints && snapPoints.length > 0) {
+    // Use the LAST (largest) snap point as the visible height — matches
+    // gorhom behaviour of opening to the largest snap on present().
+    const sp = snapPoints[snapPoints.length - 1];
+    if (typeof sp === 'string') {
+      const trimmed = sp.trim();
+      if (trimmed.endsWith('%')) {
+        const pct = parseFloat(trimmed) / 100;
+        return Math.round(screenHeight * pct);
+      }
+      const n = parseFloat(trimmed);
+      if (!Number.isNaN(n)) return n;
+    } else if (typeof sp === 'number') {
+      return sp <= 1 ? Math.round(screenHeight * sp) : sp;
+    }
+  }
+  if (enableDynamicSizing) {
+    // Best-effort: cap at 90% so dynamic content never overflows the screen.
+    return Math.round(screenHeight * 0.9);
+  }
+  return Math.round(screenHeight * 0.9);
+}
+
 const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
   (
     {
@@ -57,182 +97,205 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       keyboardBehavior = 'interactive',
       scrollable = true,
       contentPadding = spacing.lg,
-      visible,
+      visible: visibleProp,
     },
-    ref
+    ref,
   ) => {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
-    const sheetRef = useRef<BottomSheetModal>(null);
+    const [internalVisible, setInternalVisible] = useState(false);
+    // Modal stays mounted for the close animation; we drive open/close via
+    // `mounted` and animate translate/opacity separately so the slide-out
+    // plays before unmount.
+    const [mounted, setMounted] = useState(false);
+    const screenHeight = Dimensions.get('window').height;
+    const sheetHeight = resolveSheetHeight(snapPoints, enableDynamicSizing, screenHeight);
+    const translateY = useRef(new Animated.Value(screenHeight)).current;
+    const backdropOpacity = useRef(new Animated.Value(0)).current;
 
-    // Track in-flight present() retry loops so a dismiss() can cancel them
-    // (otherwise a queued present() would re-open the sheet right after close).
-    const presentRetryCancelRef = useRef<{ cancel: () => void } | null>(null);
+    const isVisible = visibleProp !== undefined ? visibleProp : internalVisible;
 
-    const presentWithRetry = useCallback(() => {
-      // Cancel any prior retry loop before starting a new one.
-      presentRetryCancelRef.current?.cancel();
-      let cancelled = false;
-      let attempts = 0;
-      const maxAttempts = 8;
-      const tryPresent = () => {
-        if (cancelled) return;
-        sheetRef.current?.present();
-        attempts++;
-        if (attempts < maxAttempts) {
-          setTimeout(tryPresent, 40);
-        }
-      };
-      requestAnimationFrame(tryPresent);
-      const handle = {
-        cancel: () => {
-          cancelled = true;
-        },
-      };
-      presentRetryCancelRef.current = handle;
-    }, []);
+    const present = useCallback(() => {
+      if (visibleProp === undefined) setInternalVisible(true);
+    }, [visibleProp]);
 
-    const dismissAndCancel = useCallback(() => {
-      presentRetryCancelRef.current?.cancel();
-      presentRetryCancelRef.current = null;
-      sheetRef.current?.dismiss();
-    }, []);
+    const dismiss = useCallback(() => {
+      if (visibleProp === undefined) setInternalVisible(false);
+      // If parent owns visibility, surface intent through onDismiss so they
+      // can flip their own state.
+      else onDismiss?.();
+    }, [visibleProp, onDismiss]);
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        present: presentWithRetry,
-        dismiss: dismissAndCancel,
-      }),
-      [presentWithRetry, dismissAndCancel]
-    );
+    useImperativeHandle(ref, () => ({ present, dismiss }), [present, dismiss]);
 
-    // Declarative visibility support: drive the imperative bottom-sheet API
-    // from a boolean prop so existing `<Modal visible={x}>` call-sites can
-    // migrate with a single tag change.
-    //
-    // We defer present() to the next frame because @gorhom/bottom-sheet's
-    // BottomSheetModal needs to register itself with the BottomSheetModalProvider
-    // before present() will actually do anything. Without the deferral, calling
-    // present() in the same tick as the ref attaches silently no-ops, which is
-    // why some sheets (Assign Worker, Proof Pack Preview) were "not opening".
-    // We also retry once on the following frame as a safety net for slower devices.
+    // Open / close animation driver.
     useEffect(() => {
-      if (visible === undefined) return;
-      if (visible) {
-        presentWithRetry();
-      } else {
-        dismissAndCancel();
+      if (isVisible) {
+        setMounted(true);
+        // Reset position before animating in.
+        translateY.setValue(screenHeight);
+        backdropOpacity.setValue(0);
+        Animated.parallel([
+          Animated.timing(backdropOpacity, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+          Animated.spring(translateY, {
+            toValue: 0,
+            damping: 22,
+            stiffness: 220,
+            mass: 0.9,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else if (mounted) {
+        Animated.parallel([
+          Animated.timing(backdropOpacity, {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateY, {
+            toValue: screenHeight,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+        ]).start(({ finished }) => {
+          if (finished) setMounted(false);
+        });
       }
-    }, [visible, presentWithRetry, dismissAndCancel]);
+    }, [isVisible, screenHeight, translateY, backdropOpacity, mounted]);
 
-    const computedSnapPoints = useMemo(() => {
-      if (snapPoints && snapPoints.length > 0) return snapPoints;
-      if (enableDynamicSizing) return undefined;
-      return ['50%', '90%'];
-    }, [snapPoints, enableDynamicSizing]);
-
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          appearsOnIndex={0}
-          disappearsOnIndex={-1}
-          opacity={0.5}
-          pressBehavior={enablePanDownToClose ? 'close' : 'none'}
-        />
-      ),
-      [enablePanDownToClose]
-    );
-
-    const handleDismiss = useCallback(() => {
+    const handleBackdropPress = useCallback(() => {
+      if (!enablePanDownToClose) return;
+      if (visibleProp === undefined) {
+        setInternalVisible(false);
+      }
       onDismiss?.();
-    }, [onDismiss]);
+    }, [enablePanDownToClose, visibleProp, onDismiss]);
 
-    const Header = title || showCloseButton ? (
-      <View
-        style={[
-          styles.header,
-          { borderBottomColor: colors.border },
-        ]}
-      >
-        <Text
-          style={[
-            typography.cardTitle,
-            { color: colors.foreground, flex: 1 },
-          ]}
-          numberOfLines={1}
-        >
-          {title || ''}
-        </Text>
-        {showCloseButton ? (
-          <Pressable
-            onPress={() => sheetRef.current?.dismiss()}
-            hitSlop={8}
-            style={styles.closeBtn}
-          >
-            <X size={20} color={colors.mutedForeground} />
-          </Pressable>
-        ) : null}
-      </View>
-    ) : null;
+    const handleRequestClose = useCallback(() => {
+      // Hardware back on Android.
+      if (visibleProp === undefined) setInternalVisible(false);
+      onDismiss?.();
+    }, [visibleProp, onDismiss]);
 
-    // Add safe-area bottom inset so content (and any sticky CTA) clears the
-    // Android edge-to-edge nav bar / iOS home indicator. Without this, the
-    // last row of pickers / buttons is partially hidden behind system chrome.
-    const innerStyle = {
+    if (!mounted) return null;
+
+    const innerContentStyle = {
       paddingHorizontal: contentPadding,
       paddingBottom: contentPadding + Math.max(insets.bottom, 0),
     };
 
     return (
-      <BottomSheetModal
-        ref={sheetRef}
-        snapPoints={computedSnapPoints}
-        enableDynamicSizing={enableDynamicSizing && !computedSnapPoints}
-        enablePanDownToClose={enablePanDownToClose}
-        keyboardBehavior={keyboardBehavior}
-        keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
-        onDismiss={handleDismiss}
-        backdropComponent={renderBackdrop}
-        backgroundStyle={[
-          {
-            backgroundColor: colors.card,
-            borderTopLeftRadius: radius.xl,
-            borderTopRightRadius: radius.xl,
-          },
-          shadows.lg as object,
-        ]}
-        handleIndicatorStyle={{
-          backgroundColor: isDark ? colors.borderLight : colors.mutedForeground,
-          opacity: 0.5,
-          width: 40,
-          height: 4,
-        }}
-        handleStyle={{
-          paddingTop: 10,
-          paddingBottom: 6,
-        }}
+      <Modal
+        visible={mounted}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={handleRequestClose}
+        presentationStyle="overFullScreen"
+        hardwareAccelerated
       >
-        {Header}
-        {scrollable ? (
-          <BottomSheetScrollView
-            style={{ backgroundColor: colors.card }}
-            contentContainerStyle={innerStyle}
-            keyboardShouldPersistTaps="handled"
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          {/* Backdrop */}
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: 'rgba(0,0,0,0.5)', opacity: backdropOpacity },
+            ]}
           >
-            <>{children}</>
-          </BottomSheetScrollView>
-        ) : (
-          // flex:1 so children with their own ScrollView (or list) get room
-          // to render — without this, on Android the inner content collapses
-          // to intrinsic height and the sheet appears empty.
-          <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>{children}</View>
-        )}
-      </BottomSheetModal>
+            <Pressable style={StyleSheet.absoluteFill} onPress={handleBackdropPress} />
+          </Animated.View>
+
+          {/* Sheet */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.kbWrapper}
+            pointerEvents="box-none"
+          >
+            <Animated.View
+              style={[
+                styles.sheet,
+                {
+                  height: sheetHeight,
+                  backgroundColor: colors.card,
+                  transform: [{ translateY }],
+                },
+                shadows.lg as object,
+              ]}
+            >
+              {/* Drag handle */}
+              <View style={styles.handleArea}>
+                <View
+                  style={[
+                    styles.handle,
+                    {
+                      backgroundColor: isDark
+                        ? colors.borderLight
+                        : colors.mutedForeground,
+                    },
+                  ]}
+                />
+              </View>
+
+              {(title || showCloseButton) && (
+                <View
+                  style={[
+                    styles.header,
+                    { borderBottomColor: colors.border },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      typography.cardTitle,
+                      { color: colors.foreground, flex: 1 },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {title || ''}
+                  </Text>
+                  {showCloseButton ? (
+                    <Pressable
+                      onPress={() => {
+                        if (visibleProp === undefined) setInternalVisible(false);
+                        onDismiss?.();
+                      }}
+                      hitSlop={8}
+                      style={styles.closeBtn}
+                    >
+                      <X size={20} color={colors.mutedForeground} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              )}
+
+              {scrollable ? (
+                <ScrollView
+                  style={{ flex: 1, backgroundColor: colors.card }}
+                  contentContainerStyle={innerContentStyle}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  {children}
+                </ScrollView>
+              ) : (
+                <View
+                  style={[
+                    innerContentStyle,
+                    { backgroundColor: colors.card, flex: 1 },
+                  ]}
+                >
+                  {children}
+                </View>
+              )}
+            </Animated.View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     );
-  }
+  },
 );
 
 AppBottomSheet.displayName = 'AppBottomSheet';
@@ -244,7 +307,50 @@ export function useAppBottomSheet() {
   return { ref, present, dismiss };
 }
 
+// Re-export gorhom's BottomSheetScrollView for any call-site that imported it
+// from inside a sheet. Inside our native-Modal sheet a regular ScrollView
+// works just as well, so we alias to it to avoid pulling gorhom into render
+// when the binary doesn't have the right native module wired.
+export const BottomSheetScrollView = (props: any) => {
+  const { children, contentContainerStyle, style, ...rest } = props;
+  return (
+    <ScrollView
+      {...rest}
+      style={style}
+      contentContainerStyle={contentContainerStyle}
+      keyboardShouldPersistTaps="handled"
+    >
+      {children}
+    </ScrollView>
+  );
+};
+
+// Keep direct gorhom export available for callers that explicitly want it
+// (rare). Not used by AppBottomSheet itself.
+export { GorhomBottomSheetScrollView };
+
 const styles = StyleSheet.create({
+  kbWrapper: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    width: '100%',
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  handleArea: {
+    paddingTop: 10,
+    paddingBottom: 6,
+    alignItems: 'center',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.5,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
