@@ -197,10 +197,12 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
     console.log('✅ Booking page enabled for demo');
   }
 
-  // Ensure demo worker exists
+  // Ensure demo worker exists AND has the correct password (re-hash every
+  // boot so the documented credentials always work for live demos, same as
+  // the demo owner above).
   let workerUser = await storage.getUserByEmail(DEMO_WORKER.email);
+  const hashedWorkerPassword = await bcrypt.hash(DEMO_WORKER.password, 10);
   if (!workerUser) {
-    const hashedWorkerPassword = await bcrypt.hash(DEMO_WORKER.password, 10);
     workerUser = await storage.createUser({
       email: DEMO_WORKER.email,
       password: hashedWorkerPassword,
@@ -210,6 +212,14 @@ async function ensureDemoBusinessAndTeam(demoUser: any) {
       emailVerified: true,
     });
     console.log('✅ Demo worker user created');
+  } else {
+    await storage.updateUser(workerUser.id, {
+      password: hashedWorkerPassword,
+      name: DEMO_WORKER.name,
+      phone: DEMO_WORKER.phone,
+      emailVerified: true,
+    } as any);
+    console.log('✅ Demo worker password refreshed');
   }
 
   // Ensure team member relationship exists
