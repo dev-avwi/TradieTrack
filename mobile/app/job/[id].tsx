@@ -1304,7 +1304,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '80%',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 32,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -6542,7 +6542,7 @@ export default function JobDetailScreen() {
           </View>
           <View style={styles.cardContent}>
             <Text style={styles.cardLabel}>Address</Text>
-            <Text style={styles.cardValue}>{job.address}</Text>
+            <Text style={styles.cardValue} numberOfLines={2} ellipsizeMode="tail">{job.address}</Text>
           </View>
           <Feather 
             name="navigation" 
@@ -6568,9 +6568,9 @@ export default function JobDetailScreen() {
               size={40}
             />
             <View style={styles.clientInfo}>
-              <Text style={styles.clientName}>{client.name}</Text>
+              <Text style={styles.clientName} numberOfLines={1} ellipsizeMode="tail">{client.name}</Text>
               {client.email && (
-                <Text style={styles.clientEmail}>{client.email}</Text>
+                <Text style={styles.clientEmail} numberOfLines={1} ellipsizeMode="tail">{client.email}</Text>
               )}
             </View>
             <Feather name="chevron-right" size={iconSizes.lg} color={colors.mutedForeground} />
@@ -10193,10 +10193,10 @@ export default function JobDetailScreen() {
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.title}>{job.title}</Text>
+          <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">{job.title}</Text>
         </TouchableOpacity>
         {job.description && (
-          <Text style={styles.description}>{job.description}</Text>
+          <Text style={styles.description} numberOfLines={3} ellipsizeMode="tail">{job.description}</Text>
         )}
       </View>
 
@@ -11584,9 +11584,9 @@ export default function JobDetailScreen() {
                         const hrs = Math.floor(w.totalMs / (1000 * 60 * 60));
                         const mins = Math.floor((w.totalMs % (1000 * 60 * 60)) / (1000 * 60));
                         return (
-                          <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 36 }}>
-                            <Text style={{ fontSize: 13, color: colors.mutedForeground }}>{w.name}</Text>
-                            <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: '600' }}>
+                          <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm, paddingLeft: 36 }}>
+                            <Text style={{ flex: 1, fontSize: 13, color: colors.mutedForeground }} numberOfLines={1} ellipsizeMode="tail">{w.name}</Text>
+                            <Text style={{ fontSize: 13, color: colors.foreground, fontWeight: '600' }} numberOfLines={1}>
                               {hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`} @ ${w.rate}/hr
                             </Text>
                           </View>

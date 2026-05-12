@@ -4167,7 +4167,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.cardBorder,
     paddingHorizontal: spacing.md,
-    paddingVertical: Platform.OS === 'ios' ? spacing.sm : 0,
+    paddingVertical: spacing.sm,
     marginBottom: spacing.md,
   },
   schedulerSearchInput: {
