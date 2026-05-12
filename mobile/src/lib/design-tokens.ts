@@ -301,40 +301,40 @@ export const typography = {
   // SF-Bold "Attention Needed" header on iOS — Inter 700 was rendering
   // noticeably thinner than SF 700 at the same nominal weight.
   body: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.regular,
     fontSize: 15,
-    fontWeight: '800' as const,
+    fontWeight: '400' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
   bodySemibold: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.semibold,
     fontSize: 15,
-    fontWeight: '800' as const,
+    fontWeight: '600' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
   // iOS Caption - 13px on web (.ios-caption)
   caption: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.regular,
     fontSize: 13,
-    fontWeight: '700' as const,
+    fontWeight: '400' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
   // Small caption
   captionSmall: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.regular,
     fontSize: 12,
-    fontWeight: '700' as const,
+    fontWeight: '400' as const,
     lineHeight: 16,
     letterSpacing: -0.05,
   },
   // iOS Label - 11px on web (.ios-label) — section labels like "START JOB"
   label: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.semibold,
     fontSize: 11,
-    fontWeight: '700' as const,
+    fontWeight: '600' as const,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
   },
@@ -363,9 +363,9 @@ export const typography = {
   },
   // Aliases used by various screens (kept here so they stay typed)
   bodySmall: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.regular,
     fontSize: 13,
-    fontWeight: '700' as const,
+    fontWeight: '400' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },

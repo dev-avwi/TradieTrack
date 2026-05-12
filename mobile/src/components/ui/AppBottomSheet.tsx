@@ -80,13 +80,18 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       presentRetryCancelRef.current?.cancel();
       let cancelled = false;
       let attempts = 0;
-      const maxAttempts = 8;
+      // 30 attempts × 100ms = 3 seconds. Cross-screen navigations (dashboard
+      // → job page → auto-open) can take longer than the previous 320ms
+      // budget on slow networks because the sheet only mounts after the
+      // job query resolves. Extra present() calls on an already-open sheet
+      // are no-ops, so the worst case is a few wasted calls.
+      const maxAttempts = 30;
       const tryPresent = () => {
         if (cancelled) return;
         sheetRef.current?.present();
         attempts++;
         if (attempts < maxAttempts) {
-          setTimeout(tryPresent, 40);
+          setTimeout(tryPresent, 100);
         }
       };
       requestAnimationFrame(tryPresent);
