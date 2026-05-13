@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { getSessionToken, queryClient as appQueryClient } from "@/lib/queryClient";
 
 interface DashboardKPIs {
@@ -161,10 +160,6 @@ export function useDashboardUnified() {
       return data;
     },
   });
-
-  useEffect(() => {
-    if (query.data) hydrateSubCaches(queryClient, query.data);
-  }, [query.data, queryClient]);
 
   return query;
 }
