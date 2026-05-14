@@ -9060,7 +9060,7 @@ export default function JobDetailScreen() {
 
         {/* Quick link to full ChatHub */}
         <TouchableOpacity
-          onPress={() => router.push('/(tabs)/chat')}
+          onPress={() => router.push('/more/chat-hub')}
           style={{
             flexDirection: 'row',
             alignItems: 'center',

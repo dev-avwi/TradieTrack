@@ -1424,7 +1424,7 @@ ${businessName}`;
   }, [customMilestones]);
 
   const handleCollectPayment = () => {
-    router.push(`/(tabs)/collect?invoiceId=${id}`);
+    router.push(`/more/collect-payment?invoiceId=${id}`);
   };
 
   const downloadPdfToCache = useCallback(async (): Promise<string | null> => {

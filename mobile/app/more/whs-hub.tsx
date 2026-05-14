@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, Modal, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet, ActivityIndicator, TextInput, Alert, Platform, KeyboardAvoidingView } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Stack, useRouter } from 'expo-router';

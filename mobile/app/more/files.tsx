@@ -1234,7 +1234,7 @@ export default function FilesScreen() {
 
   const renderDocumentsContent = () => (
     <View style={styles.quickAccessSection}>
-      <PressableRow style={styles.categoryCard} onPress={() => router.push('/(tabs)/work' as any)} >
+      <PressableRow style={styles.categoryCard} onPress={() => router.push('/(tabs)/jobs' as any)} >
         <View style={[styles.categoryIconContainer, { backgroundColor: CATEGORY_COLORS.voiceNotes.bg }]}>
           <Feather name="mic" size={16} color={CATEGORY_COLORS.voiceNotes.color} />
         </View>
