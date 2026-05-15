@@ -8381,6 +8381,7 @@ export default function JobDetailScreen() {
           </View>
           <TouchableOpacity
             onPress={() => {
+              Alert.alert('DEBUG', 'Add Material tapped. About to open modal.');
               setEditingMaterial(null);
               setMaterialForm({ name: '', quantity: '1', unitCost: '', unitPrice: '', markupPercent: '', supplier: '', description: '' });
               setShowAddMaterialModal(true);
