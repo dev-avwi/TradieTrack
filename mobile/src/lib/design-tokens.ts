@@ -240,7 +240,6 @@ export const fontFamilies = {
   semibold: 'Inter_600SemiBold',
   bold: 'Inter_700Bold',
   extrabold: 'Inter_800ExtraBold',
-  black: 'Inter_900Black',
 } as const;
 
 // === TYPOGRAPHY (matches web's iOS-style system from index.css) ===
@@ -250,99 +249,97 @@ export const fontFamilies = {
 export const typography = {
   // iOS Large Title - 32-34px on web
   largeTitle: {
-    fontFamily: fontFamilies.black,
+    fontFamily: fontFamilies.bold,
     fontSize: 32,
-    fontWeight: '900' as const,
+    fontWeight: '700' as const,
     lineHeight: 38,
     letterSpacing: -0.5,
   },
   // iOS Section Title - 22-24px on web (.ios-section-title)
   sectionTitle: {
-    fontFamily: fontFamilies.black,
+    fontFamily: fontFamilies.semibold,
     fontSize: 22,
-    fontWeight: '900' as const,
+    fontWeight: '600' as const,
     lineHeight: 28,
     letterSpacing: -0.4,
   },
-  // Page title (legacy) - same as section title — used by dashboard greeting
+  // Page title (legacy) - same as section title
   pageTitle: {
-    fontFamily: fontFamilies.black,
+    fontFamily: fontFamilies.bold,
     fontSize: 22,
-    fontWeight: '900' as const,
+    fontWeight: '700' as const,
     lineHeight: 28,
     letterSpacing: -0.4,
   },
   // Headline
   headline: {
-    fontFamily: fontFamilies.black,
+    fontFamily: fontFamilies.bold,
     fontSize: 20,
-    fontWeight: '900' as const,
+    fontWeight: '700' as const,
     lineHeight: 26,
     letterSpacing: -0.4,
   },
   // iOS Card Title - 17px on web (.ios-card-title)
   cardTitle: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.semibold,
     fontSize: 17,
-    fontWeight: '800' as const,
+    fontWeight: '600' as const,
     lineHeight: 23,
     letterSpacing: -0.2,
   },
   // Subtitle (section headers)
   subtitle: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.bold,
     fontSize: 16,
-    fontWeight: '800' as const,
+    fontWeight: '700' as const,
     lineHeight: 22,
     letterSpacing: -0.2,
   },
   // iOS Body - 15px on web (.ios-body)
-  // Bumped to weight 800 (Inter ExtraBold) so it visually matches the System
-  // SF-Bold "Attention Needed" header on iOS — Inter 700 was rendering
-  // noticeably thinner than SF 700 at the same nominal weight.
   body: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.regular,
     fontSize: 15,
-    fontWeight: '600' as const,
+    fontWeight: '400' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
+  // Body semibold
   bodySemibold: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.semibold,
     fontSize: 15,
-    fontWeight: '700' as const,
+    fontWeight: '600' as const,
     lineHeight: 22,
     letterSpacing: -0.1,
   },
   // iOS Caption - 13px on web (.ios-caption)
   caption: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.regular,
     fontSize: 13,
-    fontWeight: '500' as const,
+    fontWeight: '400' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
   // Small caption
   captionSmall: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.regular,
     fontSize: 12,
-    fontWeight: '500' as const,
+    fontWeight: '400' as const,
     lineHeight: 16,
     letterSpacing: -0.05,
   },
-  // iOS Label - 11px on web (.ios-label) — section labels like "START JOB"
+  // iOS Label - 11px on web (.ios-label)
   label: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.medium,
     fontSize: 11,
-    fontWeight: '600' as const,
+    fontWeight: '500' as const,
     letterSpacing: 0.5,
     textTransform: 'uppercase' as const,
   },
   // Button text - 14px
   button: {
-    fontFamily: fontFamilies.extrabold,
+    fontFamily: fontFamilies.semibold,
     fontSize: 14,
-    fontWeight: '800' as const,
+    fontWeight: '600' as const,
     lineHeight: 20,
     letterSpacing: -0.1,
   },
@@ -363,9 +360,9 @@ export const typography = {
   },
   // Aliases used by various screens (kept here so they stay typed)
   bodySmall: {
-    fontFamily: fontFamilies.semibold,
+    fontFamily: fontFamilies.regular,
     fontSize: 13,
-    fontWeight: '600' as const,
+    fontWeight: '400' as const,
     lineHeight: 18,
     letterSpacing: -0.05,
   },
