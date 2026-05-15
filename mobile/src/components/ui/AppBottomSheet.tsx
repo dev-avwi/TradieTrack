@@ -127,18 +127,22 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     ) : null;
 
     const screenHeight = Dimensions.get('window').height;
-    const maxSheetHeight = screenHeight * 0.9;
+    // Cap the scrollable region. We subtract a generous chunk for header,
+    // handle, status bar, and safe-area so the sheet never overflows.
+    const maxBodyHeight = screenHeight * 0.85 - 120;
 
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.card, flexGrow: 0, flexShrink: 1 }}
+        style={{ backgroundColor: colors.card, maxHeight: maxBodyHeight }}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
     ) : (
-      <View style={[innerStyle, { backgroundColor: colors.card }]}>{children}</View>
+      <View style={[innerStyle, { backgroundColor: colors.card, maxHeight: maxBodyHeight }]}>
+        {children}
+      </View>
     );
 
     return (
@@ -149,29 +153,29 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         onRequestClose={handleRequestClose}
         statusBarTranslucent
       >
-        <KeyboardAvoidingView
-          style={styles.root}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+        <View style={styles.root}>
           <Pressable
             style={styles.backdropFill}
             onPress={handleRequestClose}
           />
-          <View
-            style={[
-              styles.sheet,
-              {
-                backgroundColor: colors.card,
-                maxHeight: maxSheetHeight,
-                paddingTop: spacing.sm,
-              },
-            ]}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
-            <View style={[styles.handle, { backgroundColor: colors.border }]} />
-            {Header}
-            {body}
-          </View>
-        </KeyboardAvoidingView>
+            <View
+              style={[
+                styles.sheet,
+                {
+                  backgroundColor: colors.card,
+                  paddingTop: spacing.sm,
+                },
+              ]}
+            >
+              <View style={[styles.handle, { backgroundColor: colors.border }]} />
+              {Header}
+              {body}
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     );
   }
