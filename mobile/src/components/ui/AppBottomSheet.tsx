@@ -1,23 +1,27 @@
 import React, {
   forwardRef,
   useCallback,
-  useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
+  useState,
   ReactNode,
 } from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
 import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-  BottomSheetScrollView,
-  BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+  StyleSheet,
+  View,
+  Text,
+  Pressable,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ScrollViewProps,
+  FlatList,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
-import { radius, spacing, shadows, typography } from '../../lib/design-tokens';
+import { radius, spacing, typography } from '../../lib/design-tokens';
 
 export interface AppBottomSheetRef {
   present: () => void;
@@ -26,21 +30,21 @@ export interface AppBottomSheetRef {
 
 export interface AppBottomSheetProps {
   children: ReactNode;
+  /** Legacy gorhom prop — accepted but ignored. */
   snapPoints?: (string | number)[];
+  /** Legacy gorhom prop — accepted but ignored. */
   enableDynamicSizing?: boolean;
+  /** Legacy gorhom prop — accepted but ignored. */
   enablePanDownToClose?: boolean;
   onDismiss?: () => void;
   title?: string;
   showCloseButton?: boolean;
+  /** Legacy gorhom prop — accepted but ignored. */
   keyboardBehavior?: 'interactive' | 'extend' | 'fillParent';
+  /** Wrap children in a ScrollView when true (default). */
   scrollable?: boolean;
   contentPadding?: number;
-  /**
-   * Optional declarative visibility. When provided, the sheet imperatively
-   * presents/dismisses to match this boolean. Existing call-sites can simply
-   * swap a native <Modal visible={x}> for <AppBottomSheet visible={x}> with
-   * no other changes.
-   */
+  /** Declarative visibility. */
   visible?: boolean;
 }
 
@@ -48,69 +52,56 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
   (
     {
       children,
-      snapPoints,
-      enableDynamicSizing = true,
-      enablePanDownToClose = true,
       onDismiss,
       title,
       showCloseButton = false,
-      keyboardBehavior = 'interactive',
       scrollable = true,
       contentPadding = spacing.lg,
       visible,
     },
     ref
   ) => {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
     const insets = useSafeAreaInsets();
-    const sheetRef = useRef<BottomSheetModal>(null);
+
+    // Track whether the modal is open. When the parent supplies `visible`,
+    // it's the source of truth. Otherwise present()/dismiss() drive it.
+    const [internalVisible, setInternalVisible] = useState(false);
+    const isControlled = visible !== undefined;
+    const open = isControlled ? !!visible : internalVisible;
 
     useImperativeHandle(
       ref,
       () => ({
-        present: () => sheetRef.current?.present(),
-        dismiss: () => sheetRef.current?.dismiss(),
+        present: () => {
+          if (!isControlled) setInternalVisible(true);
+        },
+        dismiss: () => {
+          if (!isControlled) setInternalVisible(false);
+          onDismiss?.();
+        },
       }),
-      []
+      [isControlled, onDismiss]
     );
 
-    // Declarative visibility support: drive the imperative bottom-sheet API
-    // from a boolean prop so existing `<Modal visible={x}>` call-sites can
-    // migrate with a single tag change.
-    useEffect(() => {
-      if (visible === undefined) return;
-      if (visible) sheetRef.current?.present();
-      else sheetRef.current?.dismiss();
-    }, [visible]);
-
-    const computedSnapPoints = useMemo(() => {
-      if (snapPoints && snapPoints.length > 0) return snapPoints;
-      if (enableDynamicSizing) return undefined;
-      return ['50%', '90%'];
-    }, [snapPoints, enableDynamicSizing]);
-
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          appearsOnIndex={0}
-          disappearsOnIndex={-1}
-          opacity={0.5}
-          pressBehavior={enablePanDownToClose ? 'close' : 'none'}
-        />
-      ),
-      [enablePanDownToClose]
-    );
-
-    const handleDismiss = useCallback(() => {
+    const handleRequestClose = useCallback(() => {
+      if (!isControlled) setInternalVisible(false);
       onDismiss?.();
-    }, [onDismiss]);
+    }, [isControlled, onDismiss]);
+
+    // Inner content padding mirrors the legacy AppBottomSheet so call-sites
+    // that relied on it keep their look. Bottom inset clears the iOS home
+    // indicator / Android nav bar.
+    const innerStyle = {
+      paddingHorizontal: contentPadding,
+      paddingBottom: contentPadding + Math.max(insets.bottom, 0),
+    };
 
     const Header = title || showCloseButton ? (
       <View
         style={[
           styles.header,
-          { borderBottomColor: colors.border },
+          { borderBottomColor: colors.border, backgroundColor: colors.card },
         ]}
       >
         <Text
@@ -124,7 +115,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         </Text>
         {showCloseButton ? (
           <Pressable
-            onPress={() => sheetRef.current?.dismiss()}
+            onPress={handleRequestClose}
             hitSlop={8}
             style={styles.closeBtn}
           >
@@ -134,60 +125,33 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     ) : null;
 
-    // Add safe-area bottom inset so content (and any sticky CTA) clears the
-    // Android edge-to-edge nav bar / iOS home indicator. Without this, the
-    // last row of pickers / buttons is partially hidden behind system chrome.
-    const innerStyle = {
-      paddingHorizontal: contentPadding,
-      paddingBottom: contentPadding + Math.max(insets.bottom, 0),
-    };
+    const body = scrollable ? (
+      <ScrollView
+        style={{ backgroundColor: colors.card, flex: 1 }}
+        contentContainerStyle={innerStyle}
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+    ) : (
+      <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>{children}</View>
+    );
 
     return (
-      <BottomSheetModal
-        ref={sheetRef}
-        snapPoints={computedSnapPoints}
-        enableDynamicSizing={enableDynamicSizing && !computedSnapPoints}
-        enablePanDownToClose={enablePanDownToClose}
-        keyboardBehavior={keyboardBehavior}
-        keyboardBlurBehavior="restore"
-        android_keyboardInputMode="adjustResize"
-        onDismiss={handleDismiss}
-        backdropComponent={renderBackdrop}
-        backgroundStyle={[
-          {
-            backgroundColor: colors.card,
-            borderTopLeftRadius: radius.xl,
-            borderTopRightRadius: radius.xl,
-          },
-          shadows.lg as object,
-        ]}
-        handleIndicatorStyle={{
-          backgroundColor: isDark ? colors.borderLight : colors.mutedForeground,
-          opacity: 0.5,
-          width: 40,
-          height: 4,
-        }}
-        handleStyle={{
-          paddingTop: 10,
-          paddingBottom: 6,
-        }}
+      <Modal
+        visible={open}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleRequestClose}
       >
-        {Header}
-        {scrollable ? (
-          <BottomSheetScrollView
-            style={{ backgroundColor: colors.card }}
-            contentContainerStyle={innerStyle}
-            keyboardShouldPersistTaps="handled"
-          >
-            <>{children}</>
-          </BottomSheetScrollView>
-        ) : (
-          // flex:1 so children with their own ScrollView (or list) get room
-          // to render — without this, on Android the inner content collapses
-          // to intrinsic height and the sheet appears empty.
-          <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>{children}</View>
-        )}
-      </BottomSheetModal>
+        <KeyboardAvoidingView
+          style={{ flex: 1, backgroundColor: colors.card }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {Header}
+          {body}
+        </KeyboardAvoidingView>
+      </Modal>
     );
   }
 );
@@ -206,7 +170,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
+    paddingTop: spacing.md,
     paddingBottom: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
@@ -221,5 +185,14 @@ const styles = StyleSheet.create({
 });
 
 export { AppBottomSheet };
-export { BottomSheetScrollView, BottomSheetView, BottomSheetFlatList } from '@gorhom/bottom-sheet';
+
+// Back-compat re-exports so existing call-sites that imported these from
+// AppBottomSheet keep working. They now resolve to plain react-native
+// primitives instead of the gorhom variants.
+export const BottomSheetScrollView = (
+  props: ScrollViewProps,
+) => <ScrollView {...props} />;
+export const BottomSheetView = View;
+export const BottomSheetFlatList = FlatList;
+
 export default AppBottomSheet;

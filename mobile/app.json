@@ -2,7 +2,7 @@
   "expo": {
     "name": "JobRunner",
     "slug": "tradietrack",
-    "version": "1.1.3",
+    "version": "1.1.4",
     "jsEngine": "hermes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -22,7 +22,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jobrunner.app",
-      "buildNumber": "32",
+      "buildNumber": "33",
       "usesAppleSignIn": true,
       "config": {
         "usesNonExemptEncryption": false
@@ -148,7 +148,7 @@
         "monochromeImage": "./assets/adaptive-icon-monochrome.png"
       },
       "package": "com.jobrunner.app",
-      "versionCode": 38,
+      "versionCode": 39,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
@@ -234,7 +234,7 @@
             "minSdkVersion": 26,
             "enableProguardInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "-keep class com.stripe.stripeterminal.** { *; }\n-keep interface com.stripe.stripeterminal.** { *; }\n-dontwarn com.stripe.stripeterminal.**\n-keep class io.sentry.** { *; }\n-keep interface io.sentry.** { *; }\n-dontwarn io.sentry.**\n-keep class com.swmansion.reanimated.** { *; }\n-keep class com.facebook.react.turbomodule.** { *; }\n-dontwarn com.swmansion.reanimated.**\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.hermes.**\n-keep class okhttp3.** { *; }\n-keep interface okhttp3.** { *; }\n-keep class okio.** { *; }\n-dontwarn okhttp3.**\n-dontwarn okio.**\n-keep class com.gorhom.bottomsheet.** { *; }\n-dontwarn com.gorhom.bottomsheet.**\n-keep class expo.modules.** { *; }\n-keep interface expo.modules.** { *; }\n-dontwarn expo.modules.**\n-keep class com.facebook.react.bridge.** { *; }\n-keep class com.facebook.react.uimanager.** { *; }\n-dontwarn com.facebook.react.**"
+            "extraProguardRules": "-keep class com.stripe.stripeterminal.** { *; }\n-keep interface com.stripe.stripeterminal.** { *; }\n-dontwarn com.stripe.stripeterminal.**\n-keep class io.sentry.** { *; }\n-keep interface io.sentry.** { *; }\n-dontwarn io.sentry.**\n-keep class com.swmansion.reanimated.** { *; }\n-keep class com.facebook.react.turbomodule.** { *; }\n-dontwarn com.swmansion.reanimated.**\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.hermes.**\n-keep class okhttp3.** { *; }\n-keep interface okhttp3.** { *; }\n-keep class okio.** { *; }\n-dontwarn okhttp3.**\n-dontwarn okio.**\n-keep class expo.modules.** { *; }\n-keep interface expo.modules.** { *; }\n-dontwarn expo.modules.**\n-keep class com.facebook.react.bridge.** { *; }\n-keep class com.facebook.react.uimanager.** { *; }\n-dontwarn com.facebook.react.**"
           }
         }
       ],
