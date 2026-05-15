@@ -181,13 +181,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   notificationTitle: {
     ...typography.body,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.foreground,
     marginBottom: 2,
   },
   notificationMessage: {
-    ...typography.body,
-    fontWeight: '400',
+    ...typography.caption,
     color: colors.mutedForeground,
     marginBottom: 4,
   },

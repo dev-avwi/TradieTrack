@@ -4036,12 +4036,10 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   activityTitle: {
     ...typography.body,
-    fontWeight: '700',
     color: colors.foreground,
   },
   activityDescription: {
     ...typography.caption,
-    fontWeight: '400',
     color: colors.mutedForeground,
     marginTop: 2,
   },
