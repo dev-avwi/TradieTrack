@@ -68,6 +68,12 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     // Track in-flight present() retry loops so a dismiss() can cancel them
     // (otherwise a queued present() would re-open the sheet right after close).
     const presentRetryCancelRef = useRef<{ cancel: () => void } | null>(null);
+    // Track whether the sheet is currently open (per gorhom onChange index).
+    // Once it's open we MUST stop calling present(); v5 interprets a redundant
+    // present() on an already-open sheet as a dismiss+represent cycle, which
+    // can race with snap animations and end with the sheet closed instead of
+    // open. That manifested as "tap registers, button dims, nothing appears".
+    const isPresentedRef = useRef(false);
 
     const presentWithRetry = useCallback(() => {
       // @gorhom/bottom-sheet v5 needs the BottomSheetModal to *register* with
@@ -75,19 +81,18 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       // Ref attachment is sync but registration is async, so a single
       // present() (or one rAF deferral) silently no-ops on first open of
       // many sheets ("Assign Worker", "Preview", etc).
-      // Solution: call present() repeatedly across several frames. Extra
-      // present() calls on an already-open sheet are safe no-ops.
+      // Solution: retry present() across a few frames, but STOP the moment
+      // gorhom reports the sheet has actually opened (isPresentedRef = true).
       presentRetryCancelRef.current?.cancel();
       let cancelled = false;
       let attempts = 0;
-      // 30 attempts × 100ms = 3 seconds. Cross-screen navigations (dashboard
-      // → job page → auto-open) can take longer than the previous 320ms
-      // budget on slow networks because the sheet only mounts after the
-      // job query resolves. Extra present() calls on an already-open sheet
-      // are no-ops, so the worst case is a few wasted calls.
       const maxAttempts = 30;
       const tryPresent = () => {
         if (cancelled) return;
+        // Critical: bail out once the sheet is actually open. Calling
+        // present() again would trigger an internal dismiss/represent cycle
+        // and the sheet would close itself.
+        if (isPresentedRef.current) return;
         sheetRef.current?.present();
         attempts++;
         if (attempts < maxAttempts) {
@@ -106,7 +111,14 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     const dismissAndCancel = useCallback(() => {
       presentRetryCancelRef.current?.cancel();
       presentRetryCancelRef.current = null;
+      isPresentedRef.current = false;
       sheetRef.current?.dismiss();
+    }, []);
+
+    const handleChange = useCallback((index: number) => {
+      // index >= 0 means the sheet is at a snap point (open).
+      // index === -1 means closed/dismissed.
+      isPresentedRef.current = index >= 0;
     }, []);
 
     useImperativeHandle(
@@ -147,6 +159,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     );
 
     const handleDismiss = useCallback(() => {
+      isPresentedRef.current = false;
       onDismiss?.();
     }, [onDismiss]);
 
@@ -193,6 +206,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
         onDismiss={handleDismiss}
+        onChange={handleChange}
         backdropComponent={renderBackdrop}
         backgroundStyle={[
           {
