@@ -65,81 +65,23 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     const insets = useSafeAreaInsets();
     const sheetRef = useRef<BottomSheetModal>(null);
 
-    // Track in-flight present() retry loops so a dismiss() can cancel them
-    // (otherwise a queued present() would re-open the sheet right after close).
-    const presentRetryCancelRef = useRef<{ cancel: () => void } | null>(null);
-
-    const presentWithRetry = useCallback(() => {
-      // @gorhom/bottom-sheet v5 needs the BottomSheetModal to *register* with
-      // the BottomSheetModalProvider before present() actually does anything.
-      // Ref attachment is sync but registration is async, so a single
-      // present() (or one rAF deferral) silently no-ops on first open of
-      // many sheets ("Assign Worker", "Preview", etc).
-      // Solution: call present() repeatedly across several frames. Extra
-      // present() calls on an already-open sheet are safe no-ops.
-      presentRetryCancelRef.current?.cancel();
-      let cancelled = false;
-      let attempts = 0;
-      // 30 attempts × 100ms = 3 seconds. Cross-screen navigations (dashboard
-      // → job page → auto-open) can take longer than the previous 320ms
-      // budget on slow networks because the sheet only mounts after the
-      // job query resolves. Extra present() calls on an already-open sheet
-      // are no-ops, so the worst case is a few wasted calls.
-      // EAS dev builds run reanimated on the JS thread (debug runtime), so
-      // present()/animations can be starved for several frames. Release/
-      // TestFlight builds run reanimated on the UI thread and don't need
-      // this. We extend the retry window AND also call snapToIndex(0) and
-      // expand() as belt-and-braces — each goes through a different code
-      // path inside gorhom, so if one races, another wins.
-      const maxAttempts = 60;
-      const tryPresent = () => {
-        if (cancelled) return;
-        const ref: any = sheetRef.current;
-        ref?.present();
-        // After the first attempt, also poke snapToIndex(0) — this is the
-        // path that wins when present() registered the modal but the
-        // animation never started (common in dev-build reanimated).
-        if (attempts > 0) {
-          try { ref?.snapToIndex?.(0); } catch {}
-          try { ref?.expand?.(); } catch {}
-        }
-        attempts++;
-        if (attempts < maxAttempts) {
-          setTimeout(tryPresent, 80);
-        }
-      };
-      requestAnimationFrame(tryPresent);
-      const handle = {
-        cancel: () => {
-          cancelled = true;
-        },
-      };
-      presentRetryCancelRef.current = handle;
-    }, []);
-
-    const dismissAndCancel = useCallback(() => {
-      presentRetryCancelRef.current?.cancel();
-      presentRetryCancelRef.current = null;
-      sheetRef.current?.dismiss();
-    }, []);
-
     useImperativeHandle(
       ref,
       () => ({
-        present: presentWithRetry,
-        dismiss: dismissAndCancel,
+        present: () => sheetRef.current?.present(),
+        dismiss: () => sheetRef.current?.dismiss(),
       }),
-      [presentWithRetry, dismissAndCancel]
+      []
     );
 
+    // Declarative visibility support: drive the imperative bottom-sheet API
+    // from a boolean prop so existing `<Modal visible={x}>` call-sites can
+    // migrate with a single tag change.
     useEffect(() => {
       if (visible === undefined) return;
-      if (visible) {
-        presentWithRetry();
-      } else {
-        dismissAndCancel();
-      }
-    }, [visible, presentWithRetry, dismissAndCancel]);
+      if (visible) sheetRef.current?.present();
+      else sheetRef.current?.dismiss();
+    }, [visible]);
 
     const computedSnapPoints = useMemo(() => {
       if (snapPoints && snapPoints.length > 0) return snapPoints;
@@ -192,6 +134,9 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     ) : null;
 
+    // Add safe-area bottom inset so content (and any sticky CTA) clears the
+    // Android edge-to-edge nav bar / iOS home indicator. Without this, the
+    // last row of pickers / buttons is partially hidden behind system chrome.
     const innerStyle = {
       paddingHorizontal: contentPadding,
       paddingBottom: contentPadding + Math.max(insets.bottom, 0),
@@ -237,6 +182,9 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             <>{children}</>
           </BottomSheetScrollView>
         ) : (
+          // flex:1 so children with their own ScrollView (or list) get room
+          // to render — without this, on Android the inner content collapses
+          // to intrinsic height and the sheet appears empty.
           <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>{children}</View>
         )}
       </BottomSheetModal>
@@ -252,10 +200,6 @@ export function useAppBottomSheet() {
   const dismiss = useCallback(() => ref.current?.dismiss(), []);
   return { ref, present, dismiss };
 }
-
-// Re-export gorhom's BottomSheetScrollView so callers can import it from
-// AppBottomSheet rather than reaching into @gorhom/bottom-sheet directly.
-export { BottomSheetScrollView };
 
 const styles = StyleSheet.create({
   header: {
@@ -277,4 +221,5 @@ const styles = StyleSheet.create({
 });
 
 export { AppBottomSheet };
+export { BottomSheetScrollView, BottomSheetView, BottomSheetFlatList } from '@gorhom/bottom-sheet';
 export default AppBottomSheet;

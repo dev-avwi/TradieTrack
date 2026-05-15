@@ -4,10 +4,16 @@
 
 import { StyleSheet, Platform, Dimensions } from 'react-native';
 import { useMemo } from 'react';
-import { isIPad, useOrientation } from './device';
+import { isIPad, useOrientation, useIsTablet, useContentWidth } from './device';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isIOS = Platform.OS === 'ios';
+
+// Optimal reading-line width for primary content columns. Anything wider than
+// this on tablets / unfolded foldables (Z Fold, Pixel Fold, Surface Duo) gets
+// extra symmetric horizontal padding so the column stays comfortably narrow
+// and centered instead of stretching from edge to edge.
+const OPTIMAL_CONTENT_WIDTH = 720;
 
 // Header height for Liquid Glass effect calculations
 export const HEADER_HEIGHT = 56;
@@ -21,6 +27,7 @@ export const spacing = {
   lg: 16,     // 4 tailwind units - gap-4, p-4 - PRIMARY SPACING
   xl: 20,     // 5 tailwind units - p-5
   '2xl': 24,  // 6 tailwind units - space-y-6
+  xxl: 24,    // alias for '2xl' (callers using dotted access)
   '3xl': 32,  // 8 tailwind units
   '4xl': 40,  // 10 tailwind units
 } as const;
@@ -35,31 +42,53 @@ export const pageShell = {
   sectionGap: spacing.lg,        // 16px - tighter section spacing
 } as const;
 
-// iPad-responsive page shell hook
-// Returns appropriate padding - uses FULL WIDTH on iPad portrait (edge-to-edge)
+// Responsive page shell hook.
+// - iPad: preserves the original full-width layout with iPad padding (no
+//   regression — power-user screens like dispatch board / dashboards keep
+//   the wide canvas they had before).
+// - Android tablets and unfolded foldables (Samsung Z Fold, Pixel Fold,
+//   Surface Duo): grows horizontal padding so content centres within an
+//   OPTIMAL_CONTENT_WIDTH column, so primary content stays readable instead
+//   of stretching to the edges of the inner display.
+// - Phones: unchanged.
+// Updates live on orientation flip and fold/unfold via Dimensions listeners.
 export function usePageShell() {
   const isPad = isIPad();
+  const isTabletDevice = useIsTablet();
   const orientation = useOrientation();
-  
+  const contentWidth = useContentWidth();
+  const isAndroid = Platform.OS === 'android';
+
   return useMemo(() => {
     const isIPadPortrait = isPad && orientation === 'portrait';
-    
-    // iPad portrait: use FULL screen width with slightly larger padding for better touch targets
-    // iPad landscape with sidebar: normal padding
-    // Phone: standard phone padding
-    const horizontalPadding = isPad ? spacing.xl : spacing.lg; // 20px on iPad, 16px on phone
-    
+    const isLargeScreen = isPad || isTabletDevice;
+
+    // Base padding mirrors the legacy behaviour — bigger touch padding on
+    // tablet-class devices, regular phone padding everywhere else.
+    const baseHorizontal = isLargeScreen ? spacing.xl : spacing.lg;
+
+    // Centring pad applies ONLY on Android wide displays (tablets / unfolded
+    // foldables). iPad layouts are intentionally unchanged so dashboards and
+    // tables keep their full canvas.
+    const isWideAndroid =
+      isAndroid && contentWidth >= OPTIMAL_CONTENT_WIDTH;
+    const overflow = Math.max(0, contentWidth - OPTIMAL_CONTENT_WIDTH);
+    const centeringPad = isWideAndroid ? Math.floor(overflow / 2) : 0;
+    const horizontalPadding = baseHorizontal + centeringPad;
+
     return {
       paddingHorizontal: horizontalPadding,
-      paddingTop: isPad ? spacing.lg : spacing.md,
-      paddingBottom: isPad ? spacing.xl : spacing.lg,
-      sectionGap: isPad ? spacing.xl : spacing.lg,
-      cardGap: isPad ? spacing.md : spacing.sm,
-      // Whether we should use iPad-optimized layout
+      paddingTop: isLargeScreen ? spacing.lg : spacing.md,
+      paddingBottom: isLargeScreen ? spacing.xl : spacing.lg,
+      sectionGap: isLargeScreen ? spacing.xl : spacing.lg,
+      cardGap: isLargeScreen ? spacing.md : spacing.sm,
+      // Whether we should use iPad-optimized layout (legacy field — kept for
+      // backwards compatibility with existing call sites).
       isIPadPortrait,
       isPad,
+      isLargeScreen,
     };
-  }, [isPad, orientation]);
+  }, [isPad, isTabletDevice, orientation, contentWidth, isAndroid]);
 }
 
 // Bottom tab bar clearance - use this ONLY on screens that have bottom tabs visible
@@ -202,11 +231,25 @@ export const shadows = {
   }) as object,
 } as const;
 
+// === FONT FAMILIES (Inter loaded globally in app/_layout.tsx) ===
+// Maps fontWeight to the matching Inter family. Falls back to system font
+// before fonts have loaded.
+export const fontFamilies = {
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semibold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+  extrabold: 'Inter_800ExtraBold',
+} as const;
+
 // === TYPOGRAPHY (matches web's iOS-style system from index.css) ===
 // Web uses: ios-title, ios-section-title, ios-card-title, ios-body, ios-caption, ios-label
+// Premium Inter typography: Apple-grade letter-spacing + line-height ratios
+// to make Android feel as polished as iOS.
 export const typography = {
   // iOS Large Title - 32-34px on web
   largeTitle: {
+    fontFamily: fontFamilies.bold,
     fontSize: 32,
     fontWeight: '700' as const,
     lineHeight: 38,
@@ -214,26 +257,31 @@ export const typography = {
   },
   // iOS Section Title - 22-24px on web (.ios-section-title)
   sectionTitle: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 22,
     fontWeight: '600' as const,
     lineHeight: 28,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   // Page title (legacy) - same as section title
   pageTitle: {
+    fontFamily: fontFamilies.bold,
     fontSize: 22,
     fontWeight: '700' as const,
     lineHeight: 28,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
   // Headline
   headline: {
+    fontFamily: fontFamilies.bold,
     fontSize: 20,
     fontWeight: '700' as const,
     lineHeight: 26,
+    letterSpacing: -0.4,
   },
   // iOS Card Title - 17px on web (.ios-card-title)
   cardTitle: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 17,
     fontWeight: '600' as const,
     lineHeight: 23,
@@ -241,6 +289,7 @@ export const typography = {
   },
   // Subtitle (section headers)
   subtitle: {
+    fontFamily: fontFamilies.bold,
     fontSize: 16,
     fontWeight: '700' as const,
     lineHeight: 22,
@@ -248,30 +297,39 @@ export const typography = {
   },
   // iOS Body - 15px on web (.ios-body)
   body: {
+    fontFamily: fontFamilies.regular,
     fontSize: 15,
     fontWeight: '400' as const,
     lineHeight: 22,
+    letterSpacing: -0.1,
   },
   // Body semibold
   bodySemibold: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 15,
     fontWeight: '600' as const,
     lineHeight: 22,
+    letterSpacing: -0.1,
   },
   // iOS Caption - 13px on web (.ios-caption)
   caption: {
+    fontFamily: fontFamilies.regular,
     fontSize: 13,
     fontWeight: '400' as const,
     lineHeight: 18,
+    letterSpacing: -0.05,
   },
   // Small caption
   captionSmall: {
+    fontFamily: fontFamilies.regular,
     fontSize: 12,
     fontWeight: '400' as const,
     lineHeight: 16,
+    letterSpacing: -0.05,
   },
   // iOS Label - 11px on web (.ios-label)
   label: {
+    fontFamily: fontFamilies.medium,
     fontSize: 11,
     fontWeight: '500' as const,
     letterSpacing: 0.5,
@@ -279,21 +337,55 @@ export const typography = {
   },
   // Button text - 14px
   button: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 14,
     fontWeight: '600' as const,
     lineHeight: 20,
+    letterSpacing: -0.1,
   },
   // Badge text - 11px
   badge: {
+    fontFamily: fontFamilies.semibold,
     fontSize: 11,
     fontWeight: '600' as const,
     lineHeight: 14,
   },
   // Stat value - large numbers
   statValue: {
+    fontFamily: fontFamilies.bold,
     fontSize: 22,
     fontWeight: '700' as const,
     lineHeight: 28,
+    letterSpacing: -0.4,
+  },
+  // Aliases used by various screens (kept here so they stay typed)
+  bodySmall: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    fontWeight: '400' as const,
+    lineHeight: 18,
+    letterSpacing: -0.05,
+  },
+  title: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 22,
+    fontWeight: '700' as const,
+    lineHeight: 28,
+    letterSpacing: -0.4,
+  },
+  sectionHeader: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
+    fontWeight: '600' as const,
+    lineHeight: 18,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+  },
+  // sizes is attached below; declared here so callers see typography.sizes.<x>
+  sizes: undefined as unknown as {
+    readonly xs: 11; readonly sm: 13; readonly md: 15; readonly lg: 17;
+    readonly xl: 20; readonly '2xl': 22; readonly xxl: 24;
+    readonly '3xl': 28; readonly '4xl': 32;
   },
 } as const;
 
@@ -306,11 +398,15 @@ export const typographySizes = {
   lg: 17,
   xl: 20,
   '2xl': 22,
+  xxl: 24,
   '3xl': 28,
   '4xl': 32,
 } as const;
 
-// Attach sizes to typography for backwards compatibility
+// Backwards-compatible alias for callers importing { fontSizes }
+export const fontSizes = typographySizes;
+
+// Attach sizes to typography at runtime (declared above for type visibility).
 (typography as any).sizes = typographySizes;
 
 // === ICON SIZES (matches web lucide icons) ===
