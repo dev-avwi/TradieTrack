@@ -65,79 +65,23 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     const insets = useSafeAreaInsets();
     const sheetRef = useRef<BottomSheetModal>(null);
 
-    // Track in-flight present() retry loops so a dismiss() can cancel them
-    // (otherwise a queued present() would re-open the sheet right after close).
-    const presentRetryCancelRef = useRef<{ cancel: () => void } | null>(null);
-    // Track whether the sheet is currently open (per gorhom onChange index).
-    // Once it's open we MUST stop calling present(); v5 interprets a redundant
-    // present() on an already-open sheet as a dismiss+represent cycle, which
-    // can race with snap animations and end with the sheet closed instead of
-    // open. That manifested as "tap registers, button dims, nothing appears".
-    const isPresentedRef = useRef(false);
-
-    const presentWithRetry = useCallback(() => {
-      // @gorhom/bottom-sheet v5 needs the BottomSheetModal to *register* with
-      // the BottomSheetModalProvider before present() actually does anything.
-      // Ref attachment is sync but registration is async, so a single
-      // present() (or one rAF deferral) silently no-ops on first open of
-      // many sheets ("Assign Worker", "Preview", etc).
-      // Solution: retry present() across a few frames, but STOP the moment
-      // gorhom reports the sheet has actually opened (isPresentedRef = true).
-      presentRetryCancelRef.current?.cancel();
-      let cancelled = false;
-      let attempts = 0;
-      const maxAttempts = 30;
-      const tryPresent = () => {
-        if (cancelled) return;
-        // Critical: bail out once the sheet is actually open. Calling
-        // present() again would trigger an internal dismiss/represent cycle
-        // and the sheet would close itself.
-        if (isPresentedRef.current) return;
-        sheetRef.current?.present();
-        attempts++;
-        if (attempts < maxAttempts) {
-          setTimeout(tryPresent, 100);
-        }
-      };
-      requestAnimationFrame(tryPresent);
-      const handle = {
-        cancel: () => {
-          cancelled = true;
-        },
-      };
-      presentRetryCancelRef.current = handle;
-    }, []);
-
-    const dismissAndCancel = useCallback(() => {
-      presentRetryCancelRef.current?.cancel();
-      presentRetryCancelRef.current = null;
-      isPresentedRef.current = false;
-      sheetRef.current?.dismiss();
-    }, []);
-
-    const handleChange = useCallback((index: number) => {
-      // index >= 0 means the sheet is at a snap point (open).
-      // index === -1 means closed/dismissed.
-      isPresentedRef.current = index >= 0;
-    }, []);
-
     useImperativeHandle(
       ref,
       () => ({
-        present: presentWithRetry,
-        dismiss: dismissAndCancel,
+        present: () => sheetRef.current?.present(),
+        dismiss: () => sheetRef.current?.dismiss(),
       }),
-      [presentWithRetry, dismissAndCancel]
+      []
     );
 
+    // Declarative visibility support: drive the imperative bottom-sheet API
+    // from a boolean prop so existing `<Modal visible={x}>` call-sites can
+    // migrate with a single tag change.
     useEffect(() => {
       if (visible === undefined) return;
-      if (visible) {
-        presentWithRetry();
-      } else {
-        dismissAndCancel();
-      }
-    }, [visible, presentWithRetry, dismissAndCancel]);
+      if (visible) sheetRef.current?.present();
+      else sheetRef.current?.dismiss();
+    }, [visible]);
 
     const computedSnapPoints = useMemo(() => {
       if (snapPoints && snapPoints.length > 0) return snapPoints;
@@ -159,7 +103,6 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     );
 
     const handleDismiss = useCallback(() => {
-      isPresentedRef.current = false;
       onDismiss?.();
     }, [onDismiss]);
 
@@ -191,6 +134,9 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     ) : null;
 
+    // Add safe-area bottom inset so content (and any sticky CTA) clears the
+    // Android edge-to-edge nav bar / iOS home indicator. Without this, the
+    // last row of pickers / buttons is partially hidden behind system chrome.
     const innerStyle = {
       paddingHorizontal: contentPadding,
       paddingBottom: contentPadding + Math.max(insets.bottom, 0),
@@ -206,7 +152,6 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         keyboardBlurBehavior="restore"
         android_keyboardInputMode="adjustResize"
         onDismiss={handleDismiss}
-        onChange={handleChange}
         backdropComponent={renderBackdrop}
         backgroundStyle={[
           {
@@ -237,6 +182,9 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             <>{children}</>
           </BottomSheetScrollView>
         ) : (
+          // flex:1 so children with their own ScrollView (or list) get room
+          // to render — without this, on Android the inner content collapses
+          // to intrinsic height and the sheet appears empty.
           <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>{children}</View>
         )}
       </BottomSheetModal>
@@ -252,10 +200,6 @@ export function useAppBottomSheet() {
   const dismiss = useCallback(() => ref.current?.dismiss(), []);
   return { ref, present, dismiss };
 }
-
-// Re-export gorhom's BottomSheetScrollView so callers can import it from
-// AppBottomSheet rather than reaching into @gorhom/bottom-sheet directly.
-export { BottomSheetScrollView };
 
 const styles = StyleSheet.create({
   header: {
