@@ -6669,10 +6669,12 @@ export default function JobDetailScreen() {
             </View>
             <TouchableOpacity
               onPress={() => {
+                console.log('[DIAG] Assign Worker tapped — setShowAssignModal(true)');
                 const currentlyAssigned = new Set(jobAssignments.map((a: any) => a.userId));
                 setSelectedWorkerIds(currentlyAssigned);
                 loadTeamAvailability();
                 setShowAssignModal(true);
+                setTimeout(() => console.log('[DIAG] After 500ms, showAssignModal should be true'), 500);
               }}
               style={{
                 backgroundColor: `${colors.primary}15`,
