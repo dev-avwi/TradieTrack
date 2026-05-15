@@ -127,29 +127,47 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
 
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.card, flex: 1 }}
+        style={{ backgroundColor: colors.card }}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
     ) : (
-      <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>{children}</View>
+      <View style={[innerStyle, { backgroundColor: colors.card }]}>{children}</View>
     );
 
     return (
       <Modal
         visible={open}
         animationType="slide"
-        presentationStyle="pageSheet"
+        transparent
         onRequestClose={handleRequestClose}
+        statusBarTranslucent
       >
+        <Pressable
+          style={styles.backdrop}
+          onPress={handleRequestClose}
+        />
         <KeyboardAvoidingView
-          style={{ flex: 1, backgroundColor: colors.card }}
+          style={styles.sheetWrap}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          pointerEvents="box-none"
         >
-          {Header}
-          {body}
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: colors.card,
+                maxHeight: '90%',
+                paddingTop: spacing.sm,
+              },
+            ]}
+          >
+            <View style={[styles.handle, { backgroundColor: colors.border }]} />
+            {Header}
+            {body}
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     );
@@ -166,6 +184,26 @@ export function useAppBottomSheet() {
 }
 
 const styles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheetWrap: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: spacing.sm,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
