@@ -85,13 +85,27 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       // budget on slow networks because the sheet only mounts after the
       // job query resolves. Extra present() calls on an already-open sheet
       // are no-ops, so the worst case is a few wasted calls.
-      const maxAttempts = 30;
+      // EAS dev builds run reanimated on the JS thread (debug runtime), so
+      // present()/animations can be starved for several frames. Release/
+      // TestFlight builds run reanimated on the UI thread and don't need
+      // this. We extend the retry window AND also call snapToIndex(0) and
+      // expand() as belt-and-braces — each goes through a different code
+      // path inside gorhom, so if one races, another wins.
+      const maxAttempts = 60;
       const tryPresent = () => {
         if (cancelled) return;
-        sheetRef.current?.present();
+        const ref: any = sheetRef.current;
+        ref?.present();
+        // After the first attempt, also poke snapToIndex(0) — this is the
+        // path that wins when present() registered the modal but the
+        // animation never started (common in dev-build reanimated).
+        if (attempts > 0) {
+          try { ref?.snapToIndex?.(0); } catch {}
+          try { ref?.expand?.(); } catch {}
+        }
         attempts++;
         if (attempts < maxAttempts) {
-          setTimeout(tryPresent, 100);
+          setTimeout(tryPresent, 80);
         }
       };
       requestAnimationFrame(tryPresent);
