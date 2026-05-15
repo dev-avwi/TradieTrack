@@ -239,12 +239,14 @@ function JobCard({
               </Text>
             </View>
           )}
-          <Button
-            size="icon"
-            variant="ghost"
-            onPress={handleMorePress}
-            icon={<Feather name="more-horizontal" size={16} color={colors.mutedForeground} />}
-          >{null}</Button>
+          <View style={{ marginLeft: 'auto' }}>
+            <Button
+              size="icon"
+              variant="ghost"
+              onPress={handleMorePress}
+              icon={<Feather name="more-horizontal" size={16} color={colors.mutedForeground} />}
+            >{null}</Button>
+          </View>
         </View>
 
         <Text style={styles.jobTitle} numberOfLines={2}>{job.title || 'Untitled Job'}</Text>

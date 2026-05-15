@@ -4856,14 +4856,15 @@ export default function JobDetailScreen() {
     }
 
     if (job.status === 'scheduled' && (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs)) {
-      showActionSheet({
-        title: 'Safety Check Required',
-        message: 'Safety documentation is incomplete. Starting the timer will transition this job to "In Progress". Complete safety docs first?',
-        actions: [
-          { label: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
-          { label: 'Start Anyway', onPress: () => proceedWithTimerStart(), style: 'destructive' },
+      Alert.alert(
+        'Safety Check Required',
+        'Safety documentation is incomplete. Starting the timer will transition this job to "In Progress". Complete safety docs first?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
+          { text: 'Start Anyway', onPress: () => proceedWithTimerStart(), style: 'destructive' },
         ],
-      });
+      );
       return;
     }
 
@@ -4972,15 +4973,15 @@ export default function JobDetailScreen() {
       }
 
       const warningMsg = warnings.join(', ');
-      const complianceNote = '\n\nWHS Compliance: SWMS documents are legally required for high-risk construction work including work at heights, near electrical installations, in confined spaces, or involving hazardous substances.';
 
-      showActionSheet({
-        title: 'Safety Check Required',
-        message: `${warningMsg}. It is recommended to complete safety documentation before starting work.${complianceNote}`,
-        actions: [
-          { label: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
+      Alert.alert(
+        'Safety Check Required',
+        `${warningMsg}.\n\nSWMS documents are legally required for high-risk construction work. Complete safety documentation before starting work?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Complete Safety Docs', onPress: () => setActiveTab('documents') },
           {
-            label: 'Start Anyway',
+            text: 'Start Anyway',
             style: 'destructive',
             onPress: async () => {
               const success = await updateJobStatus(job.id, action.next as any);
@@ -4991,7 +4992,7 @@ export default function JobDetailScreen() {
             },
           },
         ],
-      });
+      );
       return;
     }
 
