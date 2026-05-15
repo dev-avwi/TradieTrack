@@ -17,6 +17,7 @@ import {
   ScrollView,
   ScrollViewProps,
   FlatList,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
@@ -125,9 +126,12 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     ) : null;
 
+    const screenHeight = Dimensions.get('window').height;
+    const maxSheetHeight = screenHeight * 0.9;
+
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.card }}
+        style={{ backgroundColor: colors.card, flexGrow: 0, flexShrink: 1 }}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
       >
@@ -145,21 +149,20 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         onRequestClose={handleRequestClose}
         statusBarTranslucent
       >
-        <Pressable
-          style={styles.backdrop}
-          onPress={handleRequestClose}
-        />
         <KeyboardAvoidingView
-          style={styles.sheetWrap}
+          style={styles.root}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          pointerEvents="box-none"
         >
+          <Pressable
+            style={styles.backdropFill}
+            onPress={handleRequestClose}
+          />
           <View
             style={[
               styles.sheet,
               {
                 backgroundColor: colors.card,
-                maxHeight: '90%',
+                maxHeight: maxSheetHeight,
                 paddingTop: spacing.sm,
               },
             ]}
@@ -184,13 +187,13 @@ export function useAppBottomSheet() {
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheetWrap: {
+  root: {
     flex: 1,
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  backdropFill: {
+    flex: 1,
   },
   sheet: {
     borderTopLeftRadius: radius.xl,
