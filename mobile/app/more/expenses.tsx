@@ -69,18 +69,16 @@ const formatCurrency = (amount: number | string) => {
 
 function ExpenseCard({
   expense,
-  onPress,
   onDelete,
 }: {
   expense: Expense;
-  onPress: () => void;
   onDelete: () => void;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <PressableRow onPress={onPress} style={styles.expenseCard}>
+    <View style={styles.expenseCard}>
       <View style={styles.expenseCardContent}>
         <View style={styles.expenseCardHeader}>
           <View style={{ flex: 1, minWidth: 0 }}>
@@ -125,7 +123,7 @@ function ExpenseCard({
       <PressableRow style={styles.deleteButton} onPress={(e) => { e.stopPropagation(); onDelete(); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} >
         <Feather name="trash-2" size={14} color={colors.destructive} />
       </PressableRow>
-    </PressableRow>
+    </View>
   );
 }
 
@@ -552,7 +550,6 @@ export default function ExpensesScreen() {
                       <ExpenseCard
                         key={expense.id}
                         expense={expense}
-                        onPress={() => {}}
                         onDelete={() => handleDeleteExpense(expense.id)}
                       />
                     ))}
