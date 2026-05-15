@@ -1125,11 +1125,12 @@ const createStyles = (colors: any) => StyleSheet.create({
   jobTitle: {
     ...typography.body,
     color: colors.foreground,
-    fontWeight: '500',
+    fontWeight: '700',
   },
   jobAddress: {
     ...typography.caption,
     color: colors.mutedForeground,
+    fontWeight: '400',
   },
   jobStatus: {
     paddingHorizontal: spacing.sm,

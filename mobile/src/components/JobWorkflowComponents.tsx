@@ -923,7 +923,7 @@ const createNextActionStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   smsMessageLabel: {
     fontSize: 11,
-    fontWeight: '700', fontFamily: 'Inter_700Bold',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     letterSpacing: 0.5,
     marginBottom: spacing.xs,
     paddingLeft: spacing.xs,
@@ -1549,7 +1549,7 @@ const createSmsCardStyles = (colors: ThemeColors) => StyleSheet.create({
   },
   messageLabel: {
     fontSize: 11,
-    fontWeight: '700', fontFamily: 'Inter_700Bold',
+    fontWeight: '500', fontFamily: 'Inter_500Medium',
     letterSpacing: 0.5,
     marginBottom: spacing.xs,
     paddingLeft: spacing.xs,
