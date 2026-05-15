@@ -180,18 +180,15 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
     flex: 1,
   },
   notificationTitle: {
-    ...typography.caption,
-    fontWeight: '500',
-    color: colors.mutedForeground,
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.foreground,
     marginBottom: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    fontSize: 11,
   },
   notificationMessage: {
     ...typography.body,
-    fontWeight: '600',
-    color: colors.foreground,
+    fontWeight: '400',
+    color: colors.mutedForeground,
     marginBottom: 4,
   },
   notificationTime: {
