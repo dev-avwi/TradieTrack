@@ -4561,11 +4561,9 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     justifyContent: 'flex-end',
   },
   templateModalContent: {
+    flex: 1,
     backgroundColor: colors.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '70%',
   },
   templateModalHeader: {
     flexDirection: 'row',

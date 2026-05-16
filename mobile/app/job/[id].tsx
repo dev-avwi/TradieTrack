@@ -12229,7 +12229,7 @@ export default function JobDetailScreen() {
         contentPadding={0}
       >
         <View style={{ flex: 1 }}>
-          <View style={[styles.modalContainer, { maxHeight: '70%' }]}>
+          <View style={[styles.modalContainer, { flex: 1 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Choose Template</Text>
               <TouchableOpacity onPress={() => setShowTemplatePickerModal(false)}>

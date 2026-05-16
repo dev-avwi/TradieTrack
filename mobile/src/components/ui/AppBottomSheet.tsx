@@ -21,7 +21,11 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
@@ -50,9 +54,15 @@ export interface AppBottomSheetProps {
   contentPadding?: number;
   /** Declarative visibility. */
   visible?: boolean;
-  /** When true, the sheet hugs its content (with snapPoint as a max cap)
-   *  instead of forcing a fixed height. Use this for sheets whose content
-   *  is short (e.g. empty states) so they don't reserve a blank box. */
+  /**
+   * Controls whether the sheet hugs its content or reserves the full
+   * snapPoint height. Defaults are inferred from `scrollable`:
+   *   - `scrollable === true`  → autoHeight defaults to TRUE  (ScrollView
+   *     hugs short content with snapPoint as a max cap)
+   *   - `scrollable === false` → autoHeight defaults to FALSE (non-scroll
+   *     callers usually wrap children in `flex: 1` and need a real height)
+   * Pass an explicit boolean to override the inferred default.
+   */
   autoHeight?: boolean;
 }
 
@@ -75,10 +85,14 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       contentPadding = spacing.lg,
       visible,
       snapPoints,
-      autoHeight = true,
+      autoHeight,
     },
     ref
   ) => {
+    // Infer autoHeight default from `scrollable` when caller doesn't set it.
+    // Scrollable sheets default to hugging content; non-scrollable sheets
+    // default to fixed height because their children usually use flex: 1.
+    const resolvedAutoHeight = autoHeight ?? scrollable;
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
 
@@ -115,7 +129,10 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     }, [open, translateY]);
     // Drag-to-dismiss via react-native-gesture-handler Pan. This works
     // alongside ScrollViews/Touchables (unlike PanResponder) and only
-    // activates once the finger moves >8px vertically downward.
+    // activates once the finger moves >8px vertically downward. CRITICAL:
+    // gestures only fire inside a GestureHandlerRootView, and React Native's
+    // <Modal> renders into a separate native window that does NOT inherit
+    // the app's root provider, so we mount our own root inside the modal.
     const dragGesture = Gesture.Pan()
       .activeOffsetY(8)
       .failOffsetX([-12, 12])
@@ -186,34 +203,44 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     // Premium-feel sizing: honor the call-site snapPoint as the SHEET HEIGHT
     // (not just a max), so call-sites with `flex: 1` wrappers stretch their
     // content to the full sheet — buttons land at the bottom of the sheet
-    // instead of leaving a gap above the home indicator. Hard cap at 70%.
+    // instead of leaving a gap above the home indicator. Hard cap at 92%.
     const requestedHeight = snapPoints && snapPoints.length
       ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
       : screenHeight * 0.6;
     const sheetHeight = Math.min(requestedHeight, screenHeight * 0.92);
 
-    const fillStyle = autoHeight ? { flexShrink: 1 } : { flex: 1 };
+    // autoHeight=true → maxHeight only (sheet hugs short content); false →
+    // fixed height (children with flex:1 lay out correctly). The default is
+    // inferred from `scrollable` so short non-scrollable pickers don't get
+    // an oversized blank box, while flex:1 wrappers in non-scrollable
+    // form sheets still get a sized parent to fill.
+    const useFixedHeight = !resolvedAutoHeight;
+    const sheetSizeStyle = useFixedHeight
+      ? { height: sheetHeight }
+      : { maxHeight: sheetHeight };
+
+    // Body fills the sheet only when the sheet has a defined height. In the
+    // autoHeight + scrollable path we keep ScrollView un-flexed so it hugs
+    // its content; otherwise it would expand to fill the cap and defeat
+    // autoHeight. The ScrollView still scrolls when content exceeds the
+    // wrapper's maxHeight because it inherits the cap from its parent.
+    const fillStyle = useFixedHeight ? { flex: 1 } : { flexShrink: 1 };
+
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.background, ...fillStyle }}
+        style={[{ backgroundColor: colors.background }, fillStyle]}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {children}
       </ScrollView>
     ) : (
-      <View style={[innerStyle, { backgroundColor: colors.background, ...fillStyle }]}>
+      <View style={[innerStyle, { backgroundColor: colors.background }, fillStyle]}>
         {children}
       </View>
     );
 
-    // Single content-hugging slide-up sheet for both platforms. We tried
-    // iOS `presentationStyle="pageSheet"` (truly native) but RN 0.81 core
-    // can't drive UISheetPresentationController detents, so pageSheet is
-    // always full-sheet height with empty space under short content. This
-    // custom transparent Modal hugs its content (capped at 85% screen)
-    // while keeping the pageSheet *look*: rounded top, grabber, dim
-    // backdrop, slide-up animation, drag-to-dismiss.
     return (
       <Modal
         visible={open}
@@ -222,19 +249,24 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         onRequestClose={handleRequestClose}
         statusBarTranslucent
       >
-        <View style={styles.root}>
-          <Pressable
-            style={styles.backdropFill}
-            onPress={handleRequestClose}
-          />
-          <KeyboardAvoidingView behavior={undefined}>
+        {/* Modal renders into a separate native window which does NOT inherit
+            the app-root GestureHandlerRootView. Without this nested root, the
+            swipe-to-dismiss Pan gesture never fires on iOS or Android. */}
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardAvoidingView
+            style={styles.root}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <Pressable
+              style={styles.backdropFill}
+              onPress={handleRequestClose}
+            />
             <Animated.View
               style={[
                 styles.sheet,
+                sheetSizeStyle,
                 {
                   backgroundColor: colors.background,
-                  paddingTop: 0,
-                  ...(autoHeight ? { maxHeight: sheetHeight } : { height: sheetHeight }),
                   transform: [{ translateY }],
                 },
               ]}
@@ -250,7 +282,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
               {body}
             </Animated.View>
           </KeyboardAvoidingView>
-        </View>
+        </GestureHandlerRootView>
       </Modal>
     );
   }
@@ -279,8 +311,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: 'hidden',
   },
+  // ~24px invisible hit zone at the top of every sheet. Big enough that a
+  // user dragging from the top of the sheet reliably grabs the gesture even
+  // without a visible grabber bar.
   dragZone: {
-    height: 14,
+    height: 24,
     alignSelf: 'stretch',
   },
   header: {

@@ -201,11 +201,8 @@ function createStyles(colors: ThemeColors) {
       justifyContent: 'flex-end',
     },
     modalContent: {
+      flex: 1,
       backgroundColor: colors.card,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      maxHeight: '70%',
-      paddingBottom: Platform.OS === 'ios' ? 34 : 16,
     },
     modalHeader: {
       flexDirection: 'row',

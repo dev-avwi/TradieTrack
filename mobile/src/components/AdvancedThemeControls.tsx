@@ -597,11 +597,8 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: 'flex-end',
     },
     bottomSheet: {
+      flex: 1,
       backgroundColor: colors.card,
-      borderTopLeftRadius: radius['2xl'],
-      borderTopRightRadius: radius['2xl'],
-      maxHeight: '70%',
-      paddingBottom: spacing['2xl'],
     },
     sheetHandle: {
       width: 40,
