@@ -214,45 +214,14 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     );
 
-    // iOS gets the *real* native sheet (pageSheet) with system-provided
-    // drag-to-dismiss, backdrop, corner radius, and rubber-band. This is the
-    // premium feel that custom React Native sheets can't replicate.
-    if (Platform.OS === 'ios') {
-      // Map our snapPoint to the largest native detent. 'medium' ≈ ~half
-      // screen, 'large' ≈ full sheet. autoHeight uses native fit-to-content.
-      const detents: any[] = autoHeight
-        ? ['fitToContents']
-        : (requestedHeight > screenHeight * 0.65 ? ['large'] : ['medium', 'large']);
-
-      return (
-        <Modal
-          visible={open}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={handleRequestClose}
-          // RN 0.74+ iOS native sheet props
-          {...({
-            sheetAllowedDetents: detents,
-            sheetLargestUndimmedDetentIndex: -1,
-            sheetGrabberVisible: true,
-            sheetCornerRadius: radius.xl,
-            sheetExpandsWhenScrolledToEdge: false,
-          } as any)}
-        >
-          <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: colors.background }}
-            behavior="padding"
-          >
-            {Header}
-            {body}
-          </KeyboardAvoidingView>
-        </Modal>
-      );
-    }
-
-    // Android: keep the custom slide-up sheet with our own backdrop +
-    // drag-to-dismiss, since RN Modal on Android doesn't have a native
-    // bottom-sheet presentation style.
+    // Single custom slide-up sheet path. We tried iOS `presentationStyle=
+    // "pageSheet"` but RN 0.81's stock Modal silently ignores
+    // `sheetAllowedDetents`, so pageSheet always renders at its fixed full-
+    // sheet height — leaving white space below short content. The custom
+    // transparent Modal below reproduces the pageSheet *look* (rounded top,
+    // dim backdrop, grabber, slide-up animation, drag-to-dismiss) AND hugs
+    // its content when `autoHeight` is on, which is what callers actually
+    // want for short forms like Schedule Job and the empty Assign Workers.
     return (
       <Modal
         visible={open}

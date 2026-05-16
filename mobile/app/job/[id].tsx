@@ -11847,9 +11847,10 @@ export default function JobDetailScreen() {
         snapPoints={['90%']}
         scrollable={false}
         contentPadding={0}
+        autoHeight
       >
-        <View style={{ flex: 1 }}>
-          <View style={styles.modalContainer}>
+        <View>
+          <View style={[styles.modalContainer, { flex: undefined as any }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Schedule Job</Text>
               <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
@@ -11857,7 +11858,7 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
             </View>
             
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { flex: undefined as any }]}>
               <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: spacing.md }}>
                 Select date and time for this job:
               </Text>
