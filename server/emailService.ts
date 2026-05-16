@@ -277,31 +277,55 @@ const PLATFORM_FROM_EMAIL = 'noreply@jobrunner.com.au';
 const PLATFORM_REPLY_TO_EMAIL = 'admin@avwebinnovation.com';
 const PLATFORM_FROM_NAME = 'JobRunner';
 
-// Get the correct base URL for emails - prioritizes custom domain for trust
+// Get the correct base URL for emails - prioritizes custom domain for trust.
+// In production we MUST NOT emit a Replit-managed subdomain (e.g.
+// `318.jobrunner.com.au` or `xxx.replit.app`) because Chrome flags the TLS
+// cert as untrusted and users abandon the verify-email flow.
+const HARDCODED_PRODUCTION_DOMAIN = 'jobrunner.com.au';
+
+// Normalize a value that may be either a bare host ("jobrunner.com.au") or a
+// full URL ("https://jobrunner.com.au/"). Returns a canonical
+// "https://<host>" with no trailing slash. Defends against the
+// `https://https://jobrunner.com.au` bug when APP_DOMAIN is set as a URL.
+const toCanonicalUrl = (raw: string): string => {
+  const trimmed = raw.trim().replace(/\/+$/, '');
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
 const getBaseUrl = () => {
   const isProduction = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
-  
-  // Priority 1: Custom production domain (jobrunner.com)
+
+  // Priority 1: Custom production domain (jobrunner.com.au)
   if (process.env.APP_DOMAIN) {
-    return `https://${process.env.APP_DOMAIN}`;
+    return toCanonicalUrl(process.env.APP_DOMAIN);
   }
-  
+
   // Priority 2: Explicitly set app URL
   if (process.env.VITE_APP_URL) {
-    return process.env.VITE_APP_URL;
+    return toCanonicalUrl(process.env.VITE_APP_URL);
   }
-  
+
   // In development mode, use Replit dev domain so verification links work
   if (!isProduction && process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
-  
-  // Fallback to Replit domains
+
+  // PRODUCTION FALLBACK: never use a Replit subdomain — hardcode the public
+  // marketing domain. This protects against the case where APP_DOMAIN has
+  // been deleted in the deployment env by accident.
+  if (isProduction) {
+    console.warn(
+      '[emailService] APP_DOMAIN/VITE_APP_URL unset in production — falling back to ' +
+        `https://${HARDCODED_PRODUCTION_DOMAIN}. Set APP_DOMAIN to silence this warning.`
+    );
+    return `https://${HARDCODED_PRODUCTION_DOMAIN}`;
+  }
+
+  // Non-production fallback chains (dev-only paths below)
   if (process.env.REPLIT_DOMAINS) {
     return `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`;
   }
-  
-  // Fallback to Replit dev domain if available
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }

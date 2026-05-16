@@ -43,17 +43,25 @@ export function getProductionBaseUrl(req?: { protocol: string; get: (header: str
     return 'http://localhost:5000';
   }
   
-  // Production mode: use custom domain, never replit.app
+  // Production mode: STRICT priority — APP_DOMAIN → VITE_APP_URL →
+  // hardcoded apex. We must never fall back to REPLIT_DOMAINS in production
+  // because that can resolve to a Replit-managed subdomain (e.g.
+  // `xxx.jobrunner.com.au` or `xxx.replit.app`) whose TLS cert Chrome
+  // flags as untrusted, breaking verification/invoice/quote links.
+  const normalize = (raw: string) => {
+    const trimmed = raw.trim().replace(/\/+$/, '');
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  };
   if (process.env.APP_DOMAIN) {
-    return `https://${process.env.APP_DOMAIN}`;
+    return normalize(process.env.APP_DOMAIN);
   }
-  
-  const customDomain = getCustomDomainFromReplitDomains();
-  if (customDomain) {
-    return `https://${customDomain}`;
+  if (process.env.VITE_APP_URL) {
+    return normalize(process.env.VITE_APP_URL);
   }
-  
-  // Hardcoded fallback - never return a .replit.app domain for public links
+  console.warn(
+    '[urlHelper] APP_DOMAIN/VITE_APP_URL unset in production — using ' +
+    `hardcoded https://${PRODUCTION_DOMAIN}. Set APP_DOMAIN to silence this.`
+  );
   return `https://${PRODUCTION_DOMAIN}`;
 }
 

@@ -209,6 +209,7 @@ import {
   numberPortRequests,
   insertNumberPortRequestSchema,
   PORT_REQUEST_STATUSES,
+  teamMembers,
 } from "@shared/schema";
 import { db } from "./storage";
 import { eq, sql, desc, asc, and, gte, lte, lt, isNotNull, isNull, inArray, or, count, sum, ne } from "drizzle-orm";
@@ -3217,7 +3218,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         return;
       } else {
-        res.status(400).json({ error: result.error });
+        // Conflict (email already in use somewhere) gets HTTP 409 plus a stable
+        // error code so the client can show a tailored message.
+        const code: string | undefined = result.code;
+        const isConflict = typeof code === 'string' && code.startsWith('email_in_use_');
+        const isLookupFailure = code === 'identity_check_failed';
+        const status = isConflict ? 409 : isLookupFailure ? 503 : 400;
+        res.status(status).json({ error: result.error, code });
       }
     } catch (error) {
       console.error("Registration error:", error);
@@ -4187,9 +4194,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Return session token and isNewUser flag for mobile auth
         res.json({ success: true, user, sessionToken: req.sessionID, isNewUser });
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Mobile Google auth error:", error);
-      res.status(500).json({ error: "Failed to authenticate with Google" });
+      // Propagate cross-business email-collision errors from createGoogleUser
+      // (HTTP 409 + stable code) instead of a generic 500 so the mobile
+      // client can show a tailored message.
+      const status = typeof error?.status === 'number' ? error.status : 500;
+      const code = typeof error?.code === 'string' ? error.code : undefined;
+      res.status(status).json({
+        error: status === 409 ? error.message : "Failed to authenticate with Google",
+        code,
+      });
     }
   });
 
@@ -4343,9 +4358,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isNewUser 
         });
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Apple auth error:", error);
-      res.status(500).json({ error: "Authentication failed" });
+      // Surface 409 + stable code for cross-business email collisions
+      // (from createAppleUser) instead of a generic 500.
+      const status = typeof error?.status === 'number' ? error.status : 500;
+      const code = typeof error?.code === 'string' ? error.code : undefined;
+      res.status(status).json({
+        error: status === 409 ? error.message : "Authentication failed",
+        code,
+      });
     }
   });
 
@@ -4522,8 +4544,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.redirect('/');
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Apple web callback error:', error);
+      // Cross-business email collision → 409 from createAppleUser. Surface a
+      // distinct error param so the auth page can show a tailored message.
+      const code = typeof error?.code === 'string' ? error.code : undefined;
+      if (typeof code === 'string' && code.startsWith('email_in_use_')) {
+        return res.redirect(`/auth?error=${encodeURIComponent(code)}`);
+      }
       res.redirect('/auth?error=auth_failed');
     }
   });
@@ -8411,21 +8439,55 @@ Be specific about materials, colors, and features that would be included.`
       let settings = await storage.getBusinessSettings(req.userId);
       const user = await storage.getUser(req.userId);
 
-      // Auto-heal: any authenticated user reaching this endpoint without a
-      // business_settings row gets a minimal one created with onboarding
-      // already marked complete. Owners always get a row at signup, so this
-      // only fires for invited workers/subcontractors who would otherwise be
-      // permanently trapped on the mobile onboarding wizard
-      // (`!businessSettings?.onboardingCompleted` is true when row is missing).
+      // Auto-heal: create a minimal business_settings row when missing.
+      //
+      //   - Invited workers / subcontractors (have teamOwnerId or activeTeamId):
+      //     create with onboardingCompleted=true and a "Worker Profile" name —
+      //     they inherit their owner's business and must not see the onboarding
+      //     wizard.
+      //
+      //   - Brand-new owners (no team membership): create with
+      //     onboardingCompleted=false and a sensible default business name
+      //     (first name + "'s Business", or "My Business"). This is the bug
+      //     fix for new owners landing straight on the dashboard with a
+      //     sidebar that says "Worker Profile".
       if (!settings && user) {
         try {
+          // Determine if this user is a worker/subcontractor on another
+          // business's team by looking up team_members.member_id. If yes, they
+          // inherit that owner's business and should NOT be sent to the
+          // onboarding wizard. If no, treat them as a brand-new owner and
+          // require onboarding so the sidebar shows their own business name
+          // (not the stale "Worker Profile" placeholder).
+          let isStaffOnOtherTeam = false;
+          try {
+            const membership = await storage.getActiveTeamMembership?.(req.userId)
+              ?? (await db
+                .select({ id: teamMembers.id })
+                .from(teamMembers)
+                .where(and(eq(teamMembers.memberId, req.userId), eq(teamMembers.isActive, true)))
+                .limit(1))[0];
+            isStaffOnOtherTeam = Boolean(membership);
+          } catch (lookupErr: any) {
+            console.warn('[business-settings] team membership lookup failed:', lookupErr?.message || lookupErr);
+          }
+
+          const ownerDefaultName = (() => {
+            const fn = (user.firstName || '').trim();
+            if (fn) return `${fn}'s Business`;
+            return 'My Business';
+          })();
           settings = await storage.createBusinessSettings({
             userId: req.userId,
-            businessName: 'Worker Profile',
-            onboardingCompleted: true,
+            businessName: isStaffOnOtherTeam ? 'Worker Profile' : ownerDefaultName,
+            onboardingCompleted: isStaffOnOtherTeam,
             onboardingLevel: 0,
           } as any);
-          console.log(`[business-settings] auto-healed missing row for user ${user.email} (role=${user.role})`);
+          console.log(
+            `[business-settings] auto-healed missing row for user ${user.email} ` +
+            `(role=${user.role}, isStaffOnOtherTeam=${isStaffOnOtherTeam}, ` +
+            `onboardingCompleted=${isStaffOnOtherTeam})`
+          );
         } catch (createErr: any) {
           console.error('[business-settings] auto-heal create failed:', createErr?.message || createErr);
         }

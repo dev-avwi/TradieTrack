@@ -251,7 +251,20 @@ export default function AuthForm({ onLogin }: AuthFormProps) {
         const emailParam = encodeURIComponent(registerData.email);
         setLocation(`/verify-email-pending?email=${emailParam}`);
       } else {
-        setError(result.error || "Couldn't create your account. Try a different email or check your details.");
+        // If the email collides with an existing identity (account, team
+        // invite, client, etc.) the server returns HTTP 409 + a stable
+        // `code`. Auto-switch to the Login tab and prefill the email so the
+        // user has a one-click path to sign in instead.
+        const code: string | undefined = result?.code;
+        if (typeof code === 'string' && code.startsWith('email_in_use_')) {
+          setError(result.error);
+          if (code === 'email_in_use_account') {
+            setLoginData((prev) => ({ ...prev, email: registerData.email }));
+            setActiveTab('login');
+          }
+        } else {
+          setError(result.error || "Couldn't create your account. Try a different email or check your details.");
+        }
       }
     } catch (error) {
       setError('Something went wrong. Check your internet connection and try again.');

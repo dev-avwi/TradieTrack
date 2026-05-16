@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
-import { storage } from './storage';
-import { loginSchema, insertUserSchema, SafeUser, User } from '@shared/schema';
+import { storage, db } from './storage';
+import { loginSchema, insertUserSchema, SafeUser, User, clients, teamMembers } from '@shared/schema';
+import { and, eq, isNull, inArray, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import { sendWelcomeEmail } from './emailService';
 
@@ -8,7 +9,120 @@ const SALT_ROUNDS = 12;
 const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
 
+export type EmailConflictSource = 'user' | 'team_member' | 'client' | 'subcontractor' | 'invitation';
+
+export interface EmailConflict {
+  source: EmailConflictSource;
+  message: string;
+  code: string;
+}
+
+const EMAIL_CONFLICT_MESSAGES: Record<EmailConflictSource, { code: string; message: string }> = {
+  user: {
+    code: 'email_in_use_account',
+    message: 'An account with this email already exists. Please log in instead.',
+  },
+  team_member: {
+    code: 'email_in_use_team_member',
+    message:
+      "This email is already in use by a team member under another business. Please log in or use a different email.",
+  },
+  subcontractor: {
+    code: 'email_in_use_subcontractor',
+    message:
+      "This email is already in use by a subcontractor under another business. Please log in or use a different email.",
+  },
+  client: {
+    code: 'email_in_use_client',
+    message:
+      "This email is already in use by a client under another business. Please use a different email.",
+  },
+  invitation: {
+    code: 'email_in_use_invitation',
+    message:
+      "This email has a pending team invitation. Please accept the invitation from your email, or use a different email.",
+  },
+};
+
 export class AuthService {
+  /**
+   * Look for a conflicting identity for the given email across users, clients,
+   * team_members (including pending invitations and subcontractor roles).
+   * Returns null if no conflict.
+   */
+  static async findEmailConflict(rawEmail: string): Promise<EmailConflict | null> {
+    const email = rawEmail.toLowerCase().trim();
+    if (!email) return null;
+
+    // 1) Existing user account (any auth provider)
+    const existingUser = await storage.getUserByEmail(email);
+    if (existingUser) {
+      return { source: 'user', ...EMAIL_CONFLICT_MESSAGES.user };
+    }
+
+    // 2) Active team_member rows — pending invites (memberId IS NULL,
+    //    inviteStatus = 'pending') or accepted-but-unlinked. Declined/expired
+    //    rows are not active and should not block. We treat any row whose
+    //    inviteStatus is in ('pending','accepted') as a live identity.
+    // SECURITY: this lookup must fail CLOSED — if the DB read errors, we
+    // re-throw so the caller returns a controlled 503, never silently
+    // permitting an account collision under another business's workspace.
+    const teamRows = (await db
+      .select({
+        id: teamMembers.id,
+        inviteStatus: teamMembers.inviteStatus,
+        memberId: teamMembers.memberId,
+        roleId: teamMembers.roleId,
+      })
+      .from(teamMembers)
+      .where(
+        and(
+          sql`lower(${teamMembers.email}) = ${email}`,
+          inArray(teamMembers.inviteStatus, ['pending', 'accepted']),
+        ),
+      )
+      .limit(5)) as Array<{ id: string; inviteStatus: string; memberId: string | null; roleId: string }>;
+
+    if (teamRows.length > 0) {
+      // Distinguish pending invitations vs. already-accepted team identities.
+      const pending = teamRows.find((r) => r.inviteStatus === 'pending' && !r.memberId);
+      if (pending) {
+        // Best-effort subcontractor classification using the role name. We avoid
+        // an extra join: if any team role lookup fails, fall back to the
+        // generic "invitation" message.
+        try {
+          const { userRoles } = await import('@shared/schema');
+          const roleRow = await db
+            .select({ name: userRoles.name })
+            .from(userRoles)
+            .where(eq(userRoles.id, pending.roleId))
+            .limit(1);
+          if (roleRow[0]?.name && /sub-?contractor/i.test(roleRow[0].name)) {
+            return { source: 'subcontractor', ...EMAIL_CONFLICT_MESSAGES.subcontractor };
+          }
+        } catch {
+          // ignore — fall through to invitation message
+        }
+        return { source: 'invitation', ...EMAIL_CONFLICT_MESSAGES.invitation };
+      }
+      return { source: 'team_member', ...EMAIL_CONFLICT_MESSAGES.team_member };
+    }
+
+    // 3) Clients — owned email collision on a customer record under another
+    //    business. We do not block on previously deleted (cascade) clients.
+    //    Also fails CLOSED for the same reason as #2.
+    const clientRows = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(sql`lower(${clients.email}) = ${email}`)
+      .limit(1);
+    if (clientRows.length > 0) {
+      return { source: 'client', ...EMAIL_CONFLICT_MESSAGES.client };
+    }
+
+    return null;
+  }
+
   static async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, SALT_ROUNDS);
   }
@@ -25,7 +139,7 @@ export class AuthService {
     lastName?: string;
     tradeType?: string;
     intendedTier?: string;
-  }): Promise<{ success: true; user: SafeUser } | { success: false; error: string }> {
+  }): Promise<{ success: true; user: SafeUser } | { success: false; error: string; code?: string }> {
     try {
       // Normalize email
       const normalizedEmail = userData.email.toLowerCase().trim();
@@ -53,10 +167,25 @@ export class AuthService {
         return { success: false, error: 'Password must include at least one uppercase letter and one number' };
       }
 
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(validatedData.email);
-      if (existingUser) {
-        return { success: false, error: 'User with this email already exists' };
+      // Check if email collides with any existing identity (user, team
+      // member, client, subcontractor, pending invitation). Prevents orphan
+      // accounts under another business owner's workspace.
+      // SECURITY: findEmailConflict fails CLOSED — if any DB read errors we
+      // surface a controlled "identity_check_failed" code so the route can
+      // return 503 instead of allowing the signup to proceed.
+      let conflict: EmailConflict | null = null;
+      try {
+        conflict = await AuthService.findEmailConflict(validatedData.email);
+      } catch (lookupErr) {
+        console.error('[auth.register] email conflict lookup failed:', lookupErr);
+        return {
+          success: false,
+          error: "We couldn't verify your email right now. Please try again in a moment.",
+          code: 'identity_check_failed',
+        };
+      }
+      if (conflict) {
+        return { success: false, error: conflict.message, code: conflict.code };
       }
 
       if (validatedData.username) {
@@ -321,7 +450,18 @@ export class AuthService {
     try {
       // Normalize email
       const normalizedEmail = userData.email.toLowerCase().trim();
-      
+
+      // Block creation if email is already attached to another business as a
+      // client, team member, or pending invitation. (An existing `users` row
+      // for this email is handled by the caller, which prefers linking.)
+      const conflict = await AuthService.findEmailConflict(normalizedEmail);
+      if (conflict && conflict.source !== 'user') {
+        const err = new Error(conflict.message);
+        (err as any).code = conflict.code;
+        (err as any).status = 409;
+        throw err;
+      }
+
       // Generate username from email
       const username = normalizedEmail.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8);
       
@@ -405,7 +545,16 @@ export class AuthService {
     try {
       // Normalize email
       const normalizedEmail = userData.email.toLowerCase().trim();
-      
+
+      // Block creation if email is already attached to another business.
+      const conflict = await AuthService.findEmailConflict(normalizedEmail);
+      if (conflict && conflict.source !== 'user') {
+        const err = new Error(conflict.message);
+        (err as any).code = conflict.code;
+        (err as any).status = 409;
+        throw err;
+      }
+
       // Generate username from email
       const username = normalizedEmail.split('@')[0] + '_' + Math.random().toString(36).substring(2, 8);
       
