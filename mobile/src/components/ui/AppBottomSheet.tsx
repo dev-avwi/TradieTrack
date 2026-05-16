@@ -136,12 +136,11 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     ) : null;
 
     const screenHeight = Dimensions.get('window').height;
-    // Honor legacy gorhom snapPoints as the MAX height. Sheet hugs content
-    // below that — short sheets render small, tall sheets cap at the snap.
-    const requestedMax = snapPoints && snapPoints.length
-      ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
-      : screenHeight * 0.9;
-    const maxSheetHeight = Math.min(requestedMax, screenHeight * 0.9);
+    // Premium-feel sizing: sheet hugs content with a 70% cap. Tall content
+    // scrolls inside that cap. Legacy gorhom snapPoints are ignored — they
+    // were always 90% in practice which felt overwhelming.
+    const maxSheetHeight = screenHeight * 0.7;
+    void snapPoints;
 
     // Strip `flex: 1` from the immediate call-site child so its layout sizes
     // to its actual content instead of demanding the full sheet height. This
