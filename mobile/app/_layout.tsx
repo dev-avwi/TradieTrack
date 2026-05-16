@@ -919,19 +919,19 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <SafeAreaProvider>
             <ThemeProvider>
+              <BottomSheetModalProvider>
                 <ScrollProvider>
                   <TerminalProvider>
                     <CustomAlertProvider>
                       <ConfirmDialogProvider>
                         <ActionSheetProvider>
-                          <BottomSheetModalProvider>
-                            <RootLayoutContent />
-                          </BottomSheetModalProvider>
+                          <RootLayoutContent />
                         </ActionSheetProvider>
                       </ConfirmDialogProvider>
                     </CustomAlertProvider>
                   </TerminalProvider>
                 </ScrollProvider>
+              </BottomSheetModalProvider>
             </ThemeProvider>
           </SafeAreaProvider>
         </QueryClientProvider>
