@@ -271,14 +271,16 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
                 },
               ]}
             >
+              {/* Single GestureDetector wrapping BOTH the invisible drag zone
+                  and the header. Attaching the same Gesture instance to two
+                  separate GestureDetectors silently registers only one of
+                  them, which is why swipe-to-dismiss was firing nowhere. */}
               <GestureDetector gesture={dragGesture}>
-                <View style={styles.dragZone} />
+                <View collapsable={false}>
+                  <View style={styles.dragZone} />
+                  {Header}
+                </View>
               </GestureDetector>
-              {Header ? (
-                <GestureDetector gesture={dragGesture}>
-                  <View>{Header}</View>
-                </GestureDetector>
-              ) : null}
               {body}
             </Animated.View>
           </KeyboardAvoidingView>

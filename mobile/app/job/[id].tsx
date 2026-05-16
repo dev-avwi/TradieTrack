@@ -10637,10 +10637,11 @@ export default function JobDetailScreen() {
       <AppBottomSheet
         visible={showAssignModal}
         onDismiss={() => setShowAssignModal(false)}
+        snapPoints={['85%']}
         scrollable={false}
         contentPadding={0}
       >
-        <View>
+        <View style={{ flex: 1 }}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Assign Workers</Text>
               <TouchableOpacity onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}>
@@ -10648,14 +10649,14 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
             </View>
             {selectedWorkerIds.size > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}>
                 <Feather name="check-circle" size={14} color={colors.primary} />
                 <Text style={{ ...typography.caption, color: colors.primary, fontWeight: '600' }}>
                   {selectedWorkerIds.size} worker{selectedWorkerIds.size !== 1 ? 's' : ''} selected
                 </Text>
               </View>
             )}
-            <BottomSheetScrollView style={{ maxHeight: Dimensions.get('window').height * 0.5 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
+            <BottomSheetScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
               {teamMembers.map((member) => {
                 const memberId = member.memberId || member.userId || member.id;
                 const isSelected = selectedWorkerIds.has(memberId);
@@ -10881,7 +10882,7 @@ export default function JobDetailScreen() {
                 )}
               </View>
             </BottomSheetScrollView>
-            <View style={[styles.modalFooter, { gap: spacing.sm }]}>
+            <View style={[styles.modalFooter, { gap: spacing.sm, paddingBottom: insets.bottom + spacing.md, backgroundColor: colors.background }]}>
               <TouchableOpacity
                 style={{
                   flex: 1,
@@ -11838,11 +11839,12 @@ export default function JobDetailScreen() {
       <AppBottomSheet
         visible={showScheduleModal}
         onDismiss={() => setShowScheduleModal(false)}
+        snapPoints={['85%']}
         scrollable={false}
         contentPadding={0}
       >
-        <View>
-          <View style={[styles.modalContainer, { flex: undefined as any }]}>
+        <View style={{ flex: 1 }}>
+          <View style={[styles.modalContainer, { flex: 1 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Schedule Job</Text>
               <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
@@ -11850,7 +11852,7 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
             </View>
             
-            <View style={[styles.modalContent, { flex: undefined as any }]}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
               <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: spacing.md }}>
                 Select date and time for this job:
               </Text>
@@ -11982,32 +11984,32 @@ export default function JobDetailScreen() {
                 </View>
               )}
               
-              <View style={{ flexDirection: 'row', gap: spacing.md }}>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: colors.muted,
-                    borderRadius: radius.lg,
-                    paddingVertical: spacing.md,
-                    alignItems: 'center',
-                  }}
-                  onPress={() => setShowScheduleModal(false)}
-                >
-                  <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 15 }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: colors.primary,
-                    borderRadius: radius.lg,
-                    paddingVertical: spacing.md,
-                    alignItems: 'center',
-                  }}
-                  onPress={handleConfirmSchedule}
-                >
-                  <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 15 }}>Schedule Job</Text>
-                </TouchableOpacity>
-              </View>
+            </ScrollView>
+            <View style={[styles.modalFooter, { gap: spacing.md, paddingBottom: insets.bottom + spacing.md, backgroundColor: colors.background }]}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.muted,
+                  borderRadius: radius.lg,
+                  paddingVertical: spacing.md,
+                  alignItems: 'center',
+                }}
+                onPress={() => setShowScheduleModal(false)}
+              >
+                <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 15 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.primary,
+                  borderRadius: radius.lg,
+                  paddingVertical: spacing.md,
+                  alignItems: 'center',
+                }}
+                onPress={handleConfirmSchedule}
+              >
+                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 15 }}>Schedule Job</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -12280,10 +12282,21 @@ export default function JobDetailScreen() {
                 ))
               )}
             </ScrollView>
-            <View style={styles.modalFooter}>
-              <Button variant="outline" onPress={() => setShowTemplatePickerModal(false)} style={{ flex: 1 }}>
-                Cancel
-              </Button>
+            <View style={[styles.modalFooter, { paddingBottom: insets.bottom + spacing.md, backgroundColor: colors.background }]}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: radius.lg,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+                onPress={() => setShowTemplatePickerModal(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>Cancel</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -12809,15 +12822,24 @@ export default function JobDetailScreen() {
                 </View>
               )}
             </View>
-            <View style={[styles.modalFooter, { gap: spacing.sm }]}>
+            <View style={[styles.modalFooter, { gap: spacing.sm, paddingBottom: insets.bottom + spacing.md, backgroundColor: colors.background }]}>
               <TouchableOpacity
                 onPress={() => {
                   setShowProofPackPreview(false);
                   setShowProofPackModal(true);
                 }}
-                style={{ paddingVertical: spacing.sm, paddingHorizontal: spacing.md }}
+                style={{
+                  paddingVertical: spacing.md,
+                  paddingHorizontal: spacing.lg,
+                  borderRadius: radius.lg,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                activeOpacity={0.7}
               >
-                <Text style={{ color: colors.mutedForeground, fontWeight: '600', fontSize: 14 }}>Edit Sections</Text>
+                <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>Edit Sections</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
@@ -12828,7 +12850,7 @@ export default function JobDetailScreen() {
                   gap: spacing.sm,
                   backgroundColor: colors.primary,
                   paddingVertical: spacing.md,
-                  borderRadius: radius.md,
+                  borderRadius: radius.lg,
                   opacity: isGeneratingProofPack ? 0.5 : 1,
                   minHeight: 44,
                 }}

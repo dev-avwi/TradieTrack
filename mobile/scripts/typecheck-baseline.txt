@@ -5,62 +5,62 @@ app/job/chat.tsx(1255,20): error TS2339: Property 'mediaUrls' does not exist on 
 app/job/chat.tsx(1255,37): error TS2339: Property 'mediaUrls' does not exist on type '{ id: string; type: "chat" | "sms"; message: string; senderName: string; createdAt: string; isOwn: boolean; isSystem?: boolean | undefined; direction?: "inbound" | "outbound" | undefined; attachmentName?: string | ... 1 more ... | undefined; attachmentUrl?: string | ... 1 more ... | undefined; messageType?: string |...'.
 app/job/chat.tsx(1257,24): error TS2339: Property 'mediaUrls' does not exist on type '{ id: string; type: "chat" | "sms"; message: string; senderName: string; createdAt: string; isOwn: boolean; isSystem?: boolean | undefined; direction?: "inbound" | "outbound" | undefined; attachmentName?: string | ... 1 more ... | undefined; attachmentUrl?: string | ... 1 more ... | undefined; messageType?: string |...'.
 app/job/chat.tsx(1261,98): error TS2339: Property 'mediaUrls' does not exist on type '{ id: string; type: "chat" | "sms"; message: string; senderName: string; createdAt: string; isOwn: boolean; isSystem?: boolean | undefined; direction?: "inbound" | "outbound" | undefined; attachmentName?: string | ... 1 more ... | undefined; attachmentUrl?: string | ... 1 more ... | undefined; messageType?: string |...'.
-app/job/[id].tsx(10021,73): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockIn' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(10030,75): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockIn' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(10061,73): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockOut' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(10070,75): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockOut' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(10664,60): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
-app/job/[id].tsx(10736,38): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
-app/job/[id].tsx(10736,61): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
-app/job/[id].tsx(11662,70): error TS2339: Property 'xxs' does not exist on type '{ readonly xs: 4; readonly sm: 8; readonly md: 12; readonly lg: 16; readonly xl: 20; readonly '2xl': 24; readonly xxl: 24; readonly '3xl': 32; readonly '4xl': 40; }'.
-app/job/[id].tsx(2158,28): error TS2339: Property 'updateJobNotes' does not exist on type 'JobsState'.
-app/job/[id].tsx(3268,37): error TS2339: Property 'sendResults' does not exist on type '{}'.
-app/job/[id].tsx(3332,59): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<{ events: any[]; arrivalCount: number; departureCount: number; firstArrival: string | null; lastDeparture: string | null; } | null>'.
-app/job/[id].tsx(3527,49): error TS2367: This comparison appears to be unintentional because the types '"send_email" | "send_sms" | "create_job" | "schedule_reminder" | "collect_payment" | "send_confirmation"' and '"create_quote"' have no overlap.
-app/job/[id].tsx(4108,52): error TS2339: Property 'id' does not exist on type '{}'.
-app/job/[id].tsx(4752,34): error TS2339: Property 'estimatedDuration' does not exist on type 'Job'.
-app/job/[id].tsx(4798,55): error TS2559: Type '{ isRecurring: boolean; nextRecurrenceDate: null; }' has no properties in common with type 'Partial<CachedJob>'.
-app/job/[id].tsx(4813,57): error TS2559: Type '{ isRecurring: boolean; nextRecurrenceDate: null; }' has no properties in common with type 'Partial<CachedJob>'.
-app/job/[id].tsx(4946,55): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<{ events: any[]; arrivalCount: number; departureCount: number; firstArrival: string | null; lastDeparture: string | null; } | null>'.
-app/job/[id].tsx(5221,28): error TS2339: Property 'notConfigured' does not exist on type '{}'.
-app/job/[id].tsx(5227,36): error TS2339: Property 'estimatedMinutes' does not exist on type '{}'.
-app/job/[id].tsx(5228,37): error TS2339: Property 'distanceKm' does not exist on type '{}'.
-app/job/[id].tsx(5229,42): error TS2339: Property 'etaSource' does not exist on type '{}'.
-app/job/[id].tsx(5300,39): error TS2339: Property 'phone' does not exist on type '{}'.
-app/job/[id].tsx(5301,58): error TS2339: Property 'phone' does not exist on type '{}'.
-app/job/[id].tsx(5399,16): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<Job | null>'.
-app/job/[id].tsx(6030,20): error TS2339: Property 'workerStatus' does not exist on type 'Job'.
-app/job/[id].tsx(6095,20): error TS2339: Property 'workerStatus' does not exist on type 'Job'.
-app/job/[id].tsx(6175,15): error TS2322: Type '"alert-triangle" | "shield-check"' is not assignable to type '"map" | "filter" | "delete" | "type" | "key" | "phone" | "file" | "code" | "search" | "repeat" | "anchor" | "bold" | "link" | "user" | "sunset" | "info" | "sidebar" | "menu" | "table" | ... 268 more ... | undefined'.
-app/job/[id].tsx(6488,46): error TS2339: Property 'name' does not exist on type 'User'.
-app/job/[id].tsx(6489,27): error TS2339: Property 'workerStatus' does not exist on type 'Job'.
-app/job/[id].tsx(6697,17): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
-app/job/[id].tsx(6734,39): error TS2339: Property 'themeColor' does not exist on type 'TeamMember'.
-app/job/[id].tsx(7253,25): error TS2339: Property 'title' does not exist on type 'ActivityItem'.
-app/job/[id].tsx(7691,27): error TS2339: Property 'expenses' does not exist on type '{ labour: number; subcontractor: number; materials: number; otherExpenses: number; total: number; }'.
-app/job/[id].tsx(7694,122): error TS2339: Property 'expenses' does not exist on type '{ labour: number; subcontractor: number; materials: number; otherExpenses: number; total: number; }'.
-app/job/[id].tsx(7886,12): error TS2339: Property 'isRecurring' does not exist on type 'Job'.
+app/job/[id].tsx(10018,73): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockIn' does not exist in type 'Partial<CachedJob>'.
+app/job/[id].tsx(10027,75): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockIn' does not exist in type 'Partial<CachedJob>'.
+app/job/[id].tsx(10058,73): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockOut' does not exist in type 'Partial<CachedJob>'.
+app/job/[id].tsx(10067,75): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockOut' does not exist in type 'Partial<CachedJob>'.
+app/job/[id].tsx(10661,60): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
+app/job/[id].tsx(10733,38): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
+app/job/[id].tsx(10733,61): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
+app/job/[id].tsx(11659,70): error TS2339: Property 'xxs' does not exist on type '{ readonly xs: 4; readonly sm: 8; readonly md: 12; readonly lg: 16; readonly xl: 20; readonly '2xl': 24; readonly xxl: 24; readonly '3xl': 32; readonly '4xl': 40; }'.
+app/job/[id].tsx(2155,28): error TS2339: Property 'updateJobNotes' does not exist on type 'JobsState'.
+app/job/[id].tsx(3265,37): error TS2339: Property 'sendResults' does not exist on type '{}'.
+app/job/[id].tsx(3329,59): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<{ events: any[]; arrivalCount: number; departureCount: number; firstArrival: string | null; lastDeparture: string | null; } | null>'.
+app/job/[id].tsx(3524,49): error TS2367: This comparison appears to be unintentional because the types '"send_email" | "send_sms" | "create_job" | "schedule_reminder" | "collect_payment" | "send_confirmation"' and '"create_quote"' have no overlap.
+app/job/[id].tsx(4105,52): error TS2339: Property 'id' does not exist on type '{}'.
+app/job/[id].tsx(4749,34): error TS2339: Property 'estimatedDuration' does not exist on type 'Job'.
+app/job/[id].tsx(4795,55): error TS2559: Type '{ isRecurring: boolean; nextRecurrenceDate: null; }' has no properties in common with type 'Partial<CachedJob>'.
+app/job/[id].tsx(4810,57): error TS2559: Type '{ isRecurring: boolean; nextRecurrenceDate: null; }' has no properties in common with type 'Partial<CachedJob>'.
+app/job/[id].tsx(4943,55): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<{ events: any[]; arrivalCount: number; departureCount: number; firstArrival: string | null; lastDeparture: string | null; } | null>'.
+app/job/[id].tsx(5218,28): error TS2339: Property 'notConfigured' does not exist on type '{}'.
+app/job/[id].tsx(5224,36): error TS2339: Property 'estimatedMinutes' does not exist on type '{}'.
+app/job/[id].tsx(5225,37): error TS2339: Property 'distanceKm' does not exist on type '{}'.
+app/job/[id].tsx(5226,42): error TS2339: Property 'etaSource' does not exist on type '{}'.
+app/job/[id].tsx(5297,39): error TS2339: Property 'phone' does not exist on type '{}'.
+app/job/[id].tsx(5298,58): error TS2339: Property 'phone' does not exist on type '{}'.
+app/job/[id].tsx(5396,16): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<Job | null>'.
+app/job/[id].tsx(6027,20): error TS2339: Property 'workerStatus' does not exist on type 'Job'.
+app/job/[id].tsx(6092,20): error TS2339: Property 'workerStatus' does not exist on type 'Job'.
+app/job/[id].tsx(6172,15): error TS2322: Type '"alert-triangle" | "shield-check"' is not assignable to type '"map" | "filter" | "delete" | "type" | "key" | "phone" | "file" | "code" | "search" | "repeat" | "anchor" | "bold" | "link" | "user" | "sunset" | "info" | "sidebar" | "menu" | "table" | ... 268 more ... | undefined'.
+app/job/[id].tsx(6485,46): error TS2339: Property 'name' does not exist on type 'User'.
+app/job/[id].tsx(6486,27): error TS2339: Property 'workerStatus' does not exist on type 'Job'.
+app/job/[id].tsx(6694,17): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
+app/job/[id].tsx(6731,39): error TS2339: Property 'themeColor' does not exist on type 'TeamMember'.
+app/job/[id].tsx(7250,25): error TS2339: Property 'title' does not exist on type 'ActivityItem'.
+app/job/[id].tsx(7688,27): error TS2339: Property 'expenses' does not exist on type '{ labour: number; subcontractor: number; materials: number; otherExpenses: number; total: number; }'.
+app/job/[id].tsx(7691,122): error TS2339: Property 'expenses' does not exist on type '{ labour: number; subcontractor: number; materials: number; otherExpenses: number; total: number; }'.
+app/job/[id].tsx(7883,12): error TS2339: Property 'isRecurring' does not exist on type 'Job'.
+app/job/[id].tsx(7896,22): error TS2339: Property 'recurrencePattern' does not exist on type 'Job'.
+app/job/[id].tsx(7897,22): error TS2339: Property 'recurrencePattern' does not exist on type 'Job'.
+app/job/[id].tsx(7898,22): error TS2339: Property 'recurrencePattern' does not exist on type 'Job'.
 app/job/[id].tsx(7899,22): error TS2339: Property 'recurrencePattern' does not exist on type 'Job'.
 app/job/[id].tsx(7900,22): error TS2339: Property 'recurrencePattern' does not exist on type 'Job'.
-app/job/[id].tsx(7901,22): error TS2339: Property 'recurrencePattern' does not exist on type 'Job'.
-app/job/[id].tsx(7902,22): error TS2339: Property 'recurrencePattern' does not exist on type 'Job'.
-app/job/[id].tsx(7903,22): error TS2339: Property 'recurrencePattern' does not exist on type 'Job'.
-app/job/[id].tsx(7907,18): error TS2339: Property 'nextRecurrenceDate' does not exist on type 'Job'.
-app/job/[id].tsx(7911,33): error TS2339: Property 'nextRecurrenceDate' does not exist on type 'Job'.
-app/job/[id].tsx(7921,18): error TS2339: Property 'recurrenceEndDate' does not exist on type 'Job'.
-app/job/[id].tsx(7925,33): error TS2339: Property 'recurrenceEndDate' does not exist on type 'Job'.
-app/job/[id].tsx(8008,56): error TS2339: Property 'amount' does not exist on type 'JobVariation'.
-app/job/[id].tsx(8010,26): error TS2367: This comparison appears to be unintentional because the types '"draft" | "sent" | "rejected" | "approved"' and '"pending"' have no overlap.
-app/job/[id].tsx(8299,29): error TS2339: Property 'title' does not exist on type 'ActivityItem'.
-app/job/[id].tsx(8301,47): error TS2339: Property 'title' does not exist on type 'ActivityItem'.
-app/job/[id].tsx(9911,23): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
-app/job/[id].tsx(9920,69): error TS2353: Object literal may only specify known properties, and 'geofenceEnabled' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(9929,71): error TS2353: Object literal may only specify known properties, and 'geofenceEnabled' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(9936,71): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
-app/job/[id].tsx(9970,71): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
-app/job/[id].tsx(9974,73): error TS2353: Object literal may only specify known properties, and 'geofenceRadius' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(9983,75): error TS2353: Object literal may only specify known properties, and 'geofenceRadius' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(9989,75): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+app/job/[id].tsx(7904,18): error TS2339: Property 'nextRecurrenceDate' does not exist on type 'Job'.
+app/job/[id].tsx(7908,33): error TS2339: Property 'nextRecurrenceDate' does not exist on type 'Job'.
+app/job/[id].tsx(7918,18): error TS2339: Property 'recurrenceEndDate' does not exist on type 'Job'.
+app/job/[id].tsx(7922,33): error TS2339: Property 'recurrenceEndDate' does not exist on type 'Job'.
+app/job/[id].tsx(8005,56): error TS2339: Property 'amount' does not exist on type 'JobVariation'.
+app/job/[id].tsx(8007,26): error TS2367: This comparison appears to be unintentional because the types '"draft" | "sent" | "rejected" | "approved"' and '"pending"' have no overlap.
+app/job/[id].tsx(8296,29): error TS2339: Property 'title' does not exist on type 'ActivityItem'.
+app/job/[id].tsx(8298,47): error TS2339: Property 'title' does not exist on type 'ActivityItem'.
+app/job/[id].tsx(9908,23): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+app/job/[id].tsx(9917,69): error TS2353: Object literal may only specify known properties, and 'geofenceEnabled' does not exist in type 'Partial<CachedJob>'.
+app/job/[id].tsx(9926,71): error TS2353: Object literal may only specify known properties, and 'geofenceEnabled' does not exist in type 'Partial<CachedJob>'.
+app/job/[id].tsx(9933,71): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+app/job/[id].tsx(9967,71): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+app/job/[id].tsx(9971,73): error TS2353: Object literal may only specify known properties, and 'geofenceRadius' does not exist in type 'Partial<CachedJob>'.
+app/job/[id].tsx(9980,75): error TS2353: Object literal may only specify known properties, and 'geofenceRadius' does not exist in type 'Partial<CachedJob>'.
+app/job/[id].tsx(9986,75): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
 app/_layout.tsx(279,18): error TS2678: Type '"invoice_sent"' is not comparable to type '"geofence" | "job_assigned" | "job_update" | "job_reminder" | "job_scheduled" | "job_started" | "job_completed" | "recurring_job_created" | "geofence_checkin" | "geofence_checkout" | ... 9 more ... | "general"'.
 app/_layout.tsx(280,18): error TS2678: Type '"installment_due"' is not comparable to type '"geofence" | "job_assigned" | "job_update" | "job_reminder" | "job_scheduled" | "job_started" | "job_completed" | "recurring_job_created" | "geofence_checkin" | "geofence_checkout" | ... 9 more ... | "general"'.
 app/_layout.tsx(281,18): error TS2678: Type '"installment_received"' is not comparable to type '"geofence" | "job_assigned" | "job_update" | "job_reminder" | "job_scheduled" | "job_started" | "job_completed" | "recurring_job_created" | "geofence_checkin" | "geofence_checkout" | ... 9 more ... | "general"'.
@@ -258,16 +258,16 @@ app/(tabs)/index.tsx(1252,28): error TS2339: Property 'card' does not exist on t
 app/(tabs)/index.tsx(1287,26): error TS2339: Property 'card' does not exist on type '{ container: { flex: number; backgroundColor: string; }; contentContainer: { paddingHorizontal: 16; paddingTop: 12; paddingBottom: 16; }; fab: { position: "absolute"; bottom: number; right: number; ... 13 more ...; zIndex: number; }; ... 244 more ...; daySummaryTomorrowMetaText: { ...; }; }'.
 app/(tabs)/index.tsx(2061,28): error TS2345: Argument of type '{ stripeConnect?: { connected?: boolean | undefined; chargesEnabled?: boolean | undefined; payoutsEnabled?: boolean | undefined; } | undefined; } | null | undefined' is not assignable to parameter of type 'SetStateAction<{ stripeConnect?: { connected?: boolean | undefined; chargesEnabled?: boolean | undefined; payoutsEnabled?: boolean | undefined; } | undefined; } | null>'.
 app/(tabs)/index.tsx(2116,42): error TS2345: Argument of type '`/${string}`' is not assignable to parameter of type '"/" | "/more/action-center" | "/more/autopilot" | "/more/clients" | "/more/documents" | "/more/payment-hub" | "/more/expenses" | "/more/collect-payment" | "/more/calendar" | ... 382 more ... | { ...; }'.
-app/(tabs)/index.tsx(3285,48): error TS2345: Argument of type '"/more/ai-receptionist"' is not assignable to parameter of type '"/" | "/more/action-center" | "/more/autopilot" | "/more/clients" | "/more/documents" | "/more/payment-hub" | "/more/expenses" | "/more/collect-payment" | "/more/calendar" | ... 382 more ... | { ...; }'.
-app/(tabs)/index.tsx(3520,29): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
-app/(tabs)/index.tsx(3520,58): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
-app/(tabs)/index.tsx(3525,163): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
-app/(tabs)/index.tsx(3525,78): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
-app/(tabs)/index.tsx(3541,34): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
-app/(tabs)/index.tsx(3546,46): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
-app/(tabs)/index.tsx(3547,49): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
-app/(tabs)/index.tsx(3584,32): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
-app/(tabs)/index.tsx(3586,35): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3287,48): error TS2345: Argument of type '"/more/ai-receptionist"' is not assignable to parameter of type '"/" | "/more/action-center" | "/more/autopilot" | "/more/clients" | "/more/documents" | "/more/payment-hub" | "/more/expenses" | "/more/collect-payment" | "/more/calendar" | ... 382 more ... | { ...; }'.
+app/(tabs)/index.tsx(3522,29): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3522,58): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3527,163): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3527,78): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3543,34): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3548,46): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3549,49): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3586,32): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
+app/(tabs)/index.tsx(3588,35): error TS2339: Property 'tomorrowJobs' does not exist on type '{ totalHoursTracked: number; jobsCompletedToday: number; totalJobsToday: number; invoicesCreatedToday: number; moneyCollectedToday: number; tomorrowFirstJob: { id: string; title: string; ... 4 more ...; longitude: number | null; } | null; tomorrowJobCount: number; allJobsDone: boolean; }'.
 app/(tabs)/jobs.tsx(220,7): error TS2322: Type 'any[]' is not assignable to type 'ViewStyle'.
 app/(tabs)/jobs.tsx(485,7): error TS2448: Block-scoped variable 'sortedJobs' used before its declaration.
 app/(tabs)/jobs.tsx(485,7): error TS2454: Variable 'sortedJobs' is used before being assigned.
