@@ -230,7 +230,9 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
               >
                 <View style={[styles.handle, { backgroundColor: colors.border }]} />
               </View>
-              {Header}
+              {Header ? (
+                <View {...panResponder.panHandlers}>{Header}</View>
+              ) : null}
               {body}
             </Animated.View>
           </KeyboardAvoidingView>
@@ -264,8 +266,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   dragGrip: {
-    paddingVertical: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
     alignItems: 'center',
+    alignSelf: 'stretch',
   },
   handle: {
     width: 40,
