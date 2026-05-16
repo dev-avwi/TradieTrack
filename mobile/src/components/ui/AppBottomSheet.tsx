@@ -240,9 +240,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
               ]}
             >
               <GestureDetector gesture={dragGesture}>
-                <View style={[styles.dragZone, { backgroundColor: colors.background }]}>
-                  <View style={[styles.grabber, { backgroundColor: colors.border }]} />
-                </View>
+                <View style={styles.dragZone} />
               </GestureDetector>
               {Header ? (
                 <GestureDetector gesture={dragGesture}>
@@ -282,16 +280,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   dragZone: {
-    height: 22,
+    height: 14,
     alignSelf: 'stretch',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  grabber: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    opacity: 0.35,
   },
   header: {
     flexDirection: 'row',

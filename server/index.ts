@@ -10,7 +10,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { createDemoUserAndData, fixTestUserPasswords, seedSmsDataForTestUsers, createDemoTeamMembers, createDemoSubcontractorsAndInviteCodes, startDemoDataRefreshScheduler, createVisitorUser } from "./demoData";
 import { initializeStripe } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
-import { storage } from "./storage";
+import { storage, pool as sharedPgPool } from "./storage";
 import { setupWebSocket } from "./websocket";
 import { metricsMiddleware } from "./metrics";
 
@@ -91,16 +91,26 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-// Configure session store based on environment
+// Configure session store based on environment.
+// Share the main pg pool (which has its own 'error' handler + Neon-tuned
+// timeouts) instead of letting connect-pg-simple spin up an un-handled pool.
+// Without this, Neon idle disconnects bubble up as "Connection terminated
+// unexpectedly" and fail user requests (e.g. GET /api/jobs).
 let sessionStore;
 if (process.env.DATABASE_URL) {
   const PgSession = connectPgSimple(session);
   sessionStore = new PgSession({
-    conString: process.env.DATABASE_URL,
+    pool: sharedPgPool as any,
     tableName: 'session',
     createTableIfMissing: false,
+    // Swallow transient pool errors so a dropped Neon connection on a
+    // session lookup doesn't crash the request — the next query will
+    // reconnect cleanly.
+    errorLog: (err: any) => {
+      console.error('[SessionStore] pg error (handled):', err?.message || err);
+    },
   });
-  console.log('✅ Using PostgreSQL session store for persistence');
+  console.log('✅ Using PostgreSQL session store (shared pool)');
 } else if (process.env.NODE_ENV === 'development') {
   sessionStore = undefined;
   console.log('⚠️ Using in-memory session store (development only)');
