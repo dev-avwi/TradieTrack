@@ -10641,7 +10641,6 @@ export default function JobDetailScreen() {
       <AppBottomSheet
         visible={showAssignModal}
         onDismiss={() => setShowAssignModal(false)}
-        snapPoints={['85%']}
         scrollable={false}
         contentPadding={0}
       >
@@ -11843,7 +11842,6 @@ export default function JobDetailScreen() {
       <AppBottomSheet
         visible={showScheduleModal}
         onDismiss={() => setShowScheduleModal(false)}
-        snapPoints={['90%']}
         scrollable={false}
         contentPadding={0}
       >

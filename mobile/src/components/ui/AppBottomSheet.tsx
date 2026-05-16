@@ -3,8 +3,8 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
-  useState,
   ReactNode,
 } from 'react';
 import {
@@ -12,18 +12,18 @@ import {
   View,
   Text,
   Pressable,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ScrollViewProps,
-  FlatList,
-  Dimensions,
-  PanResponder,
-  Animated,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
+import {
+  BottomSheetModal,
+  BottomSheetBackdrop,
+  BottomSheetScrollView as GorhomBottomSheetScrollView,
+  BottomSheetView as GorhomBottomSheetView,
+  BottomSheetFlatList as GorhomBottomSheetFlatList,
+  BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import { useTheme } from '../../lib/theme';
 import { radius, spacing, typography } from '../../lib/design-tokens';
 
@@ -34,34 +34,23 @@ export interface AppBottomSheetRef {
 
 export interface AppBottomSheetProps {
   children: ReactNode;
-  /** Legacy gorhom prop — accepted but ignored. */
+  /** Optional fixed snap points. When omitted, sheet hugs its content. */
   snapPoints?: (string | number)[];
-  /** Legacy gorhom prop — accepted but ignored. */
+  /** Allow the sheet to grow to fit content. Default true. */
   enableDynamicSizing?: boolean;
-  /** Legacy gorhom prop — accepted but ignored. */
+  /** Allow pan-down-to-close gesture. Default true. */
   enablePanDownToClose?: boolean;
   onDismiss?: () => void;
   title?: string;
   showCloseButton?: boolean;
-  /** Legacy gorhom prop — accepted but ignored. */
   keyboardBehavior?: 'interactive' | 'extend' | 'fillParent';
-  /** Wrap children in a ScrollView when true (default). */
+  /** Wrap children in a BottomSheetScrollView when true (default). */
   scrollable?: boolean;
   contentPadding?: number;
   /** Declarative visibility. */
   visible?: boolean;
-  /** When true, the sheet hugs its content (with snapPoint as a max cap)
-   *  instead of forcing a fixed height. Use this for sheets whose content
-   *  is short (e.g. empty states) so they don't reserve a blank box. */
+  /** Legacy alias for enableDynamicSizing. */
   autoHeight?: boolean;
-}
-
-function parseSnapPoint(point: string | number, screenHeight: number): number {
-  if (typeof point === 'number') return point;
-  const pct = /^(\d+(?:\.\d+)?)%$/.exec(point);
-  if (pct) return screenHeight * (parseFloat(pct[1]) / 100);
-  const num = parseFloat(point);
-  return isNaN(num) ? 0 : num;
 }
 
 const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
@@ -75,87 +64,67 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       contentPadding = spacing.lg,
       visible,
       snapPoints,
-      autoHeight = true,
+      enableDynamicSizing,
+      enablePanDownToClose = true,
+      keyboardBehavior = 'interactive',
+      autoHeight,
     },
     ref
   ) => {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
+    const sheetRef = useRef<BottomSheetModal>(null);
 
-    // Track whether the modal is open. When the parent supplies `visible`,
-    // it's the source of truth. Otherwise present()/dismiss() drive it.
-    const [internalVisible, setInternalVisible] = useState(false);
-    const isControlled = visible !== undefined;
-    const open = isControlled ? !!visible : internalVisible;
+    // Default: hug content only when no snapPoints are provided. If a
+    // call-site explicitly asks for snap points, respect them as the source
+    // of truth (mixing dynamic + snapPoints in gorhom v5 reorders snaps).
+    const dynamic =
+      autoHeight ??
+      enableDynamicSizing ??
+      (!snapPoints || snapPoints.length === 0);
 
+    // Imperative API
     useImperativeHandle(
       ref,
       () => ({
-        present: () => {
-          if (!isControlled) setInternalVisible(true);
-        },
-        dismiss: () => {
-          if (!isControlled) setInternalVisible(false);
-          onDismiss?.();
-        },
+        present: () => sheetRef.current?.present(),
+        dismiss: () => sheetRef.current?.dismiss(),
       }),
-      [isControlled, onDismiss]
+      []
     );
 
-    const handleRequestClose = useCallback(() => {
-      if (!isControlled) setInternalVisible(false);
-      onDismiss?.();
-    }, [isControlled, onDismiss]);
-
-    // Drag-to-dismiss: track vertical translation and dismiss when the user
-    // drags down past a threshold or releases with downward velocity.
-    const translateY = useRef(new Animated.Value(0)).current;
+    // Declarative visibility: drive present/dismiss from `visible` prop
     useEffect(() => {
-      if (open) translateY.setValue(0);
-    }, [open, translateY]);
-    const panResponder = useRef(
-      PanResponder.create({
-        // Capture on touch immediately so the user gets 1:1 finger tracking
-        // from the very first frame — feels premium / iOS-native.
-        onStartShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponderCapture: () => true,
-        onPanResponderMove: (_e, g) => {
-          // Follow the finger downward, and a tiny bit upward with rubber-band
-          // resistance for a premium bouncy feel.
-          if (g.dy >= 0) {
-            translateY.setValue(g.dy);
-          } else {
-            translateY.setValue(g.dy / 3);
-          }
-        },
-        onPanResponderRelease: (_e, g) => {
-          if (g.dy > 120 || g.vy > 0.6) {
-            Animated.timing(translateY, {
-              toValue: 800,
-              duration: 180,
-              useNativeDriver: true,
-            }).start(() => {
-              translateY.setValue(0);
-              handleRequestClose();
-            });
-          } else {
-            Animated.spring(translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-              bounciness: 6,
-              speed: 14,
-            }).start();
-          }
-        },
-        onPanResponderTerminationRequest: () => false,
-      })
-    ).current;
+      if (visible === undefined) return;
+      if (visible) sheetRef.current?.present();
+      else sheetRef.current?.dismiss();
+    }, [visible]);
 
-    // Inner content padding mirrors the legacy AppBottomSheet so call-sites
-    // that relied on it keep their look. Bottom inset clears the iOS home
-    // indicator / Android nav bar.
+    const handleDismiss = useCallback(() => {
+      Keyboard.dismiss();
+      onDismiss?.();
+    }, [onDismiss]);
+
+    // Convert legacy snapPoints (numbers + percent strings) into gorhom format
+    // (it accepts both, but normalize to strings for stability).
+    const computedSnapPoints = useMemo(() => {
+      if (!snapPoints || snapPoints.length === 0) return undefined;
+      return snapPoints.map((p) => (typeof p === 'number' ? p : String(p)));
+    }, [snapPoints]);
+
+    const renderBackdrop = useCallback(
+      (props: BottomSheetBackdropProps) => (
+        <BottomSheetBackdrop
+          {...props}
+          appearsOnIndex={0}
+          disappearsOnIndex={-1}
+          opacity={0.45}
+          pressBehavior={enablePanDownToClose ? 'close' : 'none'}
+        />
+      ),
+      [enablePanDownToClose]
+    );
+
     const innerStyle = {
       paddingHorizontal: contentPadding,
       paddingBottom: contentPadding + Math.max(insets.bottom, 0),
@@ -169,17 +138,14 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         ]}
       >
         <Text
-          style={[
-            typography.cardTitle,
-            { color: colors.foreground, flex: 1 },
-          ]}
+          style={[typography.cardTitle, { color: colors.foreground, flex: 1 }]}
           numberOfLines={1}
         >
           {title || ''}
         </Text>
         {showCloseButton ? (
           <Pressable
-            onPress={handleRequestClose}
+            onPress={() => sheetRef.current?.dismiss()}
             hitSlop={8}
             style={styles.closeBtn}
           >
@@ -189,77 +155,49 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     ) : null;
 
-    const screenHeight = Dimensions.get('window').height;
-    // Premium-feel sizing: honor the call-site snapPoint as the SHEET HEIGHT
-    // (not just a max), so call-sites with `flex: 1` wrappers stretch their
-    // content to the full sheet — buttons land at the bottom of the sheet
-    // instead of leaving a gap above the home indicator. Hard cap at 70%.
-    const requestedHeight = snapPoints && snapPoints.length
-      ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
-      : screenHeight * 0.6;
-    const sheetHeight = Math.min(requestedHeight, screenHeight * 0.7);
+    const ContentWrapper: any = scrollable
+      ? GorhomBottomSheetScrollView
+      : GorhomBottomSheetView;
 
-    const fillStyle = autoHeight ? { flexShrink: 1 } : { flex: 1 };
-    const body = scrollable ? (
-      <ScrollView
-        style={{ backgroundColor: colors.background, ...fillStyle }}
-        contentContainerStyle={innerStyle}
-        keyboardShouldPersistTaps="handled"
-      >
-        {children}
-      </ScrollView>
-    ) : (
-      <View style={[innerStyle, { backgroundColor: colors.background, ...fillStyle }]}>
-        {children}
-      </View>
-    );
-
-    // Single content-hugging slide-up sheet for both platforms. We tried
-    // iOS `presentationStyle="pageSheet"` (truly native) but RN 0.81 core
-    // can't drive UISheetPresentationController detents, so pageSheet is
-    // always full-sheet height with empty space under short content. This
-    // custom transparent Modal hugs its content (capped at 85% screen)
-    // while keeping the pageSheet *look*: rounded top, grabber, dim
-    // backdrop, slide-up animation, drag-to-dismiss.
     return (
-      <Modal
-        visible={open}
-        animationType="slide"
-        transparent
-        onRequestClose={handleRequestClose}
-        statusBarTranslucent
+      <BottomSheetModal
+        ref={sheetRef}
+        // Provide snapPoints only when explicitly requested. When omitted +
+        // enableDynamicSizing, gorhom measures the content and grows the
+        // sheet to match — premium content-hugging behaviour.
+        snapPoints={computedSnapPoints}
+        enableDynamicSizing={dynamic}
+        enablePanDownToClose={enablePanDownToClose}
+        onDismiss={handleDismiss}
+        keyboardBehavior={keyboardBehavior}
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
+        backdropComponent={renderBackdrop}
+        handleIndicatorStyle={{ backgroundColor: colors.border }}
+        backgroundStyle={{
+          backgroundColor: colors.background,
+          borderTopLeftRadius: radius.xl,
+          borderTopRightRadius: radius.xl,
+        }}
+        // Subtle drop shadow above the sheet to lift it off the dim backdrop
+        // (matches the premium iOS pageSheet feel).
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: isDark ? 0.5 : 0.15,
+          shadowRadius: 12,
+          elevation: 16,
+        }}
       >
-        <View style={styles.root}>
-          <Pressable
-            style={styles.backdropFill}
-            onPress={handleRequestClose}
-          />
-          <KeyboardAvoidingView behavior={undefined}>
-            <Animated.View
-              style={[
-                styles.sheet,
-                {
-                  backgroundColor: colors.background,
-                  paddingTop: spacing.sm,
-                  ...(autoHeight ? { maxHeight: sheetHeight } : { height: sheetHeight }),
-                  transform: [{ translateY }],
-                },
-              ]}
-            >
-              <View
-                {...panResponder.panHandlers}
-                style={styles.dragGrip}
-              >
-                <View style={[styles.handle, { backgroundColor: colors.border }]} />
-              </View>
-              {Header ? (
-                <View {...panResponder.panHandlers}>{Header}</View>
-              ) : null}
-              {body}
-            </Animated.View>
-          </KeyboardAvoidingView>
-        </View>
-      </Modal>
+        {Header}
+        <ContentWrapper
+          style={scrollable ? undefined : innerStyle}
+          contentContainerStyle={scrollable ? innerStyle : undefined}
+          keyboardShouldPersistTaps="handled"
+        >
+          {children}
+        </ContentWrapper>
+      </BottomSheetModal>
     );
   }
 );
@@ -274,35 +212,11 @@ export function useAppBottomSheet() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  backdropFill: {
-    flex: 1,
-  },
-  sheet: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    overflow: 'hidden',
-  },
-  dragGrip: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    alignItems: 'center',
-    alignSelf: 'stretch',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.xs,
     paddingBottom: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: spacing.sm,
@@ -318,13 +232,9 @@ const styles = StyleSheet.create({
 
 export { AppBottomSheet };
 
-// Back-compat re-exports so existing call-sites that imported these from
-// AppBottomSheet keep working. They now resolve to plain react-native
-// primitives instead of the gorhom variants.
-export const BottomSheetScrollView = (
-  props: ScrollViewProps,
-) => <ScrollView {...props} />;
-export const BottomSheetView = View;
-export const BottomSheetFlatList = FlatList;
+// Re-export gorhom subcomponents so existing call-sites keep working.
+export const BottomSheetScrollView = GorhomBottomSheetScrollView;
+export const BottomSheetView = GorhomBottomSheetView;
+export const BottomSheetFlatList = GorhomBottomSheetFlatList;
 
 export default AppBottomSheet;
