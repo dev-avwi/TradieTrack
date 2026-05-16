@@ -19,9 +19,9 @@ import {
   ScrollViewProps,
   FlatList,
   Dimensions,
-  PanResponder,
   Animated,
 } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
@@ -113,49 +113,38 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     useEffect(() => {
       if (open) translateY.setValue(0);
     }, [open, translateY]);
-    const panResponder = useRef(
-      PanResponder.create({
-        // Don't steal taps — only take over once the user has clearly
-        // started a vertical drag. This lets buttons / inputs / scroll
-        // views inside the sheet keep working while still allowing
-        // swipe-down-to-dismiss from anywhere on the sheet.
-        onStartShouldSetPanResponder: () => false,
-        onStartShouldSetPanResponderCapture: () => false,
-        onMoveShouldSetPanResponder: (_e, g) =>
-          Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
-        onMoveShouldSetPanResponderCapture: (_e, g) =>
-          Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
-        onPanResponderMove: (_e, g) => {
-          // Follow the finger downward, and a tiny bit upward with rubber-band
-          // resistance for a premium bouncy feel.
-          if (g.dy >= 0) {
-            translateY.setValue(g.dy);
-          } else {
-            translateY.setValue(g.dy / 3);
-          }
-        },
-        onPanResponderRelease: (_e, g) => {
-          if (g.dy > 120 || g.vy > 0.6) {
-            Animated.timing(translateY, {
-              toValue: 800,
-              duration: 180,
-              useNativeDriver: true,
-            }).start(() => {
-              translateY.setValue(0);
-              handleRequestClose();
-            });
-          } else {
-            Animated.spring(translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-              bounciness: 4,
-              speed: 22,
-            }).start();
-          }
-        },
-        onPanResponderTerminationRequest: () => false,
+    // Drag-to-dismiss via react-native-gesture-handler Pan. This works
+    // alongside ScrollViews/Touchables (unlike PanResponder) and only
+    // activates once the finger moves >8px vertically downward.
+    const dragGesture = Gesture.Pan()
+      .activeOffsetY(8)
+      .failOffsetX([-12, 12])
+      .onUpdate((e) => {
+        if (e.translationY >= 0) {
+          translateY.setValue(e.translationY);
+        } else {
+          translateY.setValue(e.translationY / 4);
+        }
       })
-    ).current;
+      .onEnd((e) => {
+        if (e.translationY > 120 || e.velocityY > 600) {
+          Animated.timing(translateY, {
+            toValue: 800,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            translateY.setValue(0);
+            handleRequestClose();
+          });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+            speed: 22,
+          }).start();
+        }
+      });
 
     // Inner content padding mirrors the legacy AppBottomSheet so call-sites
     // that relied on it keep their look. Bottom inset clears the iOS home
@@ -201,7 +190,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     const requestedHeight = snapPoints && snapPoints.length
       ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
       : screenHeight * 0.6;
-    const sheetHeight = Math.min(requestedHeight, screenHeight * 0.7);
+    const sheetHeight = Math.min(requestedHeight, screenHeight * 0.92);
 
     const fillStyle = autoHeight ? { flexShrink: 1 } : { flex: 1 };
     const body = scrollable ? (
@@ -240,7 +229,6 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
           />
           <KeyboardAvoidingView behavior={undefined}>
             <Animated.View
-              {...panResponder.panHandlers}
               style={[
                 styles.sheet,
                 {
@@ -251,8 +239,16 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
                 },
               ]}
             >
-              <View style={styles.dragZone} />
-              {Header}
+              <GestureDetector gesture={dragGesture}>
+                <View style={[styles.dragZone, { backgroundColor: colors.background }]}>
+                  <View style={[styles.grabber, { backgroundColor: colors.border }]} />
+                </View>
+              </GestureDetector>
+              {Header ? (
+                <GestureDetector gesture={dragGesture}>
+                  <View>{Header}</View>
+                </GestureDetector>
+              ) : null}
               {body}
             </Animated.View>
           </KeyboardAvoidingView>
@@ -286,8 +282,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   dragZone: {
-    height: 8,
+    height: 22,
     alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  grabber: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.35,
   },
   header: {
     flexDirection: 'row',
