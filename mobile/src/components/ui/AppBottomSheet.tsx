@@ -144,8 +144,8 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             Animated.spring(translateY, {
               toValue: 0,
               useNativeDriver: true,
-              bounciness: 6,
-              speed: 14,
+              bounciness: 4,
+              speed: 22,
             }).start();
           }
         },
@@ -240,7 +240,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
                 styles.sheet,
                 {
                   backgroundColor: colors.background,
-                  paddingTop: spacing.sm,
+                  paddingTop: 0,
                   ...(autoHeight ? { maxHeight: sheetHeight } : { height: sheetHeight }),
                   transform: [{ translateY }],
                 },
@@ -248,10 +248,8 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             >
               <View
                 {...panResponder.panHandlers}
-                style={styles.dragGrip}
-              >
-                <View style={[styles.handle, { backgroundColor: colors.border }]} />
-              </View>
+                style={styles.dragZone}
+              />
               {Header ? (
                 <View {...panResponder.panHandlers}>{Header}</View>
               ) : null}
@@ -283,20 +281,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheet: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     overflow: 'hidden',
   },
-  dragGrip: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    alignItems: 'center',
+  dragZone: {
+    height: 14,
     alignSelf: 'stretch',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
   },
   header: {
     flexDirection: 'row',

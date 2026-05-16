@@ -1301,9 +1301,6 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   },
   modalContainer: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    flex: 1,
     paddingBottom: Platform.OS === 'ios' ? 34 : 32,
   },
   modalHeader: {
@@ -1320,7 +1317,6 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     color: colors.foreground,
   },
   modalContent: {
-    flex: 1,
     padding: spacing.lg,
   },
   modalFooter: {
