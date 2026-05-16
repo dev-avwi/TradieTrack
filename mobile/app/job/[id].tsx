@@ -10645,7 +10645,7 @@ export default function JobDetailScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Assign Workers</Text>
               <TouchableOpacity onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}>
@@ -10660,7 +10660,7 @@ export default function JobDetailScreen() {
                 </Text>
               </View>
             )}
-            <BottomSheetScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
+            <BottomSheetScrollView style={{ maxHeight: Dimensions.get('window').height * 0.5 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
               {teamMembers.map((member) => {
                 const memberId = member.memberId || member.userId || member.id;
                 const isSelected = selectedWorkerIds.has(memberId);
@@ -11847,8 +11847,8 @@ export default function JobDetailScreen() {
         scrollable={false}
         contentPadding={0}
       >
-        <View style={{ flex: 1 }}>
-          <View style={styles.modalContainer}>
+        <View>
+          <View style={[styles.modalContainer, { flex: undefined as any }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Schedule Job</Text>
               <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
@@ -11856,7 +11856,7 @@ export default function JobDetailScreen() {
               </TouchableOpacity>
             </View>
             
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { flex: undefined as any }]}>
               <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: spacing.md }}>
                 Select date and time for this job:
               </Text>
@@ -11976,7 +11976,7 @@ export default function JobDetailScreen() {
                 </View>
               )}
               
-              <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: 'auto' }}>
+              <View style={{ flexDirection: 'row', gap: spacing.md }}>
                 <TouchableOpacity
                   style={{
                     flex: 1,
