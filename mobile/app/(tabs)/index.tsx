@@ -3033,9 +3033,11 @@ function OwnerDashboardScreen() {
             </View>
             <Text style={styles.headerSubtitle}>
               {new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}
-              {todaysJobs.length > 0 
+              {todaysJobs.length > 0
                 ? ` \u00b7 ${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} today`
-                : ''}
+                : isStaffUser
+                  ? ' \u00b7 Your day is clear'
+                  : ''}
             </Text>
           </View>
           <View style={styles.headerRight}>

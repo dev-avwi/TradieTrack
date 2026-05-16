@@ -400,70 +400,106 @@ export default function StaffTradieDashboard({
     return <Badge variant="outline" className="text-xs">Scheduled</Badge>;
   };
 
+  // Friendly today date for the hero
+  const todayLabel = new Date().toLocaleDateString('en-AU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+
+  const heroSubtitle = activeTimeEntry
+    ? `On the clock — keep it up`
+    : todaysJobs.length > 0
+      ? `${todaysJobs.length} job${todaysJobs.length > 1 ? 's' : ''} on your plate today`
+      : activeJobs.length > 0
+        ? `${activeJobs.length} job${activeJobs.length > 1 ? 's' : ''} coming up`
+        : `Your day is clear. Enjoy it.`;
+
   return (
     <div className="w-full px-4 sm:px-5 py-5 sm:py-6 pb-28 space-y-6" data-testid="staff-tradie-dashboard">
-      {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">
-          {getGreeting()}, {userName}
-        </h1>
-        <p className="text-muted-foreground">
-          {activeJobs.length > 0 
-            ? `You have ${activeJobs.length} assigned job${activeJobs.length > 1 ? 's' : ''}`
-            : "Waiting for job assignments"}
+      {/* Hero */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          {todayLabel}
         </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Updated {new Date().toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+          {getGreeting()}, <span className="text-foreground/80">{userName}</span>
+        </h1>
+        <p className="text-base text-muted-foreground">
+          {heroSubtitle}
         </p>
       </div>
 
       <ConnectionBanner />
 
       {/* Time Tracking Widget */}
-      <Card 
-        className="border-2" 
-        style={{ borderColor: activeTimeEntry ? 'hsl(var(--trade))' : 'hsl(var(--border))' }}
+      <Card
+        className="overflow-hidden border-0"
+        style={{
+          background: activeTimeEntry
+            ? `linear-gradient(135deg, hsl(var(--trade) / 0.12), hsl(var(--trade) / 0.04))`
+            : `hsl(var(--muted) / 0.4)`,
+        }}
         data-testid="time-tracking-widget"
       >
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div 
-                className="h-12 w-12 rounded-full flex items-center justify-center"
-                style={{ 
-                  backgroundColor: activeTimeEntry ? 'hsl(var(--trade) / 0.15)' : 'hsl(var(--muted))'
+        <CardContent className="py-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div
+                className="h-12 w-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  backgroundColor: activeTimeEntry
+                    ? 'hsl(var(--trade) / 0.18)'
+                    : 'hsl(var(--background))',
                 }}
               >
-                <Timer 
-                  className="h-6 w-6" 
-                  style={{ color: activeTimeEntry ? 'hsl(var(--trade))' : 'hsl(var(--muted-foreground))' }}
-                />
+                {activeTimeEntry ? (
+                  <span className="relative flex h-3 w-3">
+                    <span
+                      className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                      style={{ backgroundColor: 'hsl(var(--trade))' }}
+                    />
+                    <span
+                      className="relative inline-flex rounded-full h-3 w-3"
+                      style={{ backgroundColor: 'hsl(var(--trade))' }}
+                    />
+                  </span>
+                ) : (
+                  <Timer className="h-6 w-6 text-muted-foreground" />
+                )}
               </div>
-              <div>
+              <div className="min-w-0">
                 {activeTimeEntry ? (
                   <>
-                    <p className="text-2xl font-bold font-mono" style={{ color: 'hsl(var(--trade))' }}>
+                    <p
+                      className="text-3xl font-bold font-mono tabular-nums tracking-tight"
+                      style={{ color: 'hsl(var(--trade))' }}
+                    >
                       {formatElapsedTime()}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Working on: {activeTimeEntry.jobTitle || 'Current job'}
+                    <p className="text-sm text-muted-foreground truncate">
+                      {activeTimeEntry.jobTitle || 'Current job'}
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-lg font-semibold">
-                      {Math.floor(totalMinutesToday / 60)}h {totalMinutesToday % 60}m today
+                    <p className="text-2xl font-bold tabular-nums tracking-tight">
+                      {Math.floor(totalMinutesToday / 60)}
+                      <span className="text-lg font-semibold text-muted-foreground">h </span>
+                      {totalMinutesToday % 60}
+                      <span className="text-lg font-semibold text-muted-foreground">m</span>
                     </p>
-                    <p className="text-sm text-muted-foreground">No active timer</p>
+                    <p className="text-sm text-muted-foreground">Logged today</p>
                   </>
                 )}
               </div>
             </div>
-            
+
             {activeTimeEntry && (
               <Button
                 size="lg"
                 variant="destructive"
+                className="rounded-xl"
                 onClick={() => stopTimer.mutate()}
                 disabled={stopTimer.isPending}
                 data-testid="button-stop-timer"
@@ -476,59 +512,51 @@ export default function StaffTradieDashboard({
         </CardContent>
       </Card>
 
-      {/* Weekly Summary Stats */}
+      {/* Weekly Summary Stats — single unified card */}
       <section className="space-y-3" data-testid="weekly-summary-section">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" />
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.14em] flex items-center gap-2">
+          <TrendingUp className="h-3.5 w-3.5" />
           This Week
         </h2>
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="bg-muted/30" data-testid="stat-completed">
-            <CardContent className="py-4 px-3 text-center">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
-                style={{ backgroundColor: 'hsl(142.1 76.2% 36.3% / 0.15)' }}
-              >
-                <CheckCircle2 className="h-5 w-5" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+        <Card>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-3 divide-x divide-border">
+              <div className="px-3 py-5 text-center" data-testid="stat-completed">
+                <div className="flex items-center justify-center gap-1.5 mb-2 text-xs font-medium text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5" style={{ color: 'hsl(142.1 76.2% 36.3%)' }} />
+                  Completed
+                </div>
+                <p className="text-3xl font-bold tabular-nums">{weeklyStats.completedCount}</p>
               </div>
-              <p className="text-2xl font-bold">{weeklyStats.completedCount}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-muted/30" data-testid="stat-scheduled">
-            <CardContent className="py-4 px-3 text-center">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
-                style={{ backgroundColor: 'hsl(var(--trade) / 0.15)' }}
-              >
-                <Target className="h-5 w-5" style={{ color: 'hsl(var(--trade))' }} />
+
+              <div className="px-3 py-5 text-center" data-testid="stat-scheduled">
+                <div className="flex items-center justify-center gap-1.5 mb-2 text-xs font-medium text-muted-foreground">
+                  <Target className="h-3.5 w-3.5" style={{ color: 'hsl(var(--trade))' }} />
+                  Scheduled
+                </div>
+                <p className="text-3xl font-bold tabular-nums">{weeklyStats.scheduledCount}</p>
               </div>
-              <p className="text-2xl font-bold">{weeklyStats.scheduledCount}</p>
-              <p className="text-xs text-muted-foreground">Scheduled</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-muted/30" data-testid="stat-hours">
-            <CardContent className="py-4 px-3 text-center">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
-                style={{ backgroundColor: 'hsl(var(--muted))' }}
-              >
-                <Clock className="h-5 w-5 text-muted-foreground" />
+
+              <div className="px-3 py-5 text-center" data-testid="stat-hours">
+                <div className="flex items-center justify-center gap-1.5 mb-2 text-xs font-medium text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  Hours
+                </div>
+                <p className="text-3xl font-bold tabular-nums">
+                  {weeklyStats.weeklyHours}
+                  <span className="text-lg font-semibold text-muted-foreground">h</span>
+                </p>
               </div>
-              <p className="text-2xl font-bold">{weeklyStats.weeklyHours}<span className="text-base font-normal">h</span></p>
-              <p className="text-xs text-muted-foreground">Hours</p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Quick Actions - Permission Gated */}
       {hasAnyQuickActionPermission && (
         <section className="space-y-3" data-testid="quick-actions-section">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Zap className="h-4 w-4" />
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-[0.14em] flex items-center gap-2">
+            <Zap className="h-3.5 w-3.5" />
             Quick Actions
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -665,27 +693,33 @@ export default function StaffTradieDashboard({
 
       {/* No Jobs Assigned */}
       {activeJobs.length === 0 && (
-        <Card className="border-dashed" data-testid="no-jobs-assigned">
-          <CardContent className="py-12 text-center">
-            <div 
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-              style={{ backgroundColor: 'hsl(var(--muted) / 0.5)' }}
+        <Card
+          className="overflow-hidden border-0"
+          style={{
+            background: `linear-gradient(135deg, hsl(var(--trade) / 0.08), hsl(var(--muted) / 0.3))`,
+          }}
+          data-testid="no-jobs-assigned"
+        >
+          <CardContent className="py-10 px-6 text-center">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'hsl(var(--background))' }}
             >
-              <Bell className="h-8 w-8 text-muted-foreground" />
+              <Award className="h-7 w-7" style={{ color: 'hsl(var(--trade))' }} />
             </div>
-            <h3 className="font-semibold text-lg mb-2">No Jobs Assigned Yet</h3>
-            <p className="text-muted-foreground text-sm mb-4 max-w-sm mx-auto">
-              Your manager will assign jobs to you. You'll see them here when they do.
+            <h3 className="font-bold text-xl mb-1.5 tracking-tight">All clear for now</h3>
+            <p className="text-muted-foreground text-sm mb-5 max-w-xs mx-auto leading-relaxed">
+              No jobs assigned yet. Your manager will send work your way and it'll pop up right here.
             </p>
             {onOpenTeamChat && (
               <Button
                 variant="outline"
-                className="rounded-xl"
+                className="rounded-xl bg-background/80 backdrop-blur"
                 onClick={onOpenTeamChat}
                 data-testid="button-open-team-chat"
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
-                Open Team Chat
+                Message the team
               </Button>
             )}
           </CardContent>
