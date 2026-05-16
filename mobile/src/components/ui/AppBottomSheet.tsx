@@ -75,7 +75,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       contentPadding = spacing.lg,
       visible,
       snapPoints,
-      autoHeight = false,
+      autoHeight = true,
     },
     ref
   ) => {
@@ -214,34 +214,13 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     );
 
-    // iOS gets the real native sheet (UIKit pageSheet). This is what the
-    // original "premium" build used — native rounded top, native dim
-    // backdrop, native edge-swipe-to-dismiss, native rubber-band. The
-    // trade-off is that the sheet height is fixed by the system (no
-    // content-hugging detents in RN 0.81 core), so call-sites are expected
-    // to lay out their content with flex: 1 so that primary actions land
-    // at the bottom edge of the sheet.
-    if (Platform.OS === 'ios') {
-      return (
-        <Modal
-          visible={open}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={handleRequestClose}
-        >
-          <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: colors.background }}
-            behavior="padding"
-          >
-            {Header}
-            {body}
-          </KeyboardAvoidingView>
-        </Modal>
-      );
-    }
-
-    // Android keeps the custom slide-up sheet — RN Modal on Android has no
-    // native bottom-sheet equivalent.
+    // Single content-hugging slide-up sheet for both platforms. We tried
+    // iOS `presentationStyle="pageSheet"` (truly native) but RN 0.81 core
+    // can't drive UISheetPresentationController detents, so pageSheet is
+    // always full-sheet height with empty space under short content. This
+    // custom transparent Modal hugs its content (capped at 85% screen)
+    // while keeping the pageSheet *look*: rounded top, grabber, dim
+    // backdrop, slide-up animation, drag-to-dismiss.
     return (
       <Modal
         visible={open}
