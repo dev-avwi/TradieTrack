@@ -111,7 +111,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       <View
         style={[
           styles.header,
-          { borderBottomColor: colors.border, backgroundColor: colors.card },
+          { borderBottomColor: colors.border, backgroundColor: colors.background },
         ]}
       >
         <Text
@@ -147,14 +147,14 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
 
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.card, flex: 1 }}
+        style={{ backgroundColor: colors.background, flex: 1 }}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
     ) : (
-      <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>
+      <View style={[innerStyle, { backgroundColor: colors.background, flex: 1 }]}>
         {children}
       </View>
     );
@@ -179,7 +179,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
               style={[
                 styles.sheet,
                 {
-                  backgroundColor: colors.card,
+                  backgroundColor: colors.background,
                   paddingTop: spacing.sm,
                   height: sheetHeight,
                 },
