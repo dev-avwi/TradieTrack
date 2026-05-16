@@ -136,13 +136,13 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     ) : null;
 
     const screenHeight = Dimensions.get('window').height;
-    // Honor legacy gorhom snapPoints — use the largest as the sheet's height.
-    // Falls back to 90% if not provided so the sheet is always tall enough
-    // for its `flex: 1` children (the common pattern across the app).
+    // Honor legacy gorhom snapPoints but cap at 70% so sheets don't dominate
+    // the screen. Most call-sites pass 90% as a safety upper bound, not as a
+    // visual preference — the May-2 baseline felt closer to two-thirds.
     const requestedHeight = snapPoints && snapPoints.length
       ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
-      : screenHeight * 0.9;
-    const sheetHeight = Math.min(requestedHeight, screenHeight * 0.95);
+      : screenHeight * 0.7;
+    const sheetHeight = Math.min(requestedHeight, screenHeight * 0.7);
 
     const body = scrollable ? (
       <ScrollView
