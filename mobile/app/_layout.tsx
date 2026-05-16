@@ -40,7 +40,6 @@ import { initGlobalIAP } from '../src/lib/iap-global';
 import Toast from 'react-native-toast-message';
 import { buildToastConfig } from '../src/lib/toast';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ActionSheetProvider } from '../src/components/ui/ActionSheet';
 import { ConfirmDialogProvider } from '../src/components/ui/ConfirmDialog';
 import {
@@ -919,7 +918,6 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <SafeAreaProvider>
             <ThemeProvider>
-              <BottomSheetModalProvider>
                 <ScrollProvider>
                   <TerminalProvider>
                     <CustomAlertProvider>
@@ -931,7 +929,6 @@ export default function RootLayout() {
                     </CustomAlertProvider>
                   </TerminalProvider>
                 </ScrollProvider>
-              </BottomSheetModalProvider>
             </ThemeProvider>
           </SafeAreaProvider>
         </QueryClientProvider>
