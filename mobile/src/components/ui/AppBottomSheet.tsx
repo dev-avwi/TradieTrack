@@ -1,6 +1,7 @@
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -18,6 +19,8 @@ import {
   ScrollViewProps,
   FlatList,
   Dimensions,
+  PanResponder,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
@@ -99,6 +102,41 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       onDismiss?.();
     }, [isControlled, onDismiss]);
 
+    // Drag-to-dismiss: track vertical translation and dismiss when the user
+    // drags down past a threshold or releases with downward velocity.
+    const translateY = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+      if (open) translateY.setValue(0);
+    }, [open, translateY]);
+    const panResponder = useRef(
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_e, g) =>
+          Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+        onPanResponderMove: (_e, g) => {
+          if (g.dy > 0) translateY.setValue(g.dy);
+        },
+        onPanResponderRelease: (_e, g) => {
+          if (g.dy > 120 || g.vy > 0.6) {
+            Animated.timing(translateY, {
+              toValue: 800,
+              duration: 180,
+              useNativeDriver: true,
+            }).start(() => {
+              translateY.setValue(0);
+              handleRequestClose();
+            });
+          } else {
+            Animated.spring(translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+              bounciness: 4,
+            }).start();
+          }
+        },
+      })
+    ).current;
+
     // Inner content padding mirrors the legacy AppBottomSheet so call-sites
     // that relied on it keep their look. Bottom inset clears the iOS home
     // indicator / Android nav bar.
@@ -175,20 +213,26 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
-            <View
+            <Animated.View
               style={[
                 styles.sheet,
                 {
                   backgroundColor: colors.background,
                   paddingTop: spacing.sm,
                   height: sheetHeight,
+                  transform: [{ translateY }],
                 },
               ]}
             >
-              <View style={[styles.handle, { backgroundColor: colors.border }]} />
+              <View
+                {...panResponder.panHandlers}
+                style={styles.dragGrip}
+              >
+                <View style={[styles.handle, { backgroundColor: colors.border }]} />
+              </View>
               {Header}
               {body}
-            </View>
+            </Animated.View>
           </KeyboardAvoidingView>
         </View>
       </Modal>
@@ -219,12 +263,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xl,
     overflow: 'hidden',
   },
+  dragGrip: {
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
   handle: {
-    alignSelf: 'center',
     width: 40,
     height: 4,
     borderRadius: 2,
-    marginBottom: spacing.sm,
   },
   header: {
     flexDirection: 'row',
