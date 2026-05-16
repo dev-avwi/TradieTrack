@@ -49,6 +49,14 @@ export interface AppBottomSheetProps {
   visible?: boolean;
 }
 
+function parseSnapPoint(point: string | number, screenHeight: number): number {
+  if (typeof point === 'number') return point;
+  const pct = /^(\d+(?:\.\d+)?)%$/.exec(point);
+  if (pct) return screenHeight * (parseFloat(pct[1]) / 100);
+  const num = parseFloat(point);
+  return isNaN(num) ? 0 : num;
+}
+
 const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
   (
     {
@@ -59,6 +67,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       scrollable = true,
       contentPadding = spacing.lg,
       visible,
+      snapPoints,
     },
     ref
   ) => {
@@ -127,20 +136,24 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     ) : null;
 
     const screenHeight = Dimensions.get('window').height;
-    // Cap the scrollable region. We subtract a generous chunk for header,
-    // handle, status bar, and safe-area so the sheet never overflows.
-    const maxBodyHeight = screenHeight * 0.85 - 120;
+    // Honor legacy gorhom snapPoints — use the largest as the sheet's height.
+    // Falls back to 90% if not provided so the sheet is always tall enough
+    // for its `flex: 1` children (the common pattern across the app).
+    const requestedHeight = snapPoints && snapPoints.length
+      ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
+      : screenHeight * 0.9;
+    const sheetHeight = Math.min(requestedHeight, screenHeight * 0.95);
 
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.card, maxHeight: maxBodyHeight }}
+        style={{ backgroundColor: colors.card, flex: 1 }}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
     ) : (
-      <View style={[innerStyle, { backgroundColor: colors.card, maxHeight: maxBodyHeight }]}>
+      <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>
         {children}
       </View>
     );
@@ -167,6 +180,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
                 {
                   backgroundColor: colors.card,
                   paddingTop: spacing.sm,
+                  height: sheetHeight,
                 },
               ]}
             >
