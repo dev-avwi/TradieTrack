@@ -115,12 +115,16 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     }, [open, translateY]);
     const panResponder = useRef(
       PanResponder.create({
-        // Capture on touch immediately so the user gets 1:1 finger tracking
-        // from the very first frame — feels premium / iOS-native.
-        onStartShouldSetPanResponder: () => true,
-        onStartShouldSetPanResponderCapture: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponderCapture: () => true,
+        // Don't steal taps — only take over once the user has clearly
+        // started a vertical drag. This lets buttons / inputs / scroll
+        // views inside the sheet keep working while still allowing
+        // swipe-down-to-dismiss from anywhere on the sheet.
+        onStartShouldSetPanResponder: () => false,
+        onStartShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponder: (_e, g) =>
+          Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
+        onMoveShouldSetPanResponderCapture: (_e, g) =>
+          Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
         onPanResponderMove: (_e, g) => {
           // Follow the finger downward, and a tiny bit upward with rubber-band
           // resistance for a premium bouncy feel.
@@ -236,6 +240,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
           />
           <KeyboardAvoidingView behavior={undefined}>
             <Animated.View
+              {...panResponder.panHandlers}
               style={[
                 styles.sheet,
                 {
@@ -246,13 +251,8 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
                 },
               ]}
             >
-              <View
-                {...panResponder.panHandlers}
-                style={styles.dragZone}
-              />
-              {Header ? (
-                <View {...panResponder.panHandlers}>{Header}</View>
-              ) : null}
+              <View style={styles.dragZone} />
+              {Header}
               {body}
             </Animated.View>
           </KeyboardAvoidingView>
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   dragZone: {
-    height: 14,
+    height: 8,
     alignSelf: 'stretch',
   },
   header: {

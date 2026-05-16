@@ -24,6 +24,7 @@ import {
   AppStateStatus,
   ActionSheetIOS,
   InteractionManager,
+  LayoutAnimation,
 } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -1301,7 +1302,6 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
   },
   modalContainer: {
     backgroundColor: colors.background,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 32,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -11867,7 +11867,10 @@ export default function JobDetailScreen() {
                   padding: spacing.md,
                   marginBottom: spacing.md,
                 }}
-                onPress={() => setShowDatePicker(true)}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setShowDatePicker(s => !s);
+                }}
               >
                 <Feather name="calendar" size={20} color={colors.primary} style={{ marginRight: spacing.md }} />
                 <Text style={{ color: colors.foreground, flex: 1, fontSize: 15 }}>
@@ -11888,7 +11891,10 @@ export default function JobDetailScreen() {
                   padding: spacing.md,
                   marginBottom: spacing.lg,
                 }}
-                onPress={() => setShowTimePicker(true)}
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setShowTimePicker(s => !s);
+                }}
               >
                 <Feather name="clock" size={20} color={colors.primary} style={{ marginRight: spacing.md }} />
                 <Text style={{ color: colors.foreground, flex: 1, fontSize: 15 }}>
@@ -11939,7 +11945,10 @@ export default function JobDetailScreen() {
                   </ScrollView>
                   <TouchableOpacity
                     style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.md, alignItems: 'center' }}
-                    onPress={() => setShowDatePicker(false)}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setShowDatePicker(false);
+                    }}
                   >
                     <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Done</Text>
                   </TouchableOpacity>
@@ -11963,7 +11972,10 @@ export default function JobDetailScreen() {
                   />
                   <TouchableOpacity
                     style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center' }}
-                    onPress={() => setShowTimePicker(false)}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setShowTimePicker(false);
+                    }}
                   >
                     <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Done</Text>
                   </TouchableOpacity>
@@ -12282,12 +12294,13 @@ export default function JobDetailScreen() {
         visible={showCreateSwmsModal}
         onDismiss={() => setShowCreateSwmsModal(false)}
         snapPoints={['90%']}
+        autoHeight={false}
         scrollable={false}
         contentPadding={0}
       >
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={{ flex: 1 }}>
-            <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
+            <View style={[styles.modalContainer, { flex: 1 }]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Create SWMS</Text>
                 <TouchableOpacity onPress={() => setShowCreateSwmsModal(false)}>
