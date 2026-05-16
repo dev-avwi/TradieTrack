@@ -136,25 +136,46 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     ) : null;
 
     const screenHeight = Dimensions.get('window').height;
-    // Honor legacy gorhom snapPoints but cap at 60% so sheets stay close to
-    // the May-2 baseline feel. Most call-sites pass 90% as a safety upper
-    // bound, not as a visual preference.
-    const requestedHeight = snapPoints && snapPoints.length
+    // Honor legacy gorhom snapPoints as the MAX height. Sheet hugs content
+    // below that — short sheets render small, tall sheets cap at the snap.
+    const requestedMax = snapPoints && snapPoints.length
       ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
-      : screenHeight * 0.6;
-    const sheetHeight = Math.min(requestedHeight, screenHeight * 0.6);
+      : screenHeight * 0.9;
+    const maxSheetHeight = Math.min(requestedMax, screenHeight * 0.9);
+
+    // Strip `flex: 1` from the immediate call-site child so its layout sizes
+    // to its actual content instead of demanding the full sheet height. This
+    // is what unblocks content-aware sheet sizing without editing 18 call-sites.
+    const flatten = (s: any): any =>
+      Array.isArray(s) ? s.map(flatten) : s;
+    const stripFlex = (style: any): any => {
+      if (!style) return style;
+      if (Array.isArray(style)) return style.map(stripFlex);
+      if (typeof style === 'object' && ('flex' in style || 'flexGrow' in style)) {
+        const { flex: _f, flexGrow: _g, ...rest } = style;
+        return rest;
+      }
+      return style;
+    };
+    const childArray = React.Children.toArray(children);
+    const processedChildren =
+      childArray.length === 1 && React.isValidElement(childArray[0])
+        ? React.cloneElement(childArray[0] as React.ReactElement<any>, {
+            style: stripFlex(flatten((childArray[0] as React.ReactElement<any>).props.style)),
+          })
+        : children;
 
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.card, flex: 1 }}
+        style={{ backgroundColor: colors.card, maxHeight: maxSheetHeight }}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
       >
-        {children}
+        {processedChildren}
       </ScrollView>
     ) : (
-      <View style={[innerStyle, { backgroundColor: colors.card, flex: 1 }]}>
-        {children}
+      <View style={[innerStyle, { backgroundColor: colors.card }]}>
+        {processedChildren}
       </View>
     );
 
@@ -180,7 +201,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
                 {
                   backgroundColor: colors.card,
                   paddingTop: spacing.sm,
-                  height: sheetHeight,
+                  maxHeight: maxSheetHeight,
                 },
               ]}
             >
