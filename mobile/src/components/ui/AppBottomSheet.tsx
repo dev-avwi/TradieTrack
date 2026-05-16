@@ -50,6 +50,10 @@ export interface AppBottomSheetProps {
   contentPadding?: number;
   /** Declarative visibility. */
   visible?: boolean;
+  /** When true, the sheet hugs its content (with snapPoint as a max cap)
+   *  instead of forcing a fixed height. Use this for sheets whose content
+   *  is short (e.g. empty states) so they don't reserve a blank box. */
+  autoHeight?: boolean;
 }
 
 function parseSnapPoint(point: string | number, screenHeight: number): number {
@@ -71,6 +75,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       contentPadding = spacing.lg,
       visible,
       snapPoints,
+      autoHeight = false,
     },
     ref
   ) => {
@@ -110,11 +115,20 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     }, [open, translateY]);
     const panResponder = useRef(
       PanResponder.create({
-        onStartShouldSetPanResponder: () => false,
-        onMoveShouldSetPanResponder: (_e, g) =>
-          Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
+        // Capture on touch immediately so the user gets 1:1 finger tracking
+        // from the very first frame — feels premium / iOS-native.
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderMove: (_e, g) => {
-          if (g.dy > 0) translateY.setValue(g.dy);
+          // Follow the finger downward, and a tiny bit upward with rubber-band
+          // resistance for a premium bouncy feel.
+          if (g.dy >= 0) {
+            translateY.setValue(g.dy);
+          } else {
+            translateY.setValue(g.dy / 3);
+          }
         },
         onPanResponderRelease: (_e, g) => {
           if (g.dy > 120 || g.vy > 0.6) {
@@ -130,10 +144,12 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             Animated.spring(translateY, {
               toValue: 0,
               useNativeDriver: true,
-              bounciness: 4,
+              bounciness: 6,
+              speed: 14,
             }).start();
           }
         },
+        onPanResponderTerminationRequest: () => false,
       })
     ).current;
 
@@ -183,16 +199,17 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       : screenHeight * 0.6;
     const sheetHeight = Math.min(requestedHeight, screenHeight * 0.7);
 
+    const fillStyle = autoHeight ? { flexShrink: 1 } : { flex: 1 };
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.background, flex: 1 }}
+        style={{ backgroundColor: colors.background, ...fillStyle }}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
     ) : (
-      <View style={[innerStyle, { backgroundColor: colors.background, flex: 1 }]}>
+      <View style={[innerStyle, { backgroundColor: colors.background, ...fillStyle }]}>
         {children}
       </View>
     );
@@ -219,7 +236,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
                 {
                   backgroundColor: colors.background,
                   paddingTop: spacing.sm,
-                  height: sheetHeight,
+                  ...(autoHeight ? { maxHeight: sheetHeight } : { height: sheetHeight }),
                   transform: [{ translateY }],
                 },
               ]}

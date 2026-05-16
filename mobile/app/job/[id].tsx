@@ -10644,8 +10644,9 @@ export default function JobDetailScreen() {
         snapPoints={['85%']}
         scrollable={false}
         contentPadding={0}
+        autoHeight
       >
-        <View style={{ flex: 1 }}>
+        <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Assign Workers</Text>
               <TouchableOpacity onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}>
@@ -10660,7 +10661,7 @@ export default function JobDetailScreen() {
                 </Text>
               </View>
             )}
-            <BottomSheetScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
+            <BottomSheetScrollView style={{ flexShrink: 1, maxHeight: Dimensions.get('window').height * 0.5 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
               {teamMembers.map((member) => {
                 const memberId = member.memberId || member.userId || member.id;
                 const isSelected = selectedWorkerIds.has(memberId);
