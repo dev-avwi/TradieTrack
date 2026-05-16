@@ -75,13 +75,12 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     const insets = useSafeAreaInsets();
     const sheetRef = useRef<BottomSheetModal>(null);
 
-    // Default: hug content only when no snapPoints are provided. If a
-    // call-site explicitly asks for snap points, respect them as the source
-    // of truth (mixing dynamic + snapPoints in gorhom v5 reorders snaps).
-    const dynamic =
-      autoHeight ??
-      enableDynamicSizing ??
-      (!snapPoints || snapPoints.length === 0);
+    // Always allow dynamic sizing (content-hugging). gorhom v5 prepends a
+    // dynamic snap point at index 0 based on measured content height; the
+    // call-site's snapPoints (or our default ['90%']) act as a max cap. If
+    // gorhom fails to measure content (rare, but happens with weird flex
+    // children) the snap point ensures the sheet still opens visibly.
+    const dynamic = autoHeight ?? enableDynamicSizing ?? true;
 
     // Imperative API
     useImperativeHandle(
@@ -105,11 +104,12 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       onDismiss?.();
     }, [onDismiss]);
 
-    // Convert legacy snapPoints (numbers + percent strings) into gorhom format
-    // (it accepts both, but normalize to strings for stability).
+    // Convert legacy snapPoints (numbers + percent strings) into gorhom format.
+    // Always provide at least one snap point so the sheet has a guaranteed
+    // visible height even if dynamic measurement fails (acts as a max cap).
     const computedSnapPoints = useMemo(() => {
-      if (!snapPoints || snapPoints.length === 0) return undefined;
-      return snapPoints.map((p) => (typeof p === 'number' ? p : String(p)));
+      const src = !snapPoints || snapPoints.length === 0 ? ['90%'] : snapPoints;
+      return src.map((p) => (typeof p === 'number' ? p : String(p)));
     }, [snapPoints]);
 
     const renderBackdrop = useCallback(
