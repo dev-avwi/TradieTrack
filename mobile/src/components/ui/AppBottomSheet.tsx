@@ -142,11 +142,10 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     const maxSheetHeight = screenHeight * 0.7;
     void snapPoints;
 
-    // Strip `flex: 1` from the immediate call-site child so its layout sizes
-    // to its actual content instead of demanding the full sheet height. This
-    // is what unblocks content-aware sheet sizing without editing 18 call-sites.
-    const flatten = (s: any): any =>
-      Array.isArray(s) ? s.map(flatten) : s;
+    // Strip `flex: 1` from the immediate call-site child AND inject a numeric
+    // maxHeight. Without the maxHeight, an inner ScrollView in the call-site
+    // chain has no bounded parent and renders at random screen-sized heights,
+    // leaving large empty space below short content (e.g. Choose Template).
     const stripFlex = (style: any): any => {
       if (!style) return style;
       if (Array.isArray(style)) return style.map(stripFlex);
@@ -160,7 +159,10 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     const processedChildren =
       childArray.length === 1 && React.isValidElement(childArray[0])
         ? React.cloneElement(childArray[0] as React.ReactElement<any>, {
-            style: stripFlex(flatten((childArray[0] as React.ReactElement<any>).props.style)),
+            style: [
+              stripFlex((childArray[0] as React.ReactElement<any>).props.style),
+              { maxHeight: maxSheetHeight },
+            ],
           })
         : children;
 
