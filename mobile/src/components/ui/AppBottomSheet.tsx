@@ -19,8 +19,8 @@ import {
   ScrollViewProps,
   FlatList,
   Dimensions,
-  Animated,
   PanResponder,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
@@ -34,17 +34,34 @@ export interface AppBottomSheetRef {
 
 export interface AppBottomSheetProps {
   children: ReactNode;
+  /** Legacy gorhom prop — accepted but ignored. */
   snapPoints?: (string | number)[];
+  /** Legacy gorhom prop — accepted but ignored. */
   enableDynamicSizing?: boolean;
+  /** Legacy gorhom prop — accepted but ignored. */
   enablePanDownToClose?: boolean;
   onDismiss?: () => void;
   title?: string;
   showCloseButton?: boolean;
+  /** Legacy gorhom prop — accepted but ignored. */
   keyboardBehavior?: 'interactive' | 'extend' | 'fillParent';
+  /** Wrap children in a ScrollView when true (default). */
   scrollable?: boolean;
   contentPadding?: number;
+  /** Declarative visibility. */
   visible?: boolean;
+  /** When true, the sheet hugs its content (with snapPoint as a max cap)
+   *  instead of forcing a fixed height. Use this for sheets whose content
+   *  is short (e.g. empty states) so they don't reserve a blank box. */
   autoHeight?: boolean;
+}
+
+function parseSnapPoint(point: string | number, screenHeight: number): number {
+  if (typeof point === 'number') return point;
+  const pct = /^(\d+(?:\.\d+)?)%$/.exec(point);
+  if (pct) return screenHeight * (parseFloat(pct[1]) / 100);
+  const num = parseFloat(point);
+  return isNaN(num) ? 0 : num;
 }
 
 const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
@@ -57,12 +74,16 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       scrollable = true,
       contentPadding = spacing.lg,
       visible,
+      snapPoints,
+      autoHeight = true,
     },
     ref
   ) => {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
 
+    // Track whether the modal is open. When the parent supplies `visible`,
+    // it's the source of truth. Otherwise present()/dismiss() drive it.
     const [internalVisible, setInternalVisible] = useState(false);
     const isControlled = visible !== undefined;
     const open = isControlled ? !!visible : internalVisible;
@@ -86,6 +107,55 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       onDismiss?.();
     }, [isControlled, onDismiss]);
 
+    // Drag-to-dismiss: track vertical translation and dismiss when the user
+    // drags down past a threshold or releases with downward velocity.
+    const translateY = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+      if (open) translateY.setValue(0);
+    }, [open, translateY]);
+    const panResponder = useRef(
+      PanResponder.create({
+        // Capture on touch immediately so the user gets 1:1 finger tracking
+        // from the very first frame — feels premium / iOS-native.
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
+        onPanResponderMove: (_e, g) => {
+          // Follow the finger downward, and a tiny bit upward with rubber-band
+          // resistance for a premium bouncy feel.
+          if (g.dy >= 0) {
+            translateY.setValue(g.dy);
+          } else {
+            translateY.setValue(g.dy / 3);
+          }
+        },
+        onPanResponderRelease: (_e, g) => {
+          if (g.dy > 120 || g.vy > 0.6) {
+            Animated.timing(translateY, {
+              toValue: 800,
+              duration: 180,
+              useNativeDriver: true,
+            }).start(() => {
+              translateY.setValue(0);
+              handleRequestClose();
+            });
+          } else {
+            Animated.spring(translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+              bounciness: 6,
+              speed: 14,
+            }).start();
+          }
+        },
+        onPanResponderTerminationRequest: () => false,
+      })
+    ).current;
+
+    // Inner content padding mirrors the legacy AppBottomSheet so call-sites
+    // that relied on it keep their look. Bottom inset clears the iOS home
+    // indicator / Android nav bar.
     const innerStyle = {
       paddingHorizontal: contentPadding,
       paddingBottom: contentPadding + Math.max(insets.bottom, 0),
@@ -99,7 +169,10 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         ]}
       >
         <Text
-          style={[typography.cardTitle, { color: colors.foreground, flex: 1 }]}
+          style={[
+            typography.cardTitle,
+            { color: colors.foreground, flex: 1 },
+          ]}
           numberOfLines={1}
         >
           {title || ''}
@@ -116,139 +189,82 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     ) : null;
 
+    const screenHeight = Dimensions.get('window').height;
+    // Premium-feel sizing: honor the call-site snapPoint as the SHEET HEIGHT
+    // (not just a max), so call-sites with `flex: 1` wrappers stretch their
+    // content to the full sheet — buttons land at the bottom of the sheet
+    // instead of leaving a gap above the home indicator. Hard cap at 70%.
+    const requestedHeight = snapPoints && snapPoints.length
+      ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
+      : screenHeight * 0.6;
+    const sheetHeight = Math.min(requestedHeight, screenHeight * 0.7);
+
+    const fillStyle = autoHeight ? { flexShrink: 1 } : { flex: 1 };
     const body = scrollable ? (
       <ScrollView
-        style={{ backgroundColor: colors.background, flex: 1 }}
+        style={{ backgroundColor: colors.background, ...fillStyle }}
         contentContainerStyle={innerStyle}
         keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
     ) : (
-      <View style={[innerStyle, { backgroundColor: colors.background, flex: 1 }]}>
+      <View style={[innerStyle, { backgroundColor: colors.background, ...fillStyle }]}>
         {children}
       </View>
     );
 
-    // iOS: native pageSheet (UIKit). Real native rounded top, native dim,
-    // native edge-swipe-to-dismiss, native rubber-band. Height is fixed by
-    // the system — RN 0.81 doesn't expose iOS detents, so the sheet always
-    // opens at the default pageSheet height regardless of content.
-    if (Platform.OS === 'ios') {
-      return (
-        <Modal
-          visible={open}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={handleRequestClose}
-        >
-          <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: colors.background }}
-            behavior="padding"
-          >
-            {Header}
-            {body}
-          </KeyboardAvoidingView>
-        </Modal>
-      );
-    }
-
-    // Android: custom slide-up sheet (no native equivalent).
+    // Single content-hugging slide-up sheet for both platforms. We tried
+    // iOS `presentationStyle="pageSheet"` (truly native) but RN 0.81 core
+    // can't drive UISheetPresentationController detents, so pageSheet is
+    // always full-sheet height with empty space under short content. This
+    // custom transparent Modal hugs its content (capped at 85% screen)
+    // while keeping the pageSheet *look*: rounded top, grabber, dim
+    // backdrop, slide-up animation, drag-to-dismiss.
     return (
-      <AndroidSheet
-        open={open}
-        onClose={handleRequestClose}
-        background={colors.background}
-        border={colors.border}
+      <Modal
+        visible={open}
+        animationType="slide"
+        transparent
+        onRequestClose={handleRequestClose}
+        statusBarTranslucent
       >
-        {Header}
-        {body}
-      </AndroidSheet>
+        <View style={styles.root}>
+          <Pressable
+            style={styles.backdropFill}
+            onPress={handleRequestClose}
+          />
+          <KeyboardAvoidingView behavior={undefined}>
+            <Animated.View
+              style={[
+                styles.sheet,
+                {
+                  backgroundColor: colors.background,
+                  paddingTop: spacing.sm,
+                  ...(autoHeight ? { maxHeight: sheetHeight } : { height: sheetHeight }),
+                  transform: [{ translateY }],
+                },
+              ]}
+            >
+              <View
+                {...panResponder.panHandlers}
+                style={styles.dragGrip}
+              >
+                <View style={[styles.handle, { backgroundColor: colors.border }]} />
+              </View>
+              {Header ? (
+                <View {...panResponder.panHandlers}>{Header}</View>
+              ) : null}
+              {body}
+            </Animated.View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     );
   }
 );
 
 AppBottomSheet.displayName = 'AppBottomSheet';
-
-// Android slide-up sheet with drag-to-dismiss.
-function AndroidSheet({
-  open,
-  onClose,
-  background,
-  border,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  background: string;
-  border: string;
-  children: ReactNode;
-}) {
-  const screenHeight = Dimensions.get('window').height;
-  const translateY = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (open) translateY.setValue(0);
-  }, [open, translateY]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_e, g) => {
-        if (g.dy >= 0) translateY.setValue(g.dy);
-      },
-      onPanResponderRelease: (_e, g) => {
-        if (g.dy > 120 || g.vy > 0.6) {
-          Animated.timing(translateY, {
-            toValue: 800,
-            duration: 180,
-            useNativeDriver: true,
-          }).start(() => {
-            translateY.setValue(0);
-            onClose();
-          });
-        } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 6,
-            speed: 14,
-          }).start();
-        }
-      },
-    })
-  ).current;
-
-  return (
-    <Modal
-      visible={open}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <View style={styles.androidRoot}>
-        <Pressable style={styles.androidBackdrop} onPress={onClose} />
-        <Animated.View
-          style={[
-            styles.androidSheet,
-            {
-              backgroundColor: background,
-              maxHeight: screenHeight * 0.9,
-              transform: [{ translateY }],
-            },
-          ]}
-        >
-          <View {...panResponder.panHandlers} style={styles.dragGrip}>
-            <View style={[styles.handle, { backgroundColor: border }]} />
-          </View>
-          {children}
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-}
 
 export function useAppBottomSheet() {
   const ref = useRef<AppBottomSheetRef>(null);
@@ -258,6 +274,30 @@ export function useAppBottomSheet() {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  backdropFill: {
+    flex: 1,
+  },
+  sheet: {
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  dragGrip: {
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+    alignItems: 'center',
+    alignSelf: 'stretch',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -274,36 +314,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  androidRoot: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  androidBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  androidSheet: {
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    overflow: 'hidden',
-  },
-  dragGrip: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-    alignItems: 'center',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-  },
 });
 
 export { AppBottomSheet };
 
-export const BottomSheetScrollView = (props: ScrollViewProps) => (
-  <ScrollView {...props} />
-);
+// Back-compat re-exports so existing call-sites that imported these from
+// AppBottomSheet keep working. They now resolve to plain react-native
+// primitives instead of the gorhom variants.
+export const BottomSheetScrollView = (
+  props: ScrollViewProps,
+) => <ScrollView {...props} />;
 export const BottomSheetView = View;
 export const BottomSheetFlatList = FlatList;
 
