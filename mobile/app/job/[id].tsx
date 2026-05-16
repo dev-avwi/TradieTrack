@@ -51,6 +51,7 @@ import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { useTheme, ThemeColors, colorWithOpacity } from '../../src/lib/theme';
 import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { BottomSheetScrollView } from '../../src/components/ui/AppBottomSheet';
+import { useScheduleSheetStore } from '../../src/lib/schedule-sheet-store';
 import { MobileSendModal } from '../../src/components/MobileSendModal';
 import { spacing, radius, shadows, iconSizes, typography, pageShell } from '../../src/lib/design-tokens';
 import { getAvatarColor } from '../../src/lib/avatar-colors';
@@ -4952,8 +4953,10 @@ export default function JobDetailScreen() {
 
     // Show schedule picker when scheduling a job
     if (action.next === 'scheduled') {
-      setScheduleDate(job.scheduledAt ? new Date(job.scheduledAt) : new Date());
-      setShowScheduleModal(true);
+      const initial = job.scheduledAt ? new Date(job.scheduledAt) : new Date();
+      setScheduleDate(initial);
+      useScheduleSheetStore.getState().open(initial, handleConfirmSchedule);
+      router.push('/(modals)/job-schedule' as any);
       return;
     }
 
@@ -5326,60 +5329,58 @@ export default function JobDetailScreen() {
     setIsCompletingJob(false);
   };
 
-  const handleConfirmSchedule = async () => {
+  const handleConfirmSchedule = async (date: Date) => {
     if (!job) return;
-    
+
     // Validate that the selected time is not in the past
     const now = new Date();
-    if (scheduleDate < now) {
+    if (date < now) {
       Alert.alert('Invalid Time', 'Please select a future date and time for scheduling.');
-      return;
+      throw new Error('past_date');
     }
-    
+
     const { isOnline } = useOfflineStore.getState();
     const previousStatus = job.status;
-    const scheduledAtISO = scheduleDate.toISOString();
-    
+    const scheduledAtISO = date.toISOString();
+
     // Optimistic UI update
     setJob({ ...job, status: 'scheduled', scheduledAt: scheduledAtISO });
-    setShowScheduleModal(false);
-    
+
     if (!isOnline) {
       await offlineStorage.updateJobStatusOffline(job.id, 'scheduled', previousStatus);
       await offlineStorage.updateJobOffline(job.id, { scheduledAt: scheduledAtISO });
       showToast({ type: 'info', message: 'Saved Offline', description: 'Job will be scheduled when online' });
       return;
     }
-    
+
     try {
       const response = await api.patch(`/api/jobs/${job.id}`, {
         status: 'scheduled',
         scheduledAt: scheduledAtISO,
       });
-      
+
       if (response.data) {
-        // Refresh the jobs store to update any cached job lists
         const { fetchJobs, fetchTodaysJobs } = useJobsStore.getState();
         fetchJobs();
         fetchTodaysJobs();
-        
         showToast({ type: 'success', message: 'Job scheduled successfully' });
       } else {
-        // Revert on failure
         setJob({ ...job, status: previousStatus });
-        setShowScheduleModal(true);
         showToast({ type: 'error', message: 'Failed to schedule job' });
+        throw new Error('save_failed');
       }
     } catch (error: any) {
+      if (error?.message === 'save_failed' || error?.message === 'past_date') {
+        throw error;
+      }
       if (error.message?.includes('Network') || error.code === 'ECONNABORTED') {
         await offlineStorage.updateJobStatusOffline(job.id, 'scheduled', previousStatus);
         await offlineStorage.updateJobOffline(job.id, { scheduledAt: scheduledAtISO });
         showToast({ type: 'info', message: 'Saved Offline', description: 'Job will be scheduled when connection is restored' });
       } else {
-        // Revert on error
         setJob({ ...job, status: previousStatus });
-        setShowScheduleModal(true);
         showToast({ type: 'error', message: 'Failed to schedule job. Please try again.' });
+        throw error;
       }
     }
   };
@@ -6143,8 +6144,10 @@ export default function JobDetailScreen() {
  
           style={styles.card}
           onPress={() => {
-            setScheduleDate(new Date(job.scheduledAt!));
-            setShowScheduleModal(true);
+            const initial = new Date(job.scheduledAt!);
+            setScheduleDate(initial);
+            useScheduleSheetStore.getState().open(initial, handleConfirmSchedule);
+            router.push('/(modals)/job-schedule' as any);
           }}
         >
           <View style={[styles.cardIconContainer, { backgroundColor: `${colors.primary}15` }]}>
@@ -11838,172 +11841,7 @@ export default function JobDetailScreen() {
         </View>
       </AppBottomSheet>
 
-      {/* Schedule Job Modal */}
-      <AppBottomSheet
-        visible={showScheduleModal}
-        onDismiss={() => setShowScheduleModal(false)}
-        scrollable={false}
-        contentPadding={0}
-      >
-        <View>
-          <View style={[styles.modalContainer, { flex: undefined as any }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Schedule Job</Text>
-              <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
-                <Feather name="x" size={24} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={[styles.modalContent, { flex: undefined as any }]}>
-              <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: spacing.md }}>
-                Select date and time for this job:
-              </Text>
-              
-              {/* Date Picker Button */}
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: colors.background,
-                  borderRadius: radius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  padding: spacing.md,
-                  marginBottom: spacing.md,
-                }}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Feather name="calendar" size={20} color={colors.primary} style={{ marginRight: spacing.md }} />
-                <Text style={{ color: colors.foreground, flex: 1, fontSize: 15 }}>
-                  {scheduleDate.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
-                </Text>
-                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
-              
-              {/* Time Picker Button */}
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: colors.background,
-                  borderRadius: radius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  padding: spacing.md,
-                  marginBottom: spacing.lg,
-                }}
-                onPress={() => setShowTimePicker(true)}
-              >
-                <Feather name="clock" size={20} color={colors.primary} style={{ marginRight: spacing.md }} />
-                <Text style={{ color: colors.foreground, flex: 1, fontSize: 15 }}>
-                  {scheduleDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-                <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
-              </TouchableOpacity>
-              
-              {/* Custom Date Picker */}
-              {showDatePicker && (
-                <View style={{ backgroundColor: colors.muted, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md }}>
-                  <Text style={{ color: colors.foreground, fontWeight: '600', marginBottom: spacing.sm, textAlign: 'center' }}>Select Date</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ maxHeight: 180 }}>
-                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                      {Array.from({ length: 30 }, (_, i) => {
-                        const date = new Date();
-                        date.setDate(date.getDate() + i);
-                        const isSelected = scheduleDate.toDateString() === date.toDateString();
-                        return (
-                          <TouchableOpacity
-                            key={i}
-                            onPress={() => {
-                              const newDate = new Date(scheduleDate);
-                              newDate.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-                              setScheduleDate(newDate);
-                            }}
-                            style={{
-                              padding: spacing.md,
-                              backgroundColor: isSelected ? colors.primary : colors.background,
-                              borderRadius: radius.md,
-                              minWidth: 70,
-                              alignItems: 'center',
-                            }}
-                          >
-                            <Text style={{ color: isSelected ? colors.primaryForeground : colors.mutedForeground, fontSize: 12 }}>
-                              {date.toLocaleDateString('en-AU', { weekday: 'short' })}
-                            </Text>
-                            <Text style={{ color: isSelected ? colors.primaryForeground : colors.foreground, fontSize: 18, fontWeight: '700' }}>
-                              {date.getDate()}
-                            </Text>
-                            <Text style={{ color: isSelected ? colors.primaryForeground : colors.mutedForeground, fontSize: 12 }}>
-                              {date.toLocaleDateString('en-AU', { month: 'short' })}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
-                  <TouchableOpacity
-                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.md, alignItems: 'center' }}
-                    onPress={() => setShowDatePicker(false)}
-                  >
-                    <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              
-              {/* Native iOS Time Picker */}
-              {showTimePicker && (
-                <View style={{ marginBottom: spacing.md }}>
-                  <DateTimePicker
-                    value={scheduleDate}
-                    mode="time"
-                    display="spinner"
-                    minuteInterval={5}
-                    onChange={(event, selectedDate) => {
-                      if (selectedDate) {
-                        setScheduleDate(selectedDate);
-                      }
-                    }}
-                    themeVariant={isDark ? 'dark' : 'light'}
-                  />
-                  <TouchableOpacity
-                    style={{ backgroundColor: colors.primary, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center' }}
-                    onPress={() => setShowTimePicker(false)}
-                  >
-                    <Text style={{ color: colors.primaryForeground, fontWeight: '600' }}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              
-              <View style={{ flexDirection: 'row', gap: spacing.md }}>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: colors.muted,
-                    borderRadius: radius.lg,
-                    paddingVertical: spacing.md,
-                    alignItems: 'center',
-                  }}
-                  onPress={() => setShowScheduleModal(false)}
-                >
-                  <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 15 }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: colors.primary,
-                    borderRadius: radius.lg,
-                    paddingVertical: spacing.md,
-                    alignItems: 'center',
-                  }}
-                  onPress={handleConfirmSchedule}
-                >
-                  <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 15 }}>Schedule Job</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </AppBottomSheet>
+      {/* Schedule Job sheet now lives at /(modals)/job-schedule (native iOS formSheet w/ fitToContents) */}
 
       {/* Send Email/SMS Modal */}
       <MobileSendModal

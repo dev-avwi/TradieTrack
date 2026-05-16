@@ -881,6 +881,7 @@ function RootLayoutContent() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'none', contentStyle: { backgroundColor: colors.background } }} />
           <Stack.Screen name="job" options={{ headerShown: false }} />
           <Stack.Screen name="more" options={{ headerShown: false }} />
+          <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'formSheet' }} />
         </Stack>
       </AuthenticatedLayout>
       {!settled && (
