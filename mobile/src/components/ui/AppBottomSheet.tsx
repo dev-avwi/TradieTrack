@@ -94,12 +94,17 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     },
     ref
   ) => {
-    // Default autoHeight to TRUE for every sheet so the panel always hugs
-    // its content and snapPoint acts as a max cap. Sheets that genuinely
-    // need to fill a fixed height (e.g. ones with their own internal
-    // ScrollView like the Catalog picker) must opt in by passing
-    // autoHeight={false} explicitly.
-    const resolvedAutoHeight = autoHeight ?? true;
+    // autoHeight default is INFERRED from `scrollable`:
+    //   • scrollable=true (the default)  → autoHeight=true  → sheet hugs
+    //     content using AppBottomSheet's built-in ScrollView. Snap point
+    //     acts as a max cap; the ScrollView scrolls internally if content
+    //     exceeds it.
+    //   • scrollable=false                → autoHeight=false → sheet uses
+    //     a fixed height (snap point or 90% default) so children that use
+    //     `flex: 1` (custom internal ScrollViews, forms, maps) have a real
+    //     height to fill. Without this, those sheets collapse to nothing.
+    // Pass an explicit boolean to override.
+    const resolvedAutoHeight = autoHeight ?? scrollable;
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
 
@@ -362,11 +367,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     overflow: 'hidden',
   },
-  // Small invisible strip at the top of every sheet for breathing room
-  // above the title. The pan responder is attached to the whole sheet so
-  // the user can grab anywhere — this is purely a visual cushion.
+  // Invisible drag strip at the top of every sheet. Most sheets use the
+  // built-in Header (in which case the whole sheet is also a drag target),
+  // but ~95 sheets render their OWN custom header inside the body using
+  // TouchableOpacity buttons that trap touches and block PanResponder
+  // capture. For those, this strip is the only reliable place to grab —
+  // so it's deliberately large enough to be an easy thumb target even
+  // though it's visually empty.
   dragZone: {
-    height: 8,
+    height: 22,
     alignSelf: 'stretch',
   },
   header: {
