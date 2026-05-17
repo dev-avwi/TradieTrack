@@ -1727,8 +1727,7 @@ ${businessName}`;
         onDismiss={() => setShowVersionHistory(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={{ flex: 1, backgroundColor: colors.background }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: colors.foreground }}>Edit History</Text>

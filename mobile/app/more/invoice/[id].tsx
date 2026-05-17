@@ -3327,8 +3327,7 @@ ${businessName}`;
         onDismiss={() => setShowMilestonesModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={{ flex: 1 }}>
           <View style={styles.paymentMethodModalContent}>
             <View style={styles.shareSheetHandle} />
@@ -3621,8 +3620,7 @@ ${businessName}`;
         onDismiss={() => setShowPaymentMethodModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={{ flex: 1 }}>
           <View style={styles.paymentMethodModalContent}>
             <View style={styles.shareSheetHandle} />

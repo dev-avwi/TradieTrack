@@ -94,10 +94,12 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     },
     ref
   ) => {
-    // Infer autoHeight default from `scrollable` when caller doesn't set it.
-    // Scrollable sheets default to hugging content; non-scrollable sheets
-    // default to fixed height because their children usually use flex: 1.
-    const resolvedAutoHeight = autoHeight ?? scrollable;
+    // Default autoHeight to TRUE for every sheet so the panel always hugs
+    // its content and snapPoint acts as a max cap. Sheets that genuinely
+    // need to fill a fixed height (e.g. ones with their own internal
+    // ScrollView like the Catalog picker) must opt in by passing
+    // autoHeight={false} explicitly.
+    const resolvedAutoHeight = autoHeight ?? true;
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
 
@@ -160,8 +162,10 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
           onMoveShouldSetPanResponderCapture: (_e, g) =>
             Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
           onPanResponderMove: (_e, g) => {
-            if (g.dy >= 0) translateY.setValue(g.dy);
-            else translateY.setValue(g.dy / 4); // resist upward drag
+            // Clamp upward drag to 0 so the sheet never lifts off the
+            // bottom of the screen (which would expose the backdrop and
+            // any content rendered behind it).
+            translateY.setValue(g.dy > 0 ? g.dy : 0);
           },
           onPanResponderRelease: (_e, g) => {
             if (g.dy > 120 || g.vy > 1.2) {
@@ -304,7 +308,6 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             onPress={handleRequestClose}
           />
           <Animated.View
-            {...panResponder.panHandlers}
             collapsable={false}
             style={[
               styles.sheet,
@@ -315,14 +318,16 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
               },
             ]}
           >
-            {/* Pan responder is attached to the whole sheet so the user
-                can grab and swipe down from anywhere — title text, drag
-                zone, even the body's empty space. Because onStart returns
-                false and capture only fires once the move passes the
-                vertical-bias threshold, taps, button presses, and inner
-                ScrollView scrolling are unaffected. */}
-            <View style={styles.dragZone} />
-            {Header}
+            {/* Pan responder lives on the dedicated drag region only
+                (dragZone + Header). The body uses a native ScrollView
+                which would otherwise win the touch immediately on iOS,
+                making the rest of the sheet undraggable. The drag region
+                is ~60px tall so it's an easy grab target even without a
+                visible grabber bar. */}
+            <View {...panResponder.panHandlers} collapsable={false}>
+              <View style={styles.dragZone} />
+              {Header}
+            </View>
             {body}
             {Footer}
           </Animated.View>

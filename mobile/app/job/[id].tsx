@@ -10434,8 +10434,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowAddMaterialModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={{ flex: 1 }}>
             <View style={styles.modalContainer}>
@@ -11016,8 +11015,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowSiteUpdateModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -11129,8 +11127,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowPhotosModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={{ flex: 1 }}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
@@ -11452,8 +11449,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowCompletionModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
           <View style={[styles.completionModal, { paddingTop: insets.top }]}>
             <View style={styles.completionHeader}>
               <Text style={styles.completionTitle}>Complete Job</Text>
@@ -11864,8 +11860,7 @@ export default function JobDetailScreen() {
               <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 15 }}>Schedule Job</Text>
             </TouchableOpacity>
           </View>
-        )}
-      >
+        )} autoHeight={false}>
         <View>
               <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: spacing.md }}>
                 Select date and time for this job:
@@ -12021,8 +12016,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowSubcontractorModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
@@ -12531,8 +12525,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowSignSwmsModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={{ flex: 1 }}>
             <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
@@ -12612,8 +12605,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowProofPackModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={{ flex: 1 }}>
           <View style={[styles.modalContainer, { maxHeight: '80%' }]}>
             <View style={styles.modalHeader}>
@@ -12852,8 +12844,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowAddVariationModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={{ flex: 1 }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
             <View style={styles.modalContainer}>
@@ -12949,8 +12940,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowApproveVariationModal(null)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={{ flex: 1 }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
             <View style={styles.modalContainer}>
@@ -13017,8 +13007,7 @@ export default function JobDetailScreen() {
         onDismiss={() => setShowRejectVariationModal(null)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={{ flex: 1 }}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ justifyContent: 'flex-end' }}>
             <View style={styles.modalContainer}>

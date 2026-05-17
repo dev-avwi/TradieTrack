@@ -9,3 +9,7 @@ build
 attached_assets/
 mobile/ios/
 mobile/android/
+
+# macOS Finder metadata — never commit these
+.DS_Store
+**/.DS_Store

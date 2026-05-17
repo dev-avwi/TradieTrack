@@ -883,8 +883,7 @@ export function SubcontractorDashboard() {
         onDismiss={() => setShowInvoiceCreate(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Create Tax Invoice</Text>
@@ -1154,8 +1153,7 @@ export function SubcontractorDashboard() {
         onDismiss={() => setShowInvoices(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>My Invoices</Text>

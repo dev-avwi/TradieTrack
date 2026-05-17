@@ -260,8 +260,7 @@ export function AIPhotoAnalysisModal({
         onDismiss={onClose}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
       <View>
           <View style={styles.modalHeader}>
             <View style={styles.headerLeft}>
