@@ -7,3 +7,5 @@ build
 
 # Exclude from deployment bundle (large directories not needed in production)
 attached_assets/
+mobile/ios/
+mobile/android/
