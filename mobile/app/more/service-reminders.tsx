@@ -1034,7 +1034,7 @@ export default function ServiceRemindersScreen() {
         onDismiss={() => setFormModalVisible(false)}
         snapPoints={['85%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -1127,7 +1127,7 @@ export default function ServiceRemindersScreen() {
         onDismiss={() => setServiceTypePickerVisible(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Service Type</Text>
@@ -1156,7 +1156,7 @@ export default function ServiceRemindersScreen() {
         onDismiss={() => setClientPickerVisible(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Client</Text>
@@ -1195,7 +1195,7 @@ export default function ServiceRemindersScreen() {
         onDismiss={() => setIntervalPickerVisible(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Repeat Interval</Text>
@@ -1224,7 +1224,7 @@ export default function ServiceRemindersScreen() {
         onDismiss={() => setReminderDaysPickerVisible(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Remind Before</Text>

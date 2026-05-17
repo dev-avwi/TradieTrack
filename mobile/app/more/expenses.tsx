@@ -568,7 +568,7 @@ export default function ExpensesScreen() {
           }}
           snapPoints={['92%']}
           scrollable={false}
-          contentPadding={0} autoHeight={false}>
+          contentPadding={0}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={[styles.modalContainer, { backgroundColor: colors.background }]}
@@ -770,7 +770,7 @@ export default function ExpensesScreen() {
         onDismiss={() => setShowCategoryPicker(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <PressableRow onPress={() => setShowCategoryPicker(false)}>
@@ -813,7 +813,7 @@ export default function ExpensesScreen() {
         onDismiss={() => setShowJobPicker(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
           <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.md }]}>
               <PressableRow onPress={() => setShowJobPicker(false)}>

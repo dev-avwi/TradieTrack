@@ -2327,7 +2327,7 @@ export default function CollectScreen() {
         onDismiss={handleClosePaymentLinkModal}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Send Payment Link</Text>
@@ -2463,7 +2463,7 @@ export default function CollectScreen() {
         onDismiss={handleCloseResendModal}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{hasSent ? 'Resend' : 'Send'} Payment Link</Text>
@@ -2578,7 +2578,7 @@ export default function CollectScreen() {
         onDismiss={handleCloseRecordPaymentModal}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
@@ -2903,7 +2903,7 @@ export default function CollectScreen() {
         onDismiss={handleCloseInvoicePickerModal}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Collect Payment</Text>
@@ -3127,7 +3127,7 @@ export default function CollectScreen() {
         onDismiss={handleCloseCustomAmountModal}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Enter Amount</Text>
@@ -3581,7 +3581,7 @@ export default function CollectScreen() {
         onDismiss={() => setShowSmsSetupModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Set Up SMS Messaging</Text>

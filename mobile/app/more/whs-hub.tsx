@@ -709,7 +709,7 @@ export default function WhsHubScreen() {
 
   function renderIncidentModal() {
     return (
-      <AppBottomSheet visible={showIncidentForm} onDismiss={() => setShowIncidentForm(false)} snapPoints={['90%']} scrollable={false} contentPadding={0} autoHeight={false}>
+      <AppBottomSheet visible={showIncidentForm} onDismiss={() => setShowIncidentForm(false)} snapPoints={['90%']} scrollable={false} contentPadding={0}>
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowIncidentForm(false)}>
@@ -776,7 +776,7 @@ export default function WhsHubScreen() {
         onDismiss={() => setShowEmergencyForm(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowEmergencyForm(false)}>
@@ -824,7 +824,7 @@ export default function WhsHubScreen() {
         onDismiss={() => setShowJsaForm(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowJsaForm(false)}>
@@ -888,7 +888,7 @@ export default function WhsHubScreen() {
         onDismiss={() => setShowEnvForm(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => { setShowEnvForm(false); setSelectedEnvType(''); }}>
@@ -936,7 +936,7 @@ export default function WhsHubScreen() {
         onDismiss={() => setShowSignForm(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowSignForm(false)}>
@@ -1058,7 +1058,7 @@ export default function WhsHubScreen() {
         onDismiss={() => setShowHazardForm(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
             <TouchableOpacity onPress={() => setShowHazardForm(false)}>
@@ -1201,7 +1201,7 @@ export default function WhsHubScreen() {
         onDismiss={() => setShowPpeForm(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowPpeForm(false)}><Feather name="x" size={24} color={colors.foreground} /></TouchableOpacity>
@@ -1294,7 +1294,7 @@ export default function WhsHubScreen() {
         onDismiss={() => setShowTrainingForm(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowTrainingForm(false)}><Feather name="x" size={24} color={colors.foreground} /></TouchableOpacity>

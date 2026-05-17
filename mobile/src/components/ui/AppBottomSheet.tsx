@@ -159,13 +159,13 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
           onStartShouldSetPanResponder: () => false,
           onStartShouldSetPanResponderCapture: () => false,
           onMoveShouldSetPanResponder: (_e, g) =>
-            g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
+            g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
           // Capture is the key bit — without it the inner ScrollView would
           // win the gesture and the sheet would feel undraggable from the
           // list area. We only capture on a clear downward swipe so the
           // ScrollView can still scroll up freely.
           onMoveShouldSetPanResponderCapture: (_e, g) =>
-            g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
+            g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
           onPanResponderMove: (_e, g) => {
             // Clamp upward drag to 0 so the sheet never lifts off the
             // bottom of the screen (which would expose anything behind it).

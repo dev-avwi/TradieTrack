@@ -2490,7 +2490,7 @@ export default function TeamManagementScreen() {
           onDismiss={() => setShowInviteModal(false)}
           snapPoints={['85%']}
           scrollable={false}
-          contentPadding={0} autoHeight={false}>
+          contentPadding={0}>
           <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-invite">
               <View style={styles.modalHeader}>
@@ -2711,7 +2711,7 @@ export default function TeamManagementScreen() {
         onDismiss={() => setShowDetailModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
           <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View>
               <View style={styles.modalHeader}>
@@ -3036,7 +3036,7 @@ export default function TeamManagementScreen() {
         onDismiss={() => setShowPermissionsModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
           <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-permissions">
               <View style={styles.modalHeader}>
@@ -3272,7 +3272,7 @@ export default function TeamManagementScreen() {
         onDismiss={() => setShowAssignJobModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
           <KeyboardAvoidingView style={{ width: '100%' }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View testID="modal-assign-job">
               <View style={styles.modalHeader}>

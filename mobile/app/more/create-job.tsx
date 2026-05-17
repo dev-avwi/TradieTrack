@@ -399,7 +399,7 @@ function ClientSelector({
         onDismiss={onClose}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
       <View style={{ flex: 1 }}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
@@ -484,7 +484,7 @@ function StatusSelector({
         onDismiss={onClose}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
       <View style={{ flex: 1 }}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
@@ -1286,7 +1286,7 @@ export default function CreateJobScreen() {
         onDismiss={() => setShowPriorityPicker(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={{ flex: 1 }}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -1319,7 +1319,7 @@ export default function CreateJobScreen() {
         onDismiss={() => setShowTeamPicker(false)}
         title="Assign Team Member"
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
           <View>
             <View style={{ height: 0 }} />
@@ -1370,7 +1370,7 @@ export default function CreateJobScreen() {
         onDismiss={() => setShowQuickAddClient(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
@@ -1449,7 +1449,7 @@ export default function CreateJobScreen() {
         onDismiss={() => setShowRecurrenceOptions(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={{ flex: 1 }}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>

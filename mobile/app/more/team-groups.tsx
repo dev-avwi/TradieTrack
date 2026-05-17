@@ -783,7 +783,7 @@ export default function TeamGroupsScreen() {
         onDismiss={() => { setFormModalVisible(false); resetForm(); }}
         snapPoints={['85%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
@@ -845,7 +845,7 @@ export default function TeamGroupsScreen() {
         onDismiss={() => { setViewModalVisible(false); setViewingGroup(null); }}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
               <View style={styles.modalHeader}>
                 <View style={styles.viewHeaderRow}>
@@ -908,7 +908,7 @@ export default function TeamGroupsScreen() {
         onDismiss={() => setManageMembersVisible(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Manage Members - {viewingGroup?.name}</Text>

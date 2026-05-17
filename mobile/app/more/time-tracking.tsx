@@ -2111,7 +2111,7 @@ export default function TimeTrackingScreen() {
         onDismiss={() => { setShowAddEntryModal(false); setEditingEntry(null); }}
         snapPoints={['92%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={[styles.container, { paddingTop: spacing.lg }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity 
@@ -2287,7 +2287,7 @@ export default function TimeTrackingScreen() {
         onDismiss={() => setShowDisputeModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={[styles.container, { paddingTop: spacing.lg }]}>
           <View style={styles.modalHeader}>
             <TouchableOpacity 

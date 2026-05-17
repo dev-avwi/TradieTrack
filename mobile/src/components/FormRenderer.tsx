@@ -514,7 +514,7 @@ export function JobForms({ jobId, readOnly = false, onSubmissionsChange, onForms
         onDismiss={() => setShowFormSelector(false)}
         snapPoints={['85%']}
         scrollable={false}
-        contentPadding={0} autoHeight={false}>
+        contentPadding={0}>
         <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Select Checklist</Text>
