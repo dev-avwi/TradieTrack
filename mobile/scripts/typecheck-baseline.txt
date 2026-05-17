@@ -9,10 +9,10 @@ app/job/[id].tsx(10018,73): error TS2353: Object literal may only specify known 
 app/job/[id].tsx(10027,75): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockIn' does not exist in type 'Partial<CachedJob>'.
 app/job/[id].tsx(10058,73): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockOut' does not exist in type 'Partial<CachedJob>'.
 app/job/[id].tsx(10067,75): error TS2353: Object literal may only specify known properties, and 'geofenceAutoClockOut' does not exist in type 'Partial<CachedJob>'.
-app/job/[id].tsx(10661,60): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
-app/job/[id].tsx(10733,38): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
-app/job/[id].tsx(10733,61): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
-app/job/[id].tsx(11659,70): error TS2339: Property 'xxs' does not exist on type '{ readonly xs: 4; readonly sm: 8; readonly md: 12; readonly lg: 16; readonly xl: 20; readonly '2xl': 24; readonly xxl: 24; readonly '3xl': 32; readonly '4xl': 40; }'.
+app/job/[id].tsx(10694,60): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
+app/job/[id].tsx(10766,38): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
+app/job/[id].tsx(10766,61): error TS2339: Property 'userId' does not exist on type 'TeamMember'.
+app/job/[id].tsx(11655,70): error TS2339: Property 'xxs' does not exist on type '{ readonly xs: 4; readonly sm: 8; readonly md: 12; readonly lg: 16; readonly xl: 20; readonly '2xl': 24; readonly xxl: 24; readonly '3xl': 32; readonly '4xl': 40; }'.
 app/job/[id].tsx(2155,28): error TS2339: Property 'updateJobNotes' does not exist on type 'JobsState'.
 app/job/[id].tsx(3265,37): error TS2339: Property 'sendResults' does not exist on type '{}'.
 app/job/[id].tsx(3329,59): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<{ events: any[]; arrivalCount: number; departureCount: number; firstArrival: string | null; lastDeparture: string | null; } | null>'.

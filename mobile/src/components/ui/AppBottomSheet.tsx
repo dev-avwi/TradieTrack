@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
   ReactNode,
@@ -20,12 +21,8 @@ import {
   FlatList,
   Dimensions,
   Animated,
+  PanResponder,
 } from 'react-native';
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useTheme } from '../../lib/theme';
@@ -64,6 +61,13 @@ export interface AppBottomSheetProps {
    * Pass an explicit boolean to override the inferred default.
    */
   autoHeight?: boolean;
+  /**
+   * Optional sticky footer that always sits at the bottom of the sheet,
+   * above the safe-area inset. Use this for primary actions (Cancel /
+   * Confirm) so the content area can hug naturally and the buttons never
+   * sit on top of the home indicator.
+   */
+  footer?: ReactNode;
 }
 
 function parseSnapPoint(point: string | number, screenHeight: number): number {
@@ -86,6 +90,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       visible,
       snapPoints,
       autoHeight,
+      footer,
     },
     ref
   ) => {
@@ -121,54 +126,76 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       onDismiss?.();
     }, [isControlled, onDismiss]);
 
-    // Drag-to-dismiss: track vertical translation and dismiss when the user
-    // drags down past a threshold or releases with downward velocity.
+    // Drag-to-dismiss. PanResponder is built into React Native and works
+    // reliably inside <Modal> on both iOS and Android — unlike
+    // react-native-gesture-handler, which requires a GestureHandlerRootView
+    // inside the modal's native window and was firing inconsistently.
     const translateY = useRef(new Animated.Value(0)).current;
     useEffect(() => {
       if (open) translateY.setValue(0);
     }, [open, translateY]);
-    // Drag-to-dismiss via react-native-gesture-handler Pan. This works
-    // alongside ScrollViews/Touchables (unlike PanResponder) and only
-    // activates once the finger moves >8px vertically downward. CRITICAL:
-    // gestures only fire inside a GestureHandlerRootView, and React Native's
-    // <Modal> renders into a separate native window that does NOT inherit
-    // the app's root provider, so we mount our own root inside the modal.
-    const dragGesture = Gesture.Pan()
-      .activeOffsetY(8)
-      .failOffsetX([-12, 12])
-      .onUpdate((e) => {
-        if (e.translationY >= 0) {
-          translateY.setValue(e.translationY);
-        } else {
-          translateY.setValue(e.translationY / 4);
-        }
-      })
-      .onEnd((e) => {
-        if (e.translationY > 120 || e.velocityY > 600) {
-          Animated.timing(translateY, {
-            toValue: 800,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            translateY.setValue(0);
-            handleRequestClose();
-          });
-        } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            bounciness: 4,
-            speed: 22,
-          }).start();
-        }
-      });
 
-    // Inner content padding mirrors the legacy AppBottomSheet so call-sites
-    // that relied on it keep their look. Bottom inset clears the iOS home
-    // indicator / Android nav bar.
+    // Keep handleRequestClose accessible to the long-lived PanResponder
+    // without re-creating the responder on every render (which would lose
+    // gesture state mid-drag).
+    const closeRef = useRef(handleRequestClose);
+    useEffect(() => {
+      closeRef.current = handleRequestClose;
+    }, [handleRequestClose]);
+
+    const panResponder = useMemo(
+      () =>
+        PanResponder.create({
+          // Don't claim the gesture on touch start so taps on the close
+          // button inside the header still fire.
+          onStartShouldSetPanResponder: () => false,
+          // Only claim once the finger has moved >8px and the movement is
+          // more vertical than horizontal (so horizontal swipes on inner
+          // lists/pickers aren't intercepted).
+          onMoveShouldSetPanResponder: (_e, g) =>
+            Math.abs(g.dy) > 12 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
+          onPanResponderMove: (_e, g) => {
+            if (g.dy >= 0) translateY.setValue(g.dy);
+            else translateY.setValue(g.dy / 4); // resist upward drag
+          },
+          onPanResponderRelease: (_e, g) => {
+            if (g.dy > 120 || g.vy > 1.2) {
+              Animated.timing(translateY, {
+                toValue: 800,
+                duration: 200,
+                useNativeDriver: true,
+              }).start(() => {
+                translateY.setValue(0);
+                closeRef.current();
+              });
+            } else {
+              Animated.spring(translateY, {
+                toValue: 0,
+                useNativeDriver: true,
+                bounciness: 4,
+                speed: 22,
+              }).start();
+            }
+          },
+          onPanResponderTerminate: () => {
+            Animated.spring(translateY, {
+              toValue: 0,
+              useNativeDriver: true,
+              bounciness: 4,
+              speed: 22,
+            }).start();
+          },
+        }),
+      [translateY]
+    );
+
+    // When a sticky footer is present, the footer handles bottom safe-area
+    // padding itself; don't double-pad inside the scrollable content.
     const innerStyle = {
       paddingHorizontal: contentPadding,
-      paddingBottom: contentPadding + Math.max(insets.bottom, 0),
+      paddingBottom: footer
+        ? contentPadding
+        : contentPadding + Math.max(insets.bottom, 0),
     };
 
     const Header = title || showCloseButton ? (
@@ -200,27 +227,22 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     ) : null;
 
     const screenHeight = Dimensions.get('window').height;
-    // Premium-feel sizing: honor the call-site snapPoint as the SHEET HEIGHT
-    // (not just a max), so call-sites with `flex: 1` wrappers stretch their
-    // content to the full sheet — buttons land at the bottom of the sheet
-    // instead of leaving a gap above the home indicator. Hard cap at 92%.
+    // Honor the call-site snapPoint as the SHEET HEIGHT (or max, in auto
+    // mode). Hard cap at 92% so the status bar isn't covered.
     const requestedHeight = snapPoints && snapPoints.length
       ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
-      : screenHeight * 0.6;
+      : screenHeight * 0.92;
     const sheetHeight = Math.min(requestedHeight, screenHeight * 0.92);
 
     // autoHeight=true → maxHeight only (sheet hugs short content); false →
-    // fixed height (children with flex:1 lay out correctly). The default is
-    // inferred from `scrollable` so short non-scrollable pickers don't get
-    // an oversized blank box, while flex:1 wrappers in non-scrollable
-    // form sheets still get a sized parent to fill.
+    // fixed height (children with flex:1 lay out correctly).
     const useFixedHeight = !resolvedAutoHeight;
     const sheetSizeStyle = useFixedHeight
       ? { height: sheetHeight }
       : { maxHeight: sheetHeight };
 
     // Body fills the sheet only when the sheet has a defined height. In the
-    // autoHeight + scrollable path we keep ScrollView un-flexed so it hugs
+    // autoHeight + scrollable path we let the ScrollView shrink so it hugs
     // its content; otherwise it would expand to fill the cap and defeat
     // autoHeight. The ScrollView still scrolls when content exceeds the
     // wrapper's maxHeight because it inherits the cap from its parent.
@@ -241,6 +263,21 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       </View>
     );
 
+    const Footer = footer ? (
+      <View
+        style={{
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          backgroundColor: colors.background,
+          paddingTop: spacing.md,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: Math.max(insets.bottom, spacing.md),
+        }}
+      >
+        {footer}
+      </View>
+    ) : null;
+
     return (
       <Modal
         visible={open}
@@ -249,42 +286,36 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         onRequestClose={handleRequestClose}
         statusBarTranslucent
       >
-        {/* Modal renders into a separate native window which does NOT inherit
-            the app-root GestureHandlerRootView. Without this nested root, the
-            swipe-to-dismiss Pan gesture never fires on iOS or Android. */}
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <KeyboardAvoidingView
-            style={styles.root}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        <KeyboardAvoidingView
+          style={styles.root}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable
+            style={styles.backdropFill}
+            onPress={handleRequestClose}
+          />
+          <Animated.View
+            style={[
+              styles.sheet,
+              sheetSizeStyle,
+              {
+                backgroundColor: colors.background,
+                transform: [{ translateY }],
+              },
+            ]}
           >
-            <Pressable
-              style={styles.backdropFill}
-              onPress={handleRequestClose}
-            />
-            <Animated.View
-              style={[
-                styles.sheet,
-                sheetSizeStyle,
-                {
-                  backgroundColor: colors.background,
-                  transform: [{ translateY }],
-                },
-              ]}
-            >
-              {/* Single GestureDetector wrapping BOTH the invisible drag zone
-                  and the header. Attaching the same Gesture instance to two
-                  separate GestureDetectors silently registers only one of
-                  them, which is why swipe-to-dismiss was firing nowhere. */}
-              <GestureDetector gesture={dragGesture}>
-                <View collapsable={false}>
-                  <View style={styles.dragZone} />
-                  {Header}
-                </View>
-              </GestureDetector>
-              {body}
-            </Animated.View>
-          </KeyboardAvoidingView>
-        </GestureHandlerRootView>
+            {/* The drag responder wraps the drag zone + header so the user
+                can grab anywhere across the top of the sheet to dismiss.
+                PanResponder doesn't intercept taps (onStart returns false),
+                so the header close button still works normally. */}
+            <View {...panResponder.panHandlers} collapsable={false}>
+              <View style={styles.dragZone} />
+              {Header}
+            </View>
+            {body}
+            {Footer}
+          </Animated.View>
+        </KeyboardAvoidingView>
       </Modal>
     );
   }

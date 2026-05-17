@@ -10636,18 +10636,51 @@ export default function JobDetailScreen() {
       {/* Assign Workers Modal - Multi-select with availability */}
       <AppBottomSheet
         visible={showAssignModal}
-        onDismiss={() => setShowAssignModal(false)}
-        snapPoints={['85%']}
-        scrollable={false}
+        onDismiss={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}
+        title="Assign Workers"
+        showCloseButton
         contentPadding={0}
+        footer={(
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+              onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 14, color: colors.foreground }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                alignItems: 'center',
+                backgroundColor: colors.primary,
+                opacity: isAssigning ? 0.6 : 1,
+              }}
+              onPress={handleMultiAssign}
+              disabled={isAssigning || selectedWorkerIds.size === 0}
+              activeOpacity={0.8}
+            >
+              {isAssigning ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
+              ) : (
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
+                  {selectedWorkerIds.size > 0 ? `Assign ${selectedWorkerIds.size} Worker${selectedWorkerIds.size !== 1 ? 's' : ''}` : 'Select Workers'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       >
-        <View style={{ flex: 1 }}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Assign Workers</Text>
-              <TouchableOpacity onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
+        <View>
             {selectedWorkerIds.size > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}>
                 <Feather name="check-circle" size={14} color={colors.primary} />
@@ -10656,7 +10689,7 @@ export default function JobDetailScreen() {
                 </Text>
               </View>
             )}
-            <BottomSheetScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: spacing.md }}>
+            <View>
               {teamMembers.map((member) => {
                 const memberId = member.memberId || member.userId || member.id;
                 const isSelected = selectedWorkerIds.has(memberId);
@@ -10881,43 +10914,6 @@ export default function JobDetailScreen() {
                   </View>
                 )}
               </View>
-            </BottomSheetScrollView>
-            <View style={[styles.modalFooter, { gap: spacing.sm, paddingBottom: insets.bottom + spacing.md, backgroundColor: colors.background }]}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.lg,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-                onPress={() => { setShowAssignModal(false); setShowMagicLinkInAssign(false); }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 14, color: colors.foreground }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.lg,
-                  alignItems: 'center',
-                  backgroundColor: colors.primary,
-                  opacity: isAssigning ? 0.6 : 1,
-                }}
-                onPress={handleMultiAssign}
-                disabled={isAssigning || selectedWorkerIds.size === 0}
-                activeOpacity={0.8}
-              >
-                {isAssigning ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primaryForeground }}>
-                    {selectedWorkerIds.size > 0 ? `Assign ${selectedWorkerIds.size} Worker${selectedWorkerIds.size !== 1 ? 's' : ''}` : 'Select Workers'}
-                  </Text>
-                )}
-              </TouchableOpacity>
             </View>
         </View>
       </AppBottomSheet>
@@ -11839,20 +11835,38 @@ export default function JobDetailScreen() {
       <AppBottomSheet
         visible={showScheduleModal}
         onDismiss={() => setShowScheduleModal(false)}
-        snapPoints={['85%']}
-        scrollable={false}
-        contentPadding={0}
+        title="Schedule Job"
+        showCloseButton
+        footer={(
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: colors.muted,
+                borderRadius: radius.lg,
+                paddingVertical: spacing.md,
+                alignItems: 'center',
+              }}
+              onPress={() => setShowScheduleModal(false)}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 15 }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: colors.primary,
+                borderRadius: radius.lg,
+                paddingVertical: spacing.md,
+                alignItems: 'center',
+              }}
+              onPress={handleConfirmSchedule}
+            >
+              <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 15 }}>Schedule Job</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       >
-        <View style={{ flex: 1 }}>
-          <View style={[styles.modalContainer, { flex: 1 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Schedule Job</Text>
-              <TouchableOpacity onPress={() => setShowScheduleModal(false)}>
-                <Feather name="x" size={24} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+        <View>
               <Text style={{ fontSize: 14, color: colors.foreground, marginBottom: spacing.md }}>
                 Select date and time for this job:
               </Text>
@@ -11984,34 +11998,6 @@ export default function JobDetailScreen() {
                 </View>
               )}
               
-            </ScrollView>
-            <View style={[styles.modalFooter, { gap: spacing.md, paddingBottom: insets.bottom + spacing.md, backgroundColor: colors.background }]}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: colors.muted,
-                  borderRadius: radius.lg,
-                  paddingVertical: spacing.md,
-                  alignItems: 'center',
-                }}
-                onPress={() => setShowScheduleModal(false)}
-              >
-                <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 15 }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: colors.primary,
-                  borderRadius: radius.lg,
-                  paddingVertical: spacing.md,
-                  alignItems: 'center',
-                }}
-                onPress={handleConfirmSchedule}
-              >
-                <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 15 }}>Schedule Job</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -12226,19 +12212,25 @@ export default function JobDetailScreen() {
       <AppBottomSheet
         visible={showTemplatePickerModal}
         onDismiss={() => setShowTemplatePickerModal(false)}
-        snapPoints={['90%']}
-        scrollable={false}
-        contentPadding={0}
+        title="Choose Template"
+        showCloseButton
+        footer={(
+          <TouchableOpacity
+            style={{
+              paddingVertical: spacing.md,
+              borderRadius: radius.lg,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+            onPress={() => setShowTemplatePickerModal(false)}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>Cancel</Text>
+          </TouchableOpacity>
+        )}
       >
-        <View style={{ flex: 1 }}>
-          <View style={[styles.modalContainer, { flex: 1 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choose Template</Text>
-              <TouchableOpacity onPress={() => setShowTemplatePickerModal(false)}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalContent}>
+        <View>
               <PressableRow
                 style={[styles.card, { marginBottom: spacing.sm }]}
                 onPress={handleStartBlankSwms}
@@ -12281,24 +12273,6 @@ export default function JobDetailScreen() {
                   </PressableRow>
                 ))
               )}
-            </ScrollView>
-            <View style={[styles.modalFooter, { paddingBottom: insets.bottom + spacing.md, backgroundColor: colors.background }]}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.lg,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-                onPress={() => setShowTemplatePickerModal(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.foreground }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
       </AppBottomSheet>
 
@@ -12796,84 +12770,79 @@ export default function JobDetailScreen() {
       <AppBottomSheet
         visible={showProofPackPreview}
         onDismiss={() => setShowProofPackPreview(false)}
+        title="Proof Pack Preview"
+        showCloseButton
         snapPoints={['90%']}
+        autoHeight={false}
         scrollable={false}
         contentPadding={0}
-      >
-        <View style={{ flex: 1 }}>
-          <View style={[styles.modalContainer, { maxHeight: '90%', flex: 1 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Proof Pack Preview</Text>
-              <TouchableOpacity onPress={() => setShowProofPackPreview(false)}>
-                <Feather name="x" size={24} color={colors.foreground} />
-              </TouchableOpacity>
-            </View>
-            <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
-              {proofPackPreviewHtml ? (
-                <WebView
-                  source={{ html: proofPackPreviewHtml }}
-                  style={{ flex: 1, backgroundColor: '#ffffff' }}
-                  scalesPageToFit
-                  javaScriptEnabled
-                />
+        footer={(
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowProofPackPreview(false);
+                setShowProofPackModal(true);
+              }}
+              style={{
+                paddingVertical: spacing.md,
+                paddingHorizontal: spacing.lg,
+                borderRadius: radius.lg,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>Edit Sections</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: spacing.sm,
+                backgroundColor: colors.primary,
+                paddingVertical: spacing.md,
+                borderRadius: radius.lg,
+                opacity: isGeneratingProofPack ? 0.5 : 1,
+                minHeight: 44,
+              }}
+              onPress={() => {
+                setShowProofPackPreview(false);
+                handleGenerateProofPack();
+              }}
+              activeOpacity={0.8}
+              disabled={isGeneratingProofPack}
+            >
+              {isGeneratingProofPack ? (
+                <ActivityIndicator size="small" color={colors.primaryForeground} />
               ) : (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                  <ActivityIndicator size="large" color={colors.primary} />
-                </View>
+                <>
+                  <Feather name="download" size={16} color={colors.primaryForeground} />
+                  <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
+                    Download & Share
+                  </Text>
+                </>
               )}
-            </View>
-            <View style={[styles.modalFooter, { gap: spacing.sm, paddingBottom: insets.bottom + spacing.md, backgroundColor: colors.background }]}>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowProofPackPreview(false);
-                  setShowProofPackModal(true);
-                }}
-                style={{
-                  paddingVertical: spacing.md,
-                  paddingHorizontal: spacing.lg,
-                  borderRadius: radius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ color: colors.foreground, fontWeight: '600', fontSize: 14 }}>Edit Sections</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: spacing.sm,
-                  backgroundColor: colors.primary,
-                  paddingVertical: spacing.md,
-                  borderRadius: radius.lg,
-                  opacity: isGeneratingProofPack ? 0.5 : 1,
-                  minHeight: 44,
-                }}
-                onPress={() => {
-                  setShowProofPackPreview(false);
-                  handleGenerateProofPack();
-                }}
-                activeOpacity={0.8}
-                disabled={isGeneratingProofPack}
-              >
-                {isGeneratingProofPack ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
-                ) : (
-                  <>
-                    <Feather name="download" size={16} color={colors.primaryForeground} />
-                    <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 14 }}>
-                      Download & Share
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </View>
+        )}
+      >
+        <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+          {proofPackPreviewHtml ? (
+            <WebView
+              source={{ html: proofPackPreviewHtml }}
+              style={{ flex: 1, backgroundColor: '#ffffff' }}
+              scalesPageToFit
+              javaScriptEnabled
+            />
+          ) : (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          )}
         </View>
       </AppBottomSheet>
 
