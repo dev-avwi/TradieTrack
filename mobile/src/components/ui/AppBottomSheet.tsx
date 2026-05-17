@@ -149,11 +149,16 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
           // Don't claim the gesture on touch start so taps on the close
           // button inside the header still fire.
           onStartShouldSetPanResponder: () => false,
-          // Only claim once the finger has moved >8px and the movement is
-          // more vertical than horizontal (so horizontal swipes on inner
-          // lists/pickers aren't intercepted).
+          onStartShouldSetPanResponderCapture: () => false,
+          // Claim on move when the finger has moved >10px downward and the
+          // motion is more vertical than horizontal. Capture mirrors the
+          // move handler so the responder grabs even when the touch is over
+          // the title text or close button (child Pressables won't steal
+          // the gesture mid-drag).
           onMoveShouldSetPanResponder: (_e, g) =>
-            Math.abs(g.dy) > 12 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
+            Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
+          onMoveShouldSetPanResponderCapture: (_e, g) =>
+            Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
           onPanResponderMove: (_e, g) => {
             if (g.dy >= 0) translateY.setValue(g.dy);
             else translateY.setValue(g.dy / 4); // resist upward drag
@@ -228,10 +233,14 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
 
     const screenHeight = Dimensions.get('window').height;
     // Honor the call-site snapPoint as the SHEET HEIGHT (or max, in auto
-    // mode). Hard cap at 92% so the status bar isn't covered.
+    // mode). When the caller doesn't specify, autoHeight sheets default to
+    // a 75% cap (so long lists scroll internally and leave context behind
+    // the sheet visible) and fixed-height sheets default to 90%. Hard cap
+    // at 92% either way so the status bar is never covered.
+    const defaultCap = resolvedAutoHeight ? 0.75 : 0.9;
     const requestedHeight = snapPoints && snapPoints.length
       ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
-      : screenHeight * 0.92;
+      : screenHeight * defaultCap;
     const sheetHeight = Math.min(requestedHeight, screenHeight * 0.92);
 
     // autoHeight=true → maxHeight only (sheet hugs short content); false →
@@ -344,11 +353,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: 'hidden',
   },
-  // ~24px invisible hit zone at the top of every sheet. Big enough that a
-  // user dragging from the top of the sheet reliably grabs the gesture even
+  // ~44px invisible hit zone at the top of every sheet. Big enough that a
+  // user dragging from the rounded top edge reliably grabs the gesture even
   // without a visible grabber bar.
   dragZone: {
-    height: 24,
+    height: 44,
     alignSelf: 'stretch',
   },
   header: {
