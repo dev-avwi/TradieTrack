@@ -1462,8 +1462,7 @@ export default function NewQuoteScreen() {
         }}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{showQuickAddClient ? 'Quick Add Client' : 'Select Client'}</Text>
@@ -1645,8 +1644,7 @@ export default function NewQuoteScreen() {
         onDismiss={() => { setShowAIGenerator(false); setShowVoiceRecorder(false); }}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>AI Quote Generator</Text>
@@ -1748,8 +1746,7 @@ export default function NewQuoteScreen() {
         onDismiss={() => { setShowCatalog(false); setCatalogSearch(''); }}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Product Catalog</Text>

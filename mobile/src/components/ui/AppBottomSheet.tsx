@@ -94,10 +94,12 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     },
     ref
   ) => {
-    // Infer autoHeight default from `scrollable` when caller doesn't set it.
-    // Scrollable sheets default to hugging content; non-scrollable sheets
-    // default to fixed height because their children usually use flex: 1.
-    const resolvedAutoHeight = autoHeight ?? scrollable;
+    // Default autoHeight to TRUE for every sheet so the panel always hugs
+    // its content and snapPoint acts as a max cap. Sheets that genuinely
+    // need to fill a fixed height (e.g. ones with their own internal
+    // ScrollView like the Catalog picker) must opt in by passing
+    // autoHeight={false} explicitly.
+    const resolvedAutoHeight = autoHeight ?? true;
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
 

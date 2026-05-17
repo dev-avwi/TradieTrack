@@ -889,8 +889,7 @@ export default function InventoryScreen() {
         onDismiss={() => setShowDetailModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={styles.modalContainer}>
           <View style={[styles.modalHeader, { paddingTop: insets.top + spacing.md }]}>
             <TouchableOpacity onPress={() => setShowDetailModal(false)} activeOpacity={0.7}>
@@ -1054,7 +1053,7 @@ export default function InventoryScreen() {
   };
 
   const renderItemFormModal = () => (
-    <AppBottomSheet visible={showItemModal} onDismiss={() => setShowItemModal(false)} snapPoints={['92%']} scrollable={false} contentPadding={0}>
+    <AppBottomSheet visible={showItemModal} onDismiss={() => setShowItemModal(false)} snapPoints={['92%']} scrollable={false} contentPadding={0} autoHeight={false}>
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1206,8 +1205,7 @@ export default function InventoryScreen() {
         onDismiss={() => setShowAdjustmentModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -1315,8 +1313,7 @@ export default function InventoryScreen() {
         onDismiss={() => setShowPOModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

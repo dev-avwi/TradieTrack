@@ -1220,8 +1220,7 @@ export default function PhotoLibrary() {
       onDismiss={() => !isUploading && setShowUploadModal(false)}
       snapPoints={['85%']}
       scrollable={false}
-      contentPadding={0}
-    >
+      contentPadding={0} autoHeight={false}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Upload Photos</Text>
@@ -1514,8 +1513,7 @@ export default function PhotoLibrary() {
         onDismiss={() => setShowBulkJobPicker(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
       <View>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Attach to Job</Text>

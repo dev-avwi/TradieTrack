@@ -519,8 +519,7 @@ export function CustomFormBuilder({ form, onSave, onCancel }: CustomFormBuilderP
         onDismiss={() => setShowFieldPicker(false)}
         snapPoints={['75%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View>
             <Text style={styles.sheetTitle}>Add Field</Text>
             <ScrollView style={styles.fieldTypeList}>
@@ -646,8 +645,7 @@ function FieldEditorModal({ visible, field, onSave, onClose, colors }: FieldEdit
         onDismiss={onClose}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
       <View>
           <View style={styles.sheetHeader}>
             <PressableRow onPress={onClose}>

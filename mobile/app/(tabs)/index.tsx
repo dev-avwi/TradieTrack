@@ -228,8 +228,7 @@ function WeatherWidget() {
         onDismiss={() => setShowSettings(false)}
         title="Weather Settings"
         showCloseButton
-        snapPoints={['70%']}
-      >
+        snapPoints={['70%']} autoHeight={false}>
         <View>
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.lg, backgroundColor: settings.mode === 'live' ? colorWithOpacity(colors.primary, 0.1) : 'transparent', borderWidth: 1, borderColor: settings.mode === 'live' ? colors.primary : colors.border, marginBottom: spacing.sm }}

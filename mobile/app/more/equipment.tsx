@@ -570,7 +570,7 @@ export default function EquipmentScreen() {
   );
 
   const renderFormModal = () => (
-    <AppBottomSheet visible={showFormModal} onDismiss={() => setShowFormModal(false)} snapPoints={['92%']} scrollable={false} contentPadding={0}>
+    <AppBottomSheet visible={showFormModal} onDismiss={() => setShowFormModal(false)} snapPoints={['92%']} scrollable={false} contentPadding={0} autoHeight={false}>
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -723,8 +723,7 @@ export default function EquipmentScreen() {
         onDismiss={() => setShowDetailModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <PressableRow onPress={() => setShowDetailModal(false)} >
@@ -881,8 +880,7 @@ export default function EquipmentScreen() {
         onDismiss={() => setShowMaintenanceModal(false)}
         snapPoints={['90%']}
         scrollable={false}
-        contentPadding={0}
-      >
+        contentPadding={0} autoHeight={false}>
       <KeyboardAvoidingView
         style={styles.modalContainer}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
