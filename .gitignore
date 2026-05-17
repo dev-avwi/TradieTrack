@@ -7,3 +7,7 @@ build
 
 # Exclude from deployment bundle (large directories not needed in production)
 attached_assets/
+
+# macOS Finder metadata — never commit these
+.DS_Store
+**/.DS_Store
