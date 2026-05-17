@@ -237,7 +237,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
     // a 75% cap (so long lists scroll internally and leave context behind
     // the sheet visible) and fixed-height sheets default to 90%. Hard cap
     // at 92% either way so the status bar is never covered.
-    const defaultCap = resolvedAutoHeight ? 0.75 : 0.9;
+    const defaultCap = resolvedAutoHeight ? 0.65 : 0.9;
     const requestedHeight = snapPoints && snapPoints.length
       ? Math.max(...snapPoints.map(p => parseSnapPoint(p, screenHeight)))
       : screenHeight * defaultCap;
@@ -304,6 +304,8 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             onPress={handleRequestClose}
           />
           <Animated.View
+            {...panResponder.panHandlers}
+            collapsable={false}
             style={[
               styles.sheet,
               sheetSizeStyle,
@@ -313,14 +315,14 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
               },
             ]}
           >
-            {/* The drag responder wraps the drag zone + header so the user
-                can grab anywhere across the top of the sheet to dismiss.
-                PanResponder doesn't intercept taps (onStart returns false),
-                so the header close button still works normally. */}
-            <View {...panResponder.panHandlers} collapsable={false}>
-              <View style={styles.dragZone} />
-              {Header}
-            </View>
+            {/* Pan responder is attached to the whole sheet so the user
+                can grab and swipe down from anywhere — title text, drag
+                zone, even the body's empty space. Because onStart returns
+                false and capture only fires once the move passes the
+                vertical-bias threshold, taps, button presses, and inner
+                ScrollView scrolling are unaffected. */}
+            <View style={styles.dragZone} />
+            {Header}
             {body}
             {Footer}
           </Animated.View>
@@ -353,11 +355,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: 'hidden',
   },
-  // ~44px invisible hit zone at the top of every sheet. Big enough that a
-  // user dragging from the rounded top edge reliably grabs the gesture even
-  // without a visible grabber bar.
+  // Small invisible strip at the top of every sheet. The pan responder is
+  // attached to the whole sheet, so this is just a bit of breathing room
+  // above the title — not the only place the user can grab.
   dragZone: {
-    height: 44,
+    height: 12,
     alignSelf: 'stretch',
   },
   header: {
