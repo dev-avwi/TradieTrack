@@ -145,33 +145,37 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
       closeRef.current = handleRequestClose;
     }, [handleRequestClose]);
 
+    // This responder is attached to the WHOLE sheet (Animated.View). It only
+    // claims a gesture when the user clearly swipes DOWNWARD by more than
+    // ~8px and the motion is mostly vertical. That means:
+    //   • Taps still fire (we never claim on touch start).
+    //   • Upward swipes inside the body ScrollView still scroll normally
+    //     (g.dy is negative, so we don't capture).
+    //   • A deliberate drag-down from anywhere on the sheet — header, title,
+    //     list rows, footer — dismisses the sheet, matching native iOS feel.
     const panResponder = useMemo(
       () =>
         PanResponder.create({
-          // Don't claim the gesture on touch start so taps on the close
-          // button inside the header still fire.
           onStartShouldSetPanResponder: () => false,
           onStartShouldSetPanResponderCapture: () => false,
-          // Claim on move when the finger has moved >10px downward and the
-          // motion is more vertical than horizontal. Capture mirrors the
-          // move handler so the responder grabs even when the touch is over
-          // the title text or close button (child Pressables won't steal
-          // the gesture mid-drag).
           onMoveShouldSetPanResponder: (_e, g) =>
-            Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
+            g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
+          // Capture is the key bit — without it the inner ScrollView would
+          // win the gesture and the sheet would feel undraggable from the
+          // list area. We only capture on a clear downward swipe so the
+          // ScrollView can still scroll up freely.
           onMoveShouldSetPanResponderCapture: (_e, g) =>
-            Math.abs(g.dy) > 10 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5,
+            g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.2,
           onPanResponderMove: (_e, g) => {
             // Clamp upward drag to 0 so the sheet never lifts off the
-            // bottom of the screen (which would expose the backdrop and
-            // any content rendered behind it).
+            // bottom of the screen (which would expose anything behind it).
             translateY.setValue(g.dy > 0 ? g.dy : 0);
           },
           onPanResponderRelease: (_e, g) => {
-            if (g.dy > 120 || g.vy > 1.2) {
+            if (g.dy > 100 || g.vy > 1.0) {
               Animated.timing(translateY, {
                 toValue: 800,
-                duration: 200,
+                duration: 180,
                 useNativeDriver: true,
               }).start(() => {
                 translateY.setValue(0);
@@ -181,8 +185,8 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
               Animated.spring(translateY, {
                 toValue: 0,
                 useNativeDriver: true,
-                bounciness: 4,
-                speed: 22,
+                bounciness: 6,
+                speed: 24,
               }).start();
             }
           },
@@ -190,8 +194,8 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             Animated.spring(translateY, {
               toValue: 0,
               useNativeDriver: true,
-              bounciness: 4,
-              speed: 22,
+              bounciness: 6,
+              speed: 24,
             }).start();
           },
         }),
@@ -309,6 +313,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
           />
           <Animated.View
             collapsable={false}
+            {...panResponder.panHandlers}
             style={[
               styles.sheet,
               sheetSizeStyle,
@@ -318,16 +323,13 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
               },
             ]}
           >
-            {/* Pan responder lives on the dedicated drag region only
-                (dragZone + Header). The body uses a native ScrollView
-                which would otherwise win the touch immediately on iOS,
-                making the rest of the sheet undraggable. The drag region
-                is ~60px tall so it's an easy grab target even without a
-                visible grabber bar. */}
-            <View {...panResponder.panHandlers} collapsable={false}>
-              <View style={styles.dragZone} />
-              {Header}
-            </View>
+            {/* Pan responder is attached to the whole Animated.View so the
+                entire sheet — header, body, footer — is a valid drag
+                target. The capture rules only steal the gesture on a
+                clear DOWNWARD swipe so the body ScrollView still scrolls
+                upward freely. */}
+            <View style={styles.dragZone} />
+            {Header}
             {body}
             {Footer}
           </Animated.View>
@@ -350,21 +352,21 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   backdropFill: {
     flex: 1,
   },
   sheet: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
   },
-  // Small invisible strip at the top of every sheet. The pan responder is
-  // attached to the whole sheet, so this is just a bit of breathing room
-  // above the title — not the only place the user can grab.
+  // Small invisible strip at the top of every sheet for breathing room
+  // above the title. The pan responder is attached to the whole sheet so
+  // the user can grab anywhere — this is purely a visual cushion.
   dragZone: {
-    height: 12,
+    height: 8,
     alignSelf: 'stretch',
   },
   header: {
