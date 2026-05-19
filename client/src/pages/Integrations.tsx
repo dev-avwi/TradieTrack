@@ -261,6 +261,100 @@ function TestConnectionButton({
 }
 
 /**
+ * Task #94: always-visible mapping completeness + webhook freshness row, shown
+ * on each accounting provider card so tradies can self-diagnose "I connected
+ * but nothing's syncing" without contacting support. Hits the lightweight GET
+ * /api/integrations/<p>/mapping-status (no upstream call) on mount/focus.
+ * Stale webhooks (>24h) render in amber.
+ */
+function MappingWebhookStatusRow({ provider, testId }: { provider: 'xero' | 'quickbooks' | 'myob'; testId?: string }) {
+  const { data, isLoading, isError } = useQuery<{
+    mappingConfigured: boolean;
+    lastWebhookAgeMs: number | null;
+    supportsWebhook: boolean;
+  }>({
+    queryKey: [`/api/integrations/${provider}/mapping-status`],
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground" data-testid={testId}>
+        <Loader2 className="w-3 h-3 animate-spin" />
+        <span>Checking sync health…</span>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="flex flex-wrap items-center gap-2 text-xs" data-testid={testId}>
+        <Badge variant="outline" className="border-gray-300 text-gray-600 dark:text-gray-400">
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          Sync health: unavailable
+        </Badge>
+      </div>
+    );
+  }
+
+  const ageMs = data.lastWebhookAgeMs;
+  const stale = data.supportsWebhook && ageMs != null && ageMs > 24 * 60 * 60 * 1000;
+  const ageLabel = (() => {
+    if (!data.supportsWebhook) return 'n/a';
+    if (ageMs == null) return 'never';
+    const min = Math.round(ageMs / 60000);
+    if (min < 1) return '< 1m ago';
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.round(min / 60);
+    if (hr < 48) return `${hr}h ago`;
+    return `${Math.round(hr / 24)}d ago`;
+  })();
+  const webhookNever = data.supportsWebhook && ageMs == null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs" data-testid={testId}>
+      <Badge
+        variant="outline"
+        className={
+          data.mappingConfigured
+            ? 'border-green-400 text-green-700 dark:text-green-400'
+            : 'border-amber-400 text-amber-700 dark:text-amber-400'
+        }
+        data-testid={`badge-mapping-${provider}`}
+      >
+        {data.mappingConfigured ? (
+          <CheckCircle className="w-3 h-3 mr-1" />
+        ) : (
+          <AlertTriangle className="w-3 h-3 mr-1" />
+        )}
+        Mapping: {data.mappingConfigured ? 'complete' : 'incomplete'}
+      </Badge>
+      <Badge
+        variant="outline"
+        className={
+          stale || webhookNever
+            ? 'border-amber-400 text-amber-700 dark:text-amber-400'
+            : !data.supportsWebhook
+              ? 'border-gray-300 text-gray-600 dark:text-gray-400'
+              : 'border-green-400 text-green-700 dark:text-green-400'
+        }
+        data-testid={`badge-webhook-${provider}`}
+      >
+        {stale || webhookNever ? (
+          <AlertTriangle className="w-3 h-3 mr-1" />
+        ) : (
+          <CheckCircle className="w-3 h-3 mr-1" />
+        )}
+        Last webhook: {ageLabel}
+      </Badge>
+    </div>
+  );
+}
+
+/**
  * Task #91 mapping section. One unified component, used per provider, that
  * loads accounts/tax-rates/items via the GET /api/integrations/<p>/* endpoints
  * (cached server-side 60s) and persists the chosen IDs back to
@@ -1772,6 +1866,7 @@ export default function Integrations() {
                     <TestConnectionButton endpoint="/api/integrations/xero/test" testId="button-test-xero" />
                   </div>
                   <XeroTenantSelector />
+                  <MappingWebhookStatusRow provider="xero" testId="status-xero-mapping-webhook" />
                   <MappingSection provider="xero" />
                   <div className="grid grid-cols-2 gap-2">
                     <div className="hidden" />
@@ -1931,6 +2026,7 @@ export default function Integrations() {
                     </Button>
                     <TestConnectionButton endpoint="/api/integrations/quickbooks/test" testId="button-test-quickbooks" />
                   </div>
+                  <MappingWebhookStatusRow provider="quickbooks" testId="status-quickbooks-mapping-webhook" />
                   <MappingSection provider="quickbooks" />
                   <div className="grid grid-cols-2 gap-2">
                     <div className="hidden" />
@@ -2091,6 +2187,7 @@ export default function Integrations() {
                     </Button>
                     <TestConnectionButton endpoint="/api/integrations/myob/test" testId="button-test-myob" />
                   </div>
+                  <MappingWebhookStatusRow provider="myob" testId="status-myob-mapping-webhook" />
                   <MappingSection provider="myob" />
                   <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 p-3 text-xs text-amber-900 dark:text-amber-200">
                     <div className="flex items-start gap-2">

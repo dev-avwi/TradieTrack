@@ -10333,6 +10333,27 @@ Be specific about materials, colors, and features that would be included.`
     }
   };
 
+  // Task #94: lightweight GET that returns the same mapping/webhook shape
+  // the POST /test endpoints surface, but WITHOUT calling the upstream API.
+  // Used by the Integrations page to render an always-visible "Mapping" +
+  // "Last webhook" status row on each accounting provider card, refreshed on
+  // mount/focus. Returns 200 even when not connected so the badges can show
+  // "incomplete" / "never" without surfacing a noisy error.
+  app.get("/api/integrations/:provider/mapping-status", requireAuth, async (req: any, res) => {
+    const raw = String(req.params.provider || '').toLowerCase();
+    const provider = raw === 'quickbooks' ? 'qbo' : raw;
+    if (provider !== 'xero' && provider !== 'qbo' && provider !== 'myob') {
+      return res.status(400).json({ error: 'Unknown provider' });
+    }
+    const extra = await buildIntegrationTestExtra(req.userId, provider as 'xero' | 'qbo' | 'myob');
+    res.json({
+      provider,
+      mappingConfigured: extra.mappingConfigured,
+      lastWebhookAgeMs: extra.lastWebhookAgeMs,
+      supportsWebhook: provider !== 'myob',
+    });
+  });
+
   app.post("/api/integrations/xero/test", requireAuth, async (req: any, res) => {
     try {
       if (!xeroService.isXeroConfigured()) {
