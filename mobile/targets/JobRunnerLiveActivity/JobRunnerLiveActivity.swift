@@ -82,9 +82,10 @@ private struct LockScreenView: View {
             ZStack {
                 Circle()
                     .fill(.thinMaterial)
-                Image(systemName: "wrench.and.screwdriver.fill")
-                    .foregroundStyle(Color.jobRunnerBlue)
-                    .font(.title3)
+                Image("JobRunnerLogo")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 32, height: 32)
             }
             .frame(width: 44, height: 44)
 
@@ -117,8 +118,9 @@ private struct LockScreenView: View {
 
 private struct BrandMark: View {
     var body: some View {
-        Image(systemName: "wrench.and.screwdriver.fill")
-            .foregroundStyle(Color.jobRunnerBlue)
+        Image("JobRunnerLogo")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
     }
 }
 
