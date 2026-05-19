@@ -5,6 +5,7 @@ import { clearRoleCache } from './role-cache';
 import { useThemeStore, ThemeMode } from './theme-store';
 import locationTracking from './location-tracking';
 import notificationService from './notifications';
+import LiveActivity from '../../modules/LiveActivity/src';
 import type { TemplateCustomization } from './document-templates';
 
 // ============ TYPES ============
@@ -2116,7 +2117,14 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
       if (response.data) {
         // Set active timer from the response
         set({ activeTimer: response.data, isLoading: false, error: null });
-        
+
+        // If a BREAK timer is starting, flip the existing Live Activity to
+        // the on_break state so the lock screen reflects that the worker
+        // has paused. Fire-and-forget — no-op on Android / if no activity.
+        if (isBreak) {
+          LiveActivity.update('on_break').catch(() => {});
+        }
+
         // Auto-update job status to in_progress when starting a work timer (not a break)
         // This correlates the timer with the job workflow
         if (!isBreak && jobId) {
@@ -2141,6 +2149,17 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
             if (job && (job.status === 'scheduled' || job.status === 'pending')) {
               if (__DEV__) console.log('[TimeTracking] Auto-updating job status to in_progress');
               await jobsStore.updateJobStatus(jobId, 'in_progress');
+            }
+            // Fire (or refresh) the Live Activity on the lock screen for any
+            // in-progress job whenever a work timer starts — covers both the
+            // freshly-promoted job above AND resuming work on an already
+            // in_progress job. Fire-and-forget; never block the timer.
+            if (job) {
+              LiveActivity.start({
+                id: job.id,
+                address: job.address ?? '',
+                clientName: job.clientName ?? '',
+              }).catch(() => {});
             }
           } catch (e) {
             // Non-critical - don't fail the timer start if job update fails

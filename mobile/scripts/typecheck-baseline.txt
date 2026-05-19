@@ -1,25 +1,25 @@
-app/job/[id].tsx(100,3): error TS2300: Duplicate identifier 'workerStatus'.
-app/job/[id].tsx(100,3): error TS2717: Subsequent property declarations must have the same type.  Property 'workerStatus' must be of type 'string | undefined', but here has type 'string | null | undefined'.
-app/job/[id].tsx(101,3): error TS2300: Duplicate identifier 'isRecurring'.
-app/job/[id].tsx(102,3): error TS2300: Duplicate identifier 'recurrencePattern'.
-app/job/[id].tsx(102,3): error TS2717: Subsequent property declarations must have the same type.  Property 'recurrencePattern' must be of type 'string | undefined', but here has type 'string | null | undefined'.
-app/job/[id].tsx(103,3): error TS2300: Duplicate identifier 'nextRecurrenceDate'.
-app/job/[id].tsx(104,3): error TS2300: Duplicate identifier 'recurrenceEndDate'.
-app/job/[id].tsx(105,3): error TS2300: Duplicate identifier 'estimatedDuration'.
-app/job/[id].tsx(86,3): error TS2300: Duplicate identifier 'estimatedDuration'.
-app/job/[id].tsx(89,3): error TS2300: Duplicate identifier 'workerStatus'.
-app/job/[id].tsx(90,3): error TS2300: Duplicate identifier 'isRecurring'.
-app/job/[id].tsx(91,3): error TS2300: Duplicate identifier 'recurrencePattern'.
-app/job/[id].tsx(92,3): error TS2300: Duplicate identifier 'nextRecurrenceDate'.
-app/job/[id].tsx(93,3): error TS2300: Duplicate identifier 'recurrenceEndDate'.
+app/job/[id].tsx(101,3): error TS2300: Duplicate identifier 'workerStatus'.
+app/job/[id].tsx(101,3): error TS2717: Subsequent property declarations must have the same type.  Property 'workerStatus' must be of type 'string | undefined', but here has type 'string | null | undefined'.
+app/job/[id].tsx(102,3): error TS2300: Duplicate identifier 'isRecurring'.
+app/job/[id].tsx(103,3): error TS2300: Duplicate identifier 'recurrencePattern'.
+app/job/[id].tsx(103,3): error TS2717: Subsequent property declarations must have the same type.  Property 'recurrencePattern' must be of type 'string | undefined', but here has type 'string | null | undefined'.
+app/job/[id].tsx(104,3): error TS2300: Duplicate identifier 'nextRecurrenceDate'.
+app/job/[id].tsx(105,3): error TS2300: Duplicate identifier 'recurrenceEndDate'.
+app/job/[id].tsx(106,3): error TS2300: Duplicate identifier 'estimatedDuration'.
+app/job/[id].tsx(87,3): error TS2300: Duplicate identifier 'estimatedDuration'.
+app/job/[id].tsx(90,3): error TS2300: Duplicate identifier 'workerStatus'.
+app/job/[id].tsx(91,3): error TS2300: Duplicate identifier 'isRecurring'.
+app/job/[id].tsx(92,3): error TS2300: Duplicate identifier 'recurrencePattern'.
+app/job/[id].tsx(93,3): error TS2300: Duplicate identifier 'nextRecurrenceDate'.
+app/job/[id].tsx(94,3): error TS2300: Duplicate identifier 'recurrenceEndDate'.
 app/(tabs)/index.tsx(2252,5): error TS2300: Duplicate identifier 'tomorrowJobs'.
 app/(tabs)/index.tsx(2262,5): error TS2300: Duplicate identifier 'tomorrowJobs'.
 app/(tabs)/index.tsx(2262,5): error TS2717: Subsequent property declarations must have the same type.  Property 'tomorrowJobs' must be of type '{ id: string; title: string; address: string | null; scheduledAt: string; clientName: string | null; latitude: number | null; longitude: number | null; }[] | null | undefined', but here has type '{ id: string; title: string; address: string | null; scheduledAt: string; clientName: string | null; latitude: number | null; longitude: number | null; }[] | undefined'.
 app/(tabs)/index.tsx(3935,3): error TS1117: An object literal cannot have multiple properties with the same name.
-src/lib/store.ts(15,3): error TS2300: Duplicate identifier 'name'.
-src/lib/store.ts(19,3): error TS2300: Duplicate identifier 'name'.
-src/lib/store.ts(60,3): error TS2300: Duplicate identifier 'simpleMode'.
-src/lib/store.ts(87,3): error TS2300: Duplicate identifier 'simpleMode'.
+src/lib/store.ts(16,3): error TS2300: Duplicate identifier 'name'.
+src/lib/store.ts(20,3): error TS2300: Duplicate identifier 'name'.
+src/lib/store.ts(61,3): error TS2300: Duplicate identifier 'simpleMode'.
+src/lib/store.ts(88,3): error TS2300: Duplicate identifier 'simpleMode'.
 src/lib/__tests__/store-review.test.ts(11,64): error TS2694: Namespace 'global.jest' has no exported member 'MockedFunction'.
 src/lib/__tests__/store-review.test.ts(14,55): error TS2694: Namespace 'global.jest' has no exported member 'MockedFunction'.
 src/lib/__tests__/store-review.test.ts(17,63): error TS2694: Namespace 'global.jest' has no exported member 'MockedFunction'.

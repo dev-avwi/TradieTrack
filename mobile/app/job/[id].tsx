@@ -26,6 +26,7 @@ import {
   InteractionManager,
   LayoutAnimation,
 } from 'react-native';
+import LiveActivity from '../../modules/LiveActivity/src';
 import { PressableRow } from '@/components/ui/PressableRow';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useActionSheet } from '@/components/ui/ActionSheet';
@@ -5012,6 +5013,13 @@ export default function JobDetailScreen() {
               const success = await updateJobStatus(job.id, action.next as any);
               if (success) {
                 setJob({ ...job, status: action.next as any });
+                if (action.next === 'in_progress') {
+                  LiveActivity.start({
+                    id: job.id,
+                    address: job.address ?? '',
+                    clientName: job.clientName ?? '',
+                  }).catch(() => {});
+                }
                 await proceedWithTimerStart(true);
               }
             },
@@ -5031,6 +5039,11 @@ export default function JobDetailScreen() {
         const success = await updateJobStatus(job.id, 'in_progress');
         if (success) {
           setJob({ ...job, status: 'in_progress' });
+          LiveActivity.start({
+            id: job.id,
+            address: job.address ?? '',
+            clientName: job.clientName ?? '',
+          }).catch(() => {});
           await proceedWithTimerStart(true);
         }
       });
@@ -5276,6 +5289,7 @@ export default function JobDetailScreen() {
       const success = await updateJobStatus(job.id, 'done');
       if (success) {
         setJob({ ...job, status: 'done' });
+        LiveActivity.end().catch(() => {});
         setShowCompletionModal(false);
         maybeRequestReview('job_completed').catch(() => {});
         
