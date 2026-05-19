@@ -81,6 +81,17 @@ Core architectural and design decisions include:
 *   `timezone` — IANA tz string (default `Australia/Sydney`) used for Google Calendar event start/end zones.
 *   `quickbooksDefaultItemRef` — `{value, name}` JSON for the QBO line item used on invoice/quote push (legacy fallback `{value:"1", name:"Services"}` with a warn).
 
+**Load testing the ~100-concurrent-user envelope.** `scripts/load-test.mjs` runs a weighted, signed-in scenario mix (dashboard aggregate, jobs/quotes/invoices/rate-cards reads, AI suggestions + chat, and quote/invoice PDFs) against a target deployment. Recommended invocation:
+
+```
+BASE_URL=https://<host> \
+LOAD_TEST_EMAIL=loadtest@example.com LOAD_TEST_PASSWORD='...' \
+CONCURRENCY=100 DURATION_SEC=60 \
+node scripts/load-test.mjs
+```
+
+The script signs in via `/api/auth/login`, reuses the returned `sessionToken` across all workers as a Bearer token, and auto-discovers a recent quote/invoice id for the PDF scenarios (override with `LOAD_TEST_QUOTE_ID` / `LOAD_TEST_INVOICE_ID`, or bypass login with `LOAD_TEST_TOKEN`). Pass/fail criteria enforced by the script (exit code 1 on breach): **0 × 5xx, 0 × 504, 0 × unexpected non-429 4xx (catches auth/path regressions), 0 network errors, < 1% 429, and hot-read p95 ≤ 500ms** (`/api/health`, `/api/dashboard/unified`, `/api/jobs`, `/api/quotes`, `/api/invoices`, `/api/rate-cards`; tune via `HOT_READ_P95_MS`). PDF/AI p95 is reported but not enforced — those endpoints are bounded queues whose latency is dominated by queue wait under burst.
+
 **Production overload triage.** `GET /api/metrics` is the source of truth — watch `queues[].queued/totalRejected`, `pool.waiting`, `routes[].p99`, `totals.status429`. If `pdf` queue rejects spike, lower per-user PDF limit before raising queue size. If `ai`/`vision` reject, OpenAI is the bottleneck. DB pool is hard-capped at 15 (Neon serverless limit) — sustained `pool.waiting > 5` means a slow query, not a missing connection.
 
 **Mobile typecheck regression guard.** `bash mobile/scripts/typecheck.sh` runs `tsc --noEmit` and fails if any new error appears that is not in `mobile/scripts/typecheck-baseline.txt` (currently 305 catalogued type-only errors). Run with `--update` after intentionally fixing baseline errors, then commit the updated baseline. Wired into CI via `.github/workflows/mobile-typecheck.yml`, which runs on every push/PR that touches `mobile/**` and prints the diff of new errors on failure.
