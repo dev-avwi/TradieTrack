@@ -16,6 +16,29 @@ interface LogEntry {
 const ALERT_COOLDOWN_MS = 5 * 60 * 1000;
 let lastAlertSent = 0;
 
+// Transient infra errors that happen routinely under Neon serverless
+// (idle connections dropped, websocket churn). They are not user-impacting
+// — every scheduler that hits one retries on its next interval — so we
+// keep them in console + DB logs but suppress the admin email alert.
+// If a real outage is happening you'll see other signals first (5xx spike
+// in /api/metrics, ALB health failure, etc).
+const TRANSIENT_ERROR_PATTERNS: RegExp[] = [
+  /Connection terminated due to connection timeout/i,
+  /Connection terminated unexpectedly/i,
+  /terminating connection due to administrator command/i,
+  /Client has encountered a connection error and is not queryable/i,
+  /timeout exceeded when trying to connect/i,
+];
+
+function isTransientInfraError(entry: { message?: string; error?: unknown }): boolean {
+  const haystack = [
+    typeof entry.message === 'string' ? entry.message : '',
+    entry.error instanceof Error ? entry.error.message : '',
+  ].join(' ');
+  if (!haystack) return false;
+  return TRANSIENT_ERROR_PATTERNS.some(re => re.test(haystack));
+}
+
 class Logger {
   private async persist(entry: LogEntry) {
     try {
@@ -37,6 +60,11 @@ class Logger {
   }
 
   private async sendAlertEmail(entry: LogEntry) {
+    // Skip transient infra noise — Neon connection drops, websocket churn,
+    // etc. They self-recover on the next scheduler tick and would otherwise
+    // flood admin inboxes with the same alert every 5 minutes.
+    if (isTransientInfraError(entry)) return;
+
     const now = Date.now();
     if (now - lastAlertSent < ALERT_COOLDOWN_MS) return;
     lastAlertSent = now;
