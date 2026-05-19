@@ -281,7 +281,8 @@
         }
       ],
       "./plugins/withIAPStoreFlavor",
-      "./plugins/withIAPKotlinFix"
+      "./plugins/withIAPKotlinFix",
+      "./plugins/withLiveActivity"
     ],
     "experiments": {
       "typedRoutes": true
