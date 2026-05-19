@@ -83,8 +83,16 @@ interface Job {
   notes?: string;
   estimatedHours?: number;
   estimatedCost?: number;
+  estimatedDuration?: number;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   completedAt?: string;
+  workerStatus?: string;
+  isRecurring?: boolean;
+  recurrencePattern?: string;
+  nextRecurrenceDate?: string | null;
+  recurrenceEndDate?: string | null;
+  isXeroImport?: boolean;
+  clientName?: string;
   geofenceEnabled?: boolean;
   geofenceRadius?: number;
   geofenceAutoClockIn?: boolean;
@@ -3278,7 +3286,7 @@ export default function JobDetailScreen() {
         sendViaEmail: false,
         permissions: ['view_job', 'add_notes', 'add_photos', 'update_status'],
         expiresAt,
-      });
+      }) as { error?: string; data?: { sendResults?: { sms?: boolean } } };
       if (res.error) {
         showToast({ type: 'error', message: res.error });
       } else {

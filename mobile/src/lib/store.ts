@@ -12,6 +12,7 @@ import type { TemplateCustomization } from './document-templates';
 interface User {
   id: string;
   email: string;
+  name?: string;
   firstName?: string;
   lastName?: string;
   /** Pre-computed display name from the server (falls back to firstName + lastName). */
@@ -83,6 +84,7 @@ interface BusinessSettings {
   dedicatedPhoneNumber?: string;
   aiReceptionistEnabled?: boolean;
   aiReceptionistMode?: string;
+  simpleMode?: boolean;
 }
 
 export interface Job {
@@ -98,14 +100,20 @@ export interface Job {
   latitude?: number;
   longitude?: number;
   estimatedDuration?: number;
+  // Optional/extended fields used across job/dashboard screens
   workerStatus?: string | null;
   isRecurring?: boolean;
   recurrencePattern?: string | null;
   nextRecurrenceDate?: string | null;
   recurrenceEndDate?: string | null;
   portalEnabled?: boolean;
+  geofenceEnabled?: boolean;
   geofenceRadius?: number;
+  geofenceAutoClockIn?: boolean;
+  geofenceAutoClockOut?: boolean;
   notes?: string;
+  estimatedCost?: number | string;
+  isXeroImport?: boolean;
   completedAt?: string;
   createdAt?: string;
 }
@@ -775,6 +783,7 @@ interface JobsState {
   fetchTodaysJobs: () => Promise<void>;
   getJob: (id: string) => Promise<Job | null>;
   updateJobStatus: (jobId: string, status: Job['status']) => Promise<boolean>;
+  updateJobNotes: (jobId: string, notes: string) => Promise<boolean>;
   createJob: (job: Partial<Job>) => Promise<Job | null>;
 }
 
@@ -961,6 +970,38 @@ export const useJobsStore = create<JobsState>((set, get) => ({
     }
 
     return true;
+  },
+
+  updateJobNotes: async (jobId: string, notes: string) => {
+    const { jobs, todaysJobs } = get();
+    const previousJobs = jobs;
+    const previousTodaysJobs = todaysJobs;
+    set({
+      jobs: jobs.map(j => j.id === jobId ? { ...j, notes } : j),
+      todaysJobs: todaysJobs.map(j => j.id === jobId ? { ...j, notes } : j),
+    });
+    try {
+      const response = await api.patch<Job>(`/api/jobs/${jobId}`, { notes });
+      if (response.error) {
+        try {
+          await offlineStorage.updateJobOffline(jobId, { notes });
+        } catch {
+          set({ jobs: previousJobs, todaysJobs: previousTodaysJobs, error: 'Failed to update job notes' });
+          return false;
+        }
+      } else if (response.data) {
+        await offlineStorage.cacheJobs([response.data]);
+      }
+      return true;
+    } catch {
+      try {
+        await offlineStorage.updateJobOffline(jobId, { notes });
+        return true;
+      } catch {
+        set({ jobs: previousJobs, todaysJobs: previousTodaysJobs, error: 'Failed to update job notes' });
+        return false;
+      }
+    }
   },
 
   createJob: async (job: Partial<Job>) => {

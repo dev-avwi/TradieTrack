@@ -15,7 +15,7 @@ export type ActionStatus = 'suggested' | 'queued' | 'running' | 'completed' | 's
 
 export interface SmartAction {
   id: string;
-  type: 'create_invoice' | 'send_email' | 'send_sms' | 'create_job' | 'schedule_reminder' | 'collect_payment' | 'send_confirmation';
+  type: 'create_invoice' | 'create_quote' | 'send_email' | 'send_sms' | 'create_job' | 'schedule_reminder' | 'collect_payment' | 'send_confirmation';
   title: string;
   description: string;
   icon: 'invoice' | 'email' | 'sms' | 'job' | 'reminder' | 'payment' | 'calendar';

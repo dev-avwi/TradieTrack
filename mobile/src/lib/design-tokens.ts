@@ -21,6 +21,7 @@ export const HEADER_HEIGHT = 56;
 // === SPACING (matches web's tailwind spacing scale exactly) ===
 // Web uses: gap-4 = 16px, p-4 = 16px, p-5 = 20px, space-y-6 = 24px
 export const spacing = {
+  xxs: 2,     // 0.5 tailwind unit - half gap
   xs: 4,      // 1 tailwind unit - gap-1
   sm: 8,      // 2 tailwind units - gap-2
   md: 12,     // 3 tailwind units - gap-3

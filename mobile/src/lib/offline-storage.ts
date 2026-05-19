@@ -41,8 +41,12 @@ export interface CachedJob {
   clientName?: string;
   assignedTo?: string;
   notes?: string;
+  // Optional/extended fields mirrored from Job for offline updates
   latitude?: number | null;
   longitude?: number | null;
+  estimatedDuration?: number;
+  estimatedCost?: number | string;
+  workerStatus?: string | null;
   geofenceEnabled?: boolean;
   geofenceRadius?: number;
   geofenceAutoClockIn?: boolean;
