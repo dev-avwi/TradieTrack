@@ -112,6 +112,10 @@ export default function InvoiceDetailScreen() {
   const [customMilestones, setCustomMilestones] = useState<{ label: string; percent: number; status: string }[]>([]);
   const [paymentRecords, setPaymentRecords] = useState<any[]>([]);
   const [paymentSummary, setPaymentSummary] = useState<any>(null);
+  const [myobConnected, setMyobConnected] = useState(false);
+  const [isVoidingMyob, setIsVoidingMyob] = useState(false);
+  const [showMyobCreditNoteModal, setShowMyobCreditNoteModal] = useState(false);
+  const [myobVoidExplanation, setMyobVoidExplanation] = useState('');
   
   const brandColor = businessSettings?.brandColor || user?.brandColor || '#2563eb';
 
@@ -190,6 +194,69 @@ export default function InvoiceDetailScreen() {
   useEffect(() => {
     loadData();
   }, [id]);
+
+  // Task #96: Fetch MYOB connection status to know whether to surface the Void action.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get<{ connected: boolean }>('/api/integrations/myob/status');
+        if (!cancelled) setMyobConnected(!!res.data?.connected);
+      } catch {
+        if (!cancelled) setMyobConnected(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleRaiseMyobCreditNote = useCallback(async (): Promise<boolean> => {
+    if (!invoice) return false;
+    setIsVoidingMyob(true);
+    try {
+      const res = await api.post<any>(`/api/integrations/myob/credit-note/${invoice.id}`);
+      if (res.error) {
+        showToast({ type: 'error', message: 'Credit note failed', description: res.error });
+        return false;
+      }
+      showToast({ type: 'success', message: 'Credit note raised', description: res.data?.message || 'Credit note posted to MYOB.' });
+      await loadData();
+      return true;
+    } finally {
+      setIsVoidingMyob(false);
+    }
+  }, [invoice]);
+
+  const handleVoidInMyob = useCallback(async () => {
+    if (!invoice) return;
+    setIsVoidingMyob(true);
+    try {
+      const authToken = await api.getToken();
+      const res = await fetch(`${API_URL}/api/integrations/myob/void-invoice/${invoice.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+      });
+      const body: any = await res.json().catch(() => ({}));
+      if (res.status === 422 && body?.voidMethod === 'unsupported') {
+        setIsVoidingMyob(false);
+        setMyobVoidExplanation(body.message || 'MYOB AccountRight does not support voiding posted invoices via API.');
+        setShowMyobCreditNoteModal(true);
+        return;
+      }
+      if (res.status >= 200 && res.status < 300 && body?.success) {
+        showToast({ type: 'success', message: 'Voided in MYOB', description: body.message || 'Invoice voided in MYOB.' });
+        await loadData();
+      } else {
+        showToast({ type: 'error', message: 'MYOB void failed', description: body?.message || `Request failed (${res.status})` });
+      }
+    } catch (err: any) {
+      showToast({ type: 'error', message: 'MYOB void failed', description: err?.message || 'Network error' });
+    } finally {
+      setIsVoidingMyob(false);
+    }
+  }, [invoice]);
 
   // Auto-open email compose when navigated with autoEmail param
   useEffect(() => {
@@ -2996,6 +3063,20 @@ ${businessName}`;
             </View>
           )}
 
+          {myobConnected && invoice.status !== 'paid' && invoice.status !== 'draft' && (
+            <Button
+              size="xl"
+              variant="outline"
+              fullWidth
+              loading={isVoidingMyob}
+              disabled={isVoidingMyob}
+              onPress={handleVoidInMyob}
+              icon={!isVoidingMyob ? <Feather name="alert-triangle" size={18} color={colors.foreground} /> : undefined}
+            >
+              Void in MYOB
+            </Button>
+          )}
+
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
@@ -3722,6 +3803,60 @@ ${businessName}`;
           </View>
         </View>
       </AppBottomSheet>
+
+      {/* Task #96: Themed in-app modal for MYOB credit-note fallback */}
+      <Modal
+        visible={showMyobCreditNoteModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShowMyobCreditNoteModal(false)}
+      >
+        <View style={styles.myobModalBackdrop}>
+          <View style={styles.myobModalCard}>
+            <View style={styles.myobModalHeader}>
+              <View style={styles.myobModalIconWrap}>
+                <Feather name="alert-triangle" size={22} color={colors.warning} />
+              </View>
+              <Text style={styles.myobModalTitle}>MYOB can't void this invoice</Text>
+            </View>
+            <Text style={styles.myobModalMessage}>
+              {myobVoidExplanation}
+            </Text>
+            <Text style={styles.myobModalMessage}>
+              Raise a credit note for the same amount instead?
+            </Text>
+            <View style={styles.myobModalActions}>
+              <View style={styles.myobModalActionItem}>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  fullWidth
+                  disabled={isVoidingMyob}
+                  onPress={() => setShowMyobCreditNoteModal(false)}
+                >
+                  Cancel
+                </Button>
+              </View>
+              <View style={styles.myobModalActionItem}>
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  fullWidth
+                  loading={isVoidingMyob}
+                  disabled={isVoidingMyob}
+                  onPress={async () => {
+                    const ok = await handleRaiseMyobCreditNote();
+                    if (ok) setShowMyobCreditNoteModal(false);
+                  }}
+                >
+                  Raise credit note instead
+                </Button>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -4600,6 +4735,55 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
     fontSize: 14,
     color: colors.mutedForeground,
     marginTop: 2,
+  },
+  myobModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  myobModalCard: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: colors.card,
+    borderColor: colors.border,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  myobModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  myobModalIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.warningLight,
+  },
+  myobModalTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  myobModalMessage: {
+    fontSize: 14,
+    color: colors.mutedForeground,
+    lineHeight: 20,
+  },
+  myobModalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  myobModalActionItem: {
+    flex: 1,
   },
   previewModalContainer: {
     flex: 1,
