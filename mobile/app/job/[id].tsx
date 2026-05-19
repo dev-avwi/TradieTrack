@@ -1874,6 +1874,7 @@ const createStyles = (colors: ThemeColors, bottomNavHeight: number = 0) => Style
 });
 
 export default function JobDetailScreen() {
+  console.log('[LA-DEBUG] LiveActivity module:', typeof LiveActivity, LiveActivity && Object.keys(LiveActivity));
   const { id, action: navAction } = useLocalSearchParams<{ id: string; action?: string }>();
   const { colors, isDark } = useTheme();
   const confirm = useConfirmDialog();
