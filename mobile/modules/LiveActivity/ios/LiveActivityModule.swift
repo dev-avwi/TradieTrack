@@ -25,27 +25,39 @@ public class LiveActivityModule: Module {
         Name("LiveActivity")
 
         OnCreate {
+            NSLog("[LA-SWIFT] OnCreate — module instantiated")
             // Reattach to an in-flight activity from a prior app session so
             // update()/end() can target it without JS knowing its ID. The
             // OS keeps activities alive across app launches up to 8h or
             // their staleDate, whichever comes first.
             if #available(iOS 16.2, *) {
-                self.currentActivity = Activity<JobRunnerLiveActivityAttributes>.activities.first
+                let reattached = Activity<JobRunnerLiveActivityAttributes>.activities.first
+                self.currentActivity = reattached
+                NSLog("[LA-SWIFT] OnCreate — reattached activity: %@", reattached?.id ?? "none")
+            } else {
+                NSLog("[LA-SWIFT] OnCreate — running on iOS < 16.2, Live Activities disabled")
             }
         }
 
         AsyncFunction("areActivitiesEnabled") { () -> Bool in
             if #available(iOS 16.2, *) {
-                return ActivityAuthorizationInfo().areActivitiesEnabled
+                let enabled = ActivityAuthorizationInfo().areActivitiesEnabled
+                NSLog("[LA-SWIFT] areActivitiesEnabled -> %@", enabled ? "YES" : "NO")
+                return enabled
             }
+            NSLog("[LA-SWIFT] areActivitiesEnabled -> NO (iOS < 16.2)")
             return false
         }
 
         AsyncFunction("start") { (job: JobPayload) async throws -> String in
+            NSLog("[LA-SWIFT] start called — id=%@ address=%@ client=%@", job.id, job.address, job.clientName)
+
             guard #available(iOS 16.2, *) else {
+                NSLog("[LA-SWIFT] start FAILED — iOS < 16.2")
                 throw UnsupportedOSException()
             }
             guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                NSLog("[LA-SWIFT] start FAILED — activities not authorized (Settings → app → Live Activities)")
                 throw NotAuthorizedException()
             }
 
@@ -53,6 +65,7 @@ public class LiveActivityModule: Module {
             // new one. .immediate so the old one disappears instantly rather
             // than lingering next to the new one.
             if let existing = self.currentActivity as? Activity<JobRunnerLiveActivityAttributes> {
+                NSLog("[LA-SWIFT] start — ending existing activity %@ before starting new", existing.id)
                 await existing.end(nil, dismissalPolicy: .immediate)
                 self.currentActivity = nil
             }
@@ -72,30 +85,44 @@ public class LiveActivityModule: Module {
                     pushType: nil
                 )
                 self.currentActivity = activity
+                NSLog("[LA-SWIFT] start SUCCESS — activity id=%@", activity.id)
                 return activity.id
             } catch {
+                NSLog("[LA-SWIFT] start FAILED — Activity.request threw: %@", String(describing: error))
                 throw StartFailedException(error.localizedDescription)
             }
         }
 
         AsyncFunction("update") { (status: String) async throws in
+            NSLog("[LA-SWIFT] update called — status=%@", status)
+
             guard #available(iOS 16.2, *) else {
+                NSLog("[LA-SWIFT] update FAILED — iOS < 16.2")
                 throw UnsupportedOSException()
             }
             guard let activity = self.currentActivity as? Activity<JobRunnerLiveActivityAttributes> else {
+                NSLog("[LA-SWIFT] update FAILED — no active activity")
                 throw NoActiveActivityException()
             }
             guard let jobStatus = JobStatus(rawValue: status) else {
+                NSLog("[LA-SWIFT] update FAILED — invalid status %@", status)
                 throw InvalidStatusException(status)
             }
 
             let newState = JobRunnerLiveActivityAttributes.ContentState(status: jobStatus)
             await activity.update(.init(state: newState, staleDate: nil))
+            NSLog("[LA-SWIFT] update SUCCESS — activity=%@ status=%@", activity.id, status)
         }
 
         AsyncFunction("end") { () async in
-            guard #available(iOS 16.2, *) else { return }
+            NSLog("[LA-SWIFT] end called")
+
+            guard #available(iOS 16.2, *) else {
+                NSLog("[LA-SWIFT] end — no-op (iOS < 16.2)")
+                return
+            }
             guard let activity = self.currentActivity as? Activity<JobRunnerLiveActivityAttributes> else {
+                NSLog("[LA-SWIFT] end — no-op (no active activity)")
                 return
             }
 
@@ -110,6 +137,7 @@ public class LiveActivityModule: Module {
                 dismissalPolicy: .after(dismissalDate)
             )
             self.currentActivity = nil
+            NSLog("[LA-SWIFT] end SUCCESS — activity=%@ dismissed", activity.id)
         }
     }
 }
