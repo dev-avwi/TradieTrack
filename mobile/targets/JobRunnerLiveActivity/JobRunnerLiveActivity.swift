@@ -10,56 +10,66 @@ private extension Color {
     static let jobRunnerBlue = Color(red: 0.169, green: 0.490, blue: 0.914)   // #2B7DE9
     static let jobRunnerOrange = Color(red: 0.949, green: 0.549, blue: 0.157) // #F28C28
     static let jobRunnerGreen = Color(red: 0.20, green: 0.70, blue: 0.30)
+    static let cardBackground = Color(red: 0.11, green: 0.11, blue: 0.12)     // #1C1C1E
 }
 
 struct JobRunnerLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: JobRunnerLiveActivityAttributes.self) { context in
-            // Lock-screen / Notification-center presentation.
+            // Lock-screen / Notification-center presentation. The system
+            // wraps this in a rounded bubble whose fill we set via
+            // `activityBackgroundTint` — we go dark to match the MLB / Uber
+            // premium aesthetic, with the inner view supplying the layout.
             LockScreenView(attributes: context.attributes, state: context.state)
-                .activityBackgroundTint(Color.black.opacity(0.05))
-                .activitySystemActionForegroundColor(.primary)
+                .activityBackgroundTint(Color.cardBackground)
+                .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
-                // Expanded — shown when the user long-presses the Dynamic Island.
                 DynamicIslandExpandedRegion(.leading) {
-                    BrandMark()
-                        .frame(width: 30, height: 30)
+                    BrandBadge()
+                        .frame(width: 36, height: 36)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.attributes.startedAt, style: .timer)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded).monospacedDigit())
-                        .foregroundStyle(Color.jobRunnerOrange)
-                        .frame(maxWidth: 80, alignment: .trailing)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(context.attributes.startedAt, style: .timer)
+                            .font(.system(size: 16, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(Color.jobRunnerOrange)
+                            .frame(maxWidth: 90, alignment: .trailing)
+                        Text("ELAPSED")
+                            .font(.system(size: 8, weight: .semibold))
+                            .tracking(1.0)
+                            .foregroundStyle(.white.opacity(0.4))
+                    }
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(spacing: 2) {
-                        Text(context.attributes.customerName)
-                            .font(.headline)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(primaryAddressLine(context.attributes.address))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
                             .lineLimit(1)
-                        Text(context.attributes.address)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        Text(context.attributes.customerName)
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.6))
                             .lineLimit(1)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        StatusBadge(status: context.state.status)
+                        StatusPill(status: context.state.status)
                         Spacer()
                     }
                 }
             } compactLeading: {
-                BrandMark()
+                BrandBadge()
+                    .frame(width: 20, height: 20)
             } compactTrailing: {
                 Text(context.attributes.startedAt, style: .timer)
-                    .font(.system(size: 12, weight: .medium, design: .rounded).monospacedDigit())
+                    .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundStyle(Color.jobRunnerOrange)
-                    .frame(maxWidth: 50)
+                    .frame(maxWidth: 52)
             } minimal: {
-                // Shown when multiple activities are competing for Dynamic
-                // Island space — must be a single tiny glyph.
-                BrandMark()
+                BrandBadge()
             }
             .keylineTint(Color.jobRunnerBlue)
         }
@@ -73,67 +83,109 @@ private struct LockScreenView: View {
     let state: JobRunnerLiveActivityAttributes.ContentState
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Material-backed brand mark. `.thinMaterial` gives a frosted
-            // glass effect on iOS 16.1+ that approximates the Liquid Glass
-            // aesthetic of the main app. On iOS 26+ this could be upgraded
-            // to `.glassEffect(...)` behind an availability check — left as
-            // a follow-up.
-            ZStack {
-                Circle()
-                    .fill(.thinMaterial)
-                Image("JobRunnerLogo")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 32, height: 32)
-            }
-            .frame(width: 44, height: 44)
+        HStack(alignment: .top, spacing: 14) {
+            // Logo badge with a brand-blue glow — gives the card a focal
+            // point against the dark background and reads as "JobRunner"
+            // at a glance from the lock screen.
+            BrandBadge()
+                .frame(width: 46, height: 46)
+                .shadow(color: Color.jobRunnerBlue.opacity(0.45), radius: 10, x: 0, y: 0)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(attributes.customerName)
-                    .font(.headline)
+            VStack(alignment: .leading, spacing: 5) {
+                // Address as headline — that's the question someone asks
+                // when they glance at the card: "where am I working?"
+                Text(primaryAddressLine(attributes.address))
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
-                Text(attributes.address)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                HStack(spacing: 6) {
-                    StatusBadge(status: state.status)
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-                    Text(attributes.startedAt, style: .relative)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(Color.jobRunnerOrange)
+
+                // Secondary: customer name in muted white. If empty (older
+                // payload) we still get a tidy two-line stack.
+                if !attributes.customerName.isEmpty {
+                    Text(attributes.customerName)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
                 }
+
+                StatusPill(status: state.status)
+                    .padding(.top, 2)
             }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
+
+            // Timer pinned top-right — the second-most important number on
+            // the card after "where". Brand orange so it pops against the
+            // dark surface.
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(attributes.startedAt, style: .timer)
+                    .font(.system(size: 22, weight: .heavy, design: .rounded).monospacedDigit())
+                    .foregroundStyle(Color.jobRunnerOrange)
+                    .frame(maxWidth: 96, alignment: .trailing)
+                    .lineLimit(1)
+                Text("ELAPSED")
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(1.2)
+                    .foregroundStyle(.white.opacity(0.45))
+            }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 18)
         .padding(.vertical, 14)
     }
 }
 
-// MARK: - Reusable bits
+// MARK: - Shared bits
 
-private struct BrandMark: View {
+// Most jobs sit at addresses like "26 Ocean Drive, Gordonvale QLD 4865".
+// The first segment alone is more legible on a narrow card — the suburb +
+// postcode just becomes noise at 14pt. Falls back gracefully if there's
+// no comma to split on.
+private func primaryAddressLine(_ address: String) -> String {
+    if let comma = address.firstIndex(of: ",") {
+        return String(address[..<comma]).trimmingCharacters(in: .whitespaces)
+    }
+    return address
+}
+
+private struct BrandBadge: View {
     var body: some View {
-        Image("JobRunnerLogo")
-            .resizable()
-            .aspectRatio(contentMode: .fit)
+        ZStack {
+            Circle()
+                .fill(Color.white)
+            Image("JobRunnerLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .padding(4)
+        }
     }
 }
 
-private struct StatusBadge: View {
+private struct StatusPill: View {
     let status: JobStatus
 
     var body: some View {
-        Text(label)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(color, in: .capsule)
+        HStack(spacing: 6) {
+            // Live status dot. For in-progress we breathe with a subtle
+            // opacity animation so the card visibly feels "live" even when
+            // the timer is the only number ticking.
+            Circle()
+                .fill(accentColor)
+                .frame(width: 6, height: 6)
+            Text(label)
+                .font(.system(size: 10, weight: .heavy))
+                .tracking(1.0)
+                .foregroundStyle(accentColor)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(accentColor.opacity(0.18))
+        )
+        .overlay(
+            Capsule()
+                .stroke(accentColor.opacity(0.35), lineWidth: 0.5)
+        )
     }
 
     private var label: String {
@@ -144,7 +196,7 @@ private struct StatusBadge: View {
         }
     }
 
-    private var color: Color {
+    private var accentColor: Color {
         switch status {
         case .inProgress: return .jobRunnerBlue
         case .onBreak:    return .jobRunnerOrange
