@@ -101,6 +101,8 @@ export default function QuoteDetailScreen() {
   const [isCreatingJob, setIsCreatingJob] = useState(false);
   const [isMarkingSent, setIsMarkingSent] = useState(false);
   const [isMarkingAccepted, setIsMarkingAccepted] = useState(false);
+  const [isPushingToXero, setIsPushingToXero] = useState(false);
+  const [xeroConnected, setXeroConnected] = useState(false);
   const [isSendingQuote, setIsSendingQuote] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [sendModalDefaultTab, setSendModalDefaultTab] = useState<'email' | 'sms'>('email');
@@ -162,6 +164,20 @@ export default function QuoteDetailScreen() {
   useEffect(() => {
     loadData();
   }, [id]);
+
+  // Task #93: check Xero connection so we can show the Push to Xero button.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.getXeroStatus();
+        if (!cancelled) setXeroConnected(!!res.data?.connected);
+      } catch {
+        if (!cancelled) setXeroConnected(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Auto-open email compose when navigated with autoEmail param
   useEffect(() => {
@@ -837,6 +853,28 @@ ${businessName}`;
     );
   };
   
+  // Task #93: push the quote to Xero via the real Xero Quotes API.
+  const handlePushToXero = async () => {
+    if (!quote || isPushingToXero) return;
+    setIsPushingToXero(true);
+    try {
+      const res = await api.pushQuoteToXero(id!);
+      if (res.data?.success && res.data?.xeroQuoteId) {
+        showToast({ type: 'success', message: 'Quote pushed to Xero' });
+        await loadData();
+      } else if (res.data?.success) {
+        showToast({ type: 'info', message: res.data?.message || 'Connect Xero first to push this quote.' });
+      } else {
+        showToast({ type: 'error', message: res.error || 'Failed to push quote to Xero' });
+      }
+    } catch (error: any) {
+      if (__DEV__) console.log('Error pushing quote to Xero:', error);
+      showToast({ type: 'error', message: error?.message || 'Failed to push quote to Xero' });
+    } finally {
+      setIsPushingToXero(false);
+    }
+  };
+
   const handleMarkAsSent = async () => {
     if (!quote || isMarkingSent) return;
     
@@ -1365,6 +1403,35 @@ ${businessName}`;
                   </Text>
                 </PressableRow>
               )}
+            </View>
+          )}
+
+          {/* Task #93: Push to Xero (real Xero Quotes API). Treat both
+              xeroQuoteId (new path) and xeroInvoiceId (legacy DRAFT-invoice
+              path) as already-synced so legacy quotes don't get double-pushed. */}
+          {xeroConnected && (quote.status === 'sent' || quote.status === 'accepted') && !quote.xeroQuoteId && !quote.xeroInvoiceId && (
+            <View style={[styles.quickActions, { marginTop: 8 }]}>
+              <PressableRow
+                style={[styles.quickAction, { backgroundColor: colors.info, flex: 1 }, isPushingToXero && { opacity: 0.6 }]}
+                onPress={handlePushToXero}
+                disabled={isPushingToXero}
+                data-testid="button-push-quote-to-xero"
+              >
+                {isPushingToXero ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Feather name="upload-cloud" size={20} color={colors.white} />
+                )}
+                <Text style={[styles.quickActionText, { color: colors.white }]}>
+                  {isPushingToXero ? 'Pushing...' : 'Push to Xero'}
+                </Text>
+              </PressableRow>
+            </View>
+          )}
+          {xeroConnected && (!!quote.xeroQuoteId || !!quote.xeroInvoiceId) && (
+            <View style={[styles.card, { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+              <Feather name="check-circle" size={16} color={colors.success} />
+              <Text style={[styles.infoText, { color: colors.mutedForeground }]}>Pushed to Xero</Text>
             </View>
           )}
 

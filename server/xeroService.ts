@@ -1030,6 +1030,12 @@ export async function syncQuoteToXero(userId: string, quoteId: string): Promise<
       return { success: true, xeroInvoiceId: (quote as any).xeroInvoiceId };
     }
 
+    // Task #93: if the quote has already been pushed via the real Xero Quotes
+    // API (xeroQuoteId set), don't double-push it as a legacy DRAFT invoice.
+    if ((quote as any).xeroQuoteId) {
+      return { success: true };
+    }
+
     const refreshedConnection = await refreshTokenIfNeeded(connection);
     const xero = prepareXeroClient(refreshedConnection);
 
@@ -1380,17 +1386,34 @@ export async function syncAllQuotesToXero(userId: string): Promise<{ synced: num
       skipped++;
       continue;
     }
-    
-    if ((quote as any).xeroInvoiceId) {
+
+    // Task #93: skip if already pushed via either the real Quotes API
+    // (xeroQuoteId) or the legacy DRAFT-invoice path (xeroInvoiceId).
+    if ((quote as any).xeroQuoteId || (quote as any).xeroInvoiceId) {
       skipped++;
       continue;
     }
-    
+
+    // Task #93: prefer the real Xero Quotes API; only fall back to the legacy
+    // DRAFT-invoice path on error.
+    const real = await pushQuoteToXero(userId, quote.id);
+    if (real.success && real.xeroQuoteId) {
+      synced++;
+      continue;
+    }
+    if (real.success && !real.xeroQuoteId) {
+      // No active Xero connection — pushQuoteToXero returns success without an
+      // id in that case; nothing to fall back to.
+      skipped++;
+      continue;
+    }
+
+    console.warn('[Xero] syncAllQuotes: pushQuoteToXero failed, falling back to syncQuoteToXero:', real.error);
     const result = await syncQuoteToXero(userId, quote.id);
     if (result.success && result.xeroInvoiceId) {
       synced++;
-    } else if (result.error) {
-      errors.push(`${quote.number || (quote as any).quoteNumber}: ${result.error}`);
+    } else if (result.error || real.error) {
+      errors.push(`${quote.number || (quote as any).quoteNumber}: ${result.error || real.error}`);
     } else {
       skipped++;
     }
@@ -1423,8 +1446,10 @@ export async function getSyncSummary(userId: string): Promise<{
     i.status !== 'draft' && !i.xeroInvoiceId
   ).length;
   
-  const unsyncedQuotes = quotes.filter(q => 
-    (q.status === 'sent' || q.status === 'accepted') && !(q as any).xeroInvoiceId
+  // Task #93: treat quotes pushed via either the real Quotes API
+  // (xeroQuoteId) or the legacy DRAFT-invoice path (xeroInvoiceId) as synced.
+  const unsyncedQuotes = quotes.filter(q =>
+    (q.status === 'sent' || q.status === 'accepted') && !(q as any).xeroQuoteId && !(q as any).xeroInvoiceId
   ).length;
   
   const unsyncedClients = clients.filter(c => !c.xeroContactId).length;

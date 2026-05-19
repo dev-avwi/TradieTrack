@@ -516,6 +516,15 @@ class ApiClient {
     return this.post('/api/integrations/xero/push-invoice', { invoiceId });
   }
 
+  // Task #93: push a quote to Xero via the real Xero Quotes API.
+  async pushQuoteToXero(quoteId: string): Promise<ApiResponse<{
+    success: boolean;
+    xeroQuoteId?: string;
+    message?: string;
+  }>> {
+    return this.post(`/api/integrations/xero/push-quote-real/${quoteId}`);
+  }
+
   async getMyBusinesses(): Promise<ApiResponse<{
     businesses: Array<{
       businessOwnerId: string;

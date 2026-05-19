@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Printer, ArrowLeft, Send, FileText, Download, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers, Eye, Loader2, Edit2, History, Clock, X } from "lucide-react";
+import { Printer, ArrowLeft, Send, FileText, Download, Mail, AlertTriangle, ChevronRight, FolderOpen, Briefcase, PlusCircle, Receipt, Camera, ChevronDown, StickyNote, Image, Layers, Eye, Loader2, Edit2, History, Clock, X, UploadCloud, CheckCircle2 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -21,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConvertQuoteToInvoice } from "@/hooks/use-quotes";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient, getSessionToken } from "@/lib/queryClient";
+import { queryClient, getSessionToken, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { useIntegrationHealth, isEmailReady } from "@/hooks/use-integration-health";
 import StatusBadge from "./StatusBadge";
@@ -335,6 +335,29 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
       : undefined;
   };
 
+  // Task #93: Push to Xero via the real Xero Quotes API.
+  const { data: xeroStatus } = useQuery<{ configured: boolean; connected: boolean }>({
+    queryKey: ['/api/integrations/xero/status'],
+  });
+
+  const pushQuoteToXeroMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/integrations/xero/push-quote-real/${quoteId}`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/quotes', quoteId] });
+      if (data?.success && data?.xeroQuoteId) {
+        toast({ title: 'Pushed to Xero', description: 'Quote has been synced to Xero successfully.' });
+      } else {
+        toast({ title: 'Connect Xero', description: data?.message || 'Connect Xero first to push this quote.' });
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: 'Push to Xero Failed', description: error?.message || 'Failed to push quote to Xero', variant: 'destructive' });
+    },
+  });
+
   // Convert quote to invoice
   const handleConvertToInvoice = async () => {
     if (!quote) return;
@@ -538,6 +561,31 @@ export default function QuoteDetailView({ quoteId, onBack, onSend }: QuoteDetail
                 <Receipt className="h-4 w-4 mr-2" />
                 {convertToInvoiceMutation.isPending ? 'Converting...' : 'Convert to Invoice'}
               </Button>
+            )}
+
+            {/* Task #93: Push to Xero (real Xero Quotes API). Treats both
+                xeroQuoteId (new path) and xeroInvoiceId (legacy DRAFT-invoice
+                path) as already-synced so legacy quotes don't get double-pushed. */}
+            {xeroStatus?.connected && (quote.status === 'sent' || quote.status === 'accepted') && !quote.xeroQuoteId && !quote.xeroInvoiceId && (
+              <Button
+                variant="outline"
+                onClick={() => pushQuoteToXeroMutation.mutate()}
+                disabled={pushQuoteToXeroMutation.isPending}
+                data-testid="button-push-quote-to-xero"
+              >
+                {pushQuoteToXeroMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <UploadCloud className="h-4 w-4 mr-2" />
+                )}
+                {pushQuoteToXeroMutation.isPending ? 'Pushing...' : 'Push to Xero'}
+              </Button>
+            )}
+            {xeroStatus?.connected && (!!quote.xeroQuoteId || !!quote.xeroInvoiceId) && (
+              <Badge variant="secondary" className="gap-1" data-testid="badge-quote-pushed-xero">
+                <CheckCircle2 className="h-3 w-3" />
+                Pushed to Xero
+              </Badge>
             )}
 
             {/* Divider between workflow actions and document tools */}
