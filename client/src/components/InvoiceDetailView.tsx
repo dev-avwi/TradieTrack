@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Printer, ArrowLeft, Send, FileText, CreditCard, Download, Copy, ExternalLink, Loader2, RefreshCw, Check, Upload, Mail, AlertTriangle, ChevronRight, FolderOpen, DollarSign, Receipt, CalendarClock, Briefcase, Clock, Eye, Pencil, History } from "lucide-react";
-import { SiXero } from "react-icons/si";
+import { SiXero, SiQuickbooks } from "react-icons/si";
 import { useBusinessSettings } from "@/hooks/use-business-settings";
 import { useIntegrationHealth, isStripeReady } from "@/hooks/use-integration-health";
 import { useMarkInvoicePaid, useRecordPayment, usePaymentRecords, useVoidPayment, useUpdateMilestones } from "@/hooks/use-invoices";
@@ -317,6 +317,41 @@ export default function InvoiceDetailView({
     },
     onError: (error: any) => {
       toast({ title: 'Credit note failed', description: error?.message || 'Could not raise credit note in MYOB.', variant: 'destructive' });
+    },
+  });
+
+  // Task #97: QuickBooks void mirror — same flow as MYOB, with credit-memo fallback dialog.
+  const { data: quickbooksStatus } = useQuery<{ connected: boolean; companyName?: string }>({
+    queryKey: ['/api/integrations/quickbooks/status'],
+  });
+  const [showQuickbooksCreditNoteDialog, setShowQuickbooksCreditNoteDialog] = useState(false);
+  const [quickbooksVoidExplanation, setQuickbooksVoidExplanation] = useState<string>('');
+
+  const voidInQuickbooksMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/integrations/quickbooks/void-invoice/${invoiceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(getSessionToken() ? { Authorization: `Bearer ${getSessionToken()}` } : {}) },
+        credentials: 'include',
+      });
+      const body = await res.json().catch(() => ({}));
+      return { status: res.status, body };
+    },
+    onSuccess: ({ status, body }) => {
+      if (status === 422 && body?.voidMethod === 'unsupported') {
+        setQuickbooksVoidExplanation(body.message || 'QuickBooks could not void this invoice.');
+        setShowQuickbooksCreditNoteDialog(true);
+        return;
+      }
+      if (status >= 200 && status < 300 && body?.success) {
+        queryClient.invalidateQueries({ queryKey: ['/api/invoices', invoiceId] });
+        toast({ title: 'Voided in QuickBooks', description: body.message || 'Invoice voided in QuickBooks.' });
+        return;
+      }
+      toast({ title: 'QuickBooks void failed', description: body?.message || body?.error || `Request failed (${status})`, variant: 'destructive' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'QuickBooks void failed', description: error?.message || 'Network error', variant: 'destructive' });
     },
   });
 
@@ -881,6 +916,21 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
                   <AlertTriangle className="h-4 w-4 mr-2" />
                 )}
                 Void in MYOB
+              </Button>
+            )}
+            {quickbooksStatus?.connected && invoice.status !== 'paid' && invoice.status !== 'draft' && (
+              <Button
+                variant="outline"
+                onClick={() => voidInQuickbooksMutation.mutate()}
+                disabled={voidInQuickbooksMutation.isPending}
+                data-testid="button-void-in-quickbooks"
+              >
+                {voidInQuickbooksMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <SiQuickbooks className="h-4 w-4 mr-2" />
+                )}
+                Void in QuickBooks
               </Button>
             )}
 
@@ -2328,6 +2378,23 @@ ${businessSettings.email ? `Email: ${businessSettings.email}` : ''}`
               ) : null}
               Raise credit note instead
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showQuickbooksCreditNoteDialog} onOpenChange={setShowQuickbooksCreditNoteDialog}>
+        <AlertDialogContent data-testid="dialog-quickbooks-credit-note">
+          <AlertDialogHeader>
+            <AlertDialogTitle>QuickBooks can't void this invoice</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">{quickbooksVoidExplanation}</span>
+              <span className="block">
+                When QuickBooks won't void a posted invoice (for example once it has payments applied), the standard accounting workaround is to raise a Credit Memo in QuickBooks that mirrors the invoice with negative amounts so the balance nets to zero.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-quickbooks-credit-note">Close</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
