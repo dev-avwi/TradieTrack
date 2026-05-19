@@ -83,7 +83,7 @@ Core architectural and design decisions include:
 
 **Production overload triage.** `GET /api/metrics` is the source of truth — watch `queues[].queued/totalRejected`, `pool.waiting`, `routes[].p99`, `totals.status429`. If `pdf` queue rejects spike, lower per-user PDF limit before raising queue size. If `ai`/`vision` reject, OpenAI is the bottleneck. DB pool is hard-capped at 15 (Neon serverless limit) — sustained `pool.waiting > 5` means a slow query, not a missing connection.
 
-**Mobile typecheck regression guard.** `bash mobile/scripts/typecheck.sh` runs `tsc --noEmit` and fails if the error count exceeds `mobile/scripts/typecheck-baseline.txt` (currently 305 catalogued type-only errors). Run with `--update` after intentionally fixing baseline errors.
+**Mobile typecheck regression guard.** `bash mobile/scripts/typecheck.sh` runs `tsc --noEmit` and fails if any new error appears that is not in `mobile/scripts/typecheck-baseline.txt` (currently 305 catalogued type-only errors). Run with `--update` after intentionally fixing baseline errors, then commit the updated baseline. Wired into CI via `.github/workflows/mobile-typecheck.yml`, which runs on every push/PR that touches `mobile/**` and prints the diff of new errors on failure.
 
 ### Round History
 Dated implementation sub-sections (Subscription pricing, AI Receptionist tuning, Mobile Bottom Sheet Migration, Mobile Polish Audit, Round 10 Android Hardening, Integrations Health Pass, Production Hardening, Mobile TypeScript Check) live in `.local/reports/round-history.md`.

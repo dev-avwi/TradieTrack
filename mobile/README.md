@@ -2,6 +2,26 @@
 
 React Native mobile app for JobRunner - built with Expo SDK 52.
 
+## TypeScript Check
+
+CI runs `mobile/scripts/typecheck.sh` automatically on every push and PR that
+touches `mobile/**` (see `.github/workflows/mobile-typecheck.yml`). The script
+runs `tsc --noEmit` and fails the build if any TypeScript error appears that
+is not already catalogued in `mobile/scripts/typecheck-baseline.txt`. The diff
+of new errors is printed in the failure log.
+
+Local usage:
+
+```bash
+# Verify no regressions vs. the committed baseline
+bash mobile/scripts/typecheck.sh
+
+# After intentionally fixing baseline errors, re-record the baseline and
+# commit the updated file
+bash mobile/scripts/typecheck.sh --update
+```
+
+
 ## Features
 
 ### Core Screens

@@ -393,6 +393,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
+    elevation: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
   },
   // Invisible drag strip at the top of every sheet. Most sheets use the
   // built-in Header (in which case the whole sheet is also a drag target),
