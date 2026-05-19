@@ -25,6 +25,7 @@ import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { spacing, radius, typography, sizes, pageShell, iconSizes } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
 import { showToast } from '../../src/lib/toast';
+import { useConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { format } from 'date-fns';
 import { getBottomNavHeight } from '../../src/components/BottomNav';
 
@@ -129,6 +130,7 @@ function ExpenseCard({
 
 export default function ExpensesScreen() {
   const { colors } = useTheme();
+  const confirm = useConfirmDialog();
   const insets = useSafeAreaInsets();
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = useMemo(() => createStyles(colors, bottomNavHeight), [colors, bottomNavHeight]);
@@ -275,15 +277,15 @@ export default function ExpensesScreen() {
 
   const handleSubmitExpense = async () => {
     if (!formDescription.trim()) {
-      Alert.alert('Required', 'Please enter a description');
+      showToast({ type: 'error', message: 'Please enter a description' });
       return;
     }
     if (!formAmount.trim() || isNaN(parseFloat(formAmount))) {
-      Alert.alert('Required', 'Please enter a valid amount');
+      showToast({ type: 'error', message: 'Please enter a valid amount' });
       return;
     }
     if (!formCategoryId) {
-      Alert.alert('Required', 'Please select a category');
+      showToast({ type: 'error', message: 'Please select a category' });
       return;
     }
 
@@ -314,7 +316,7 @@ export default function ExpensesScreen() {
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
-      Alert.alert('Required', 'Please enter a category name');
+      showToast({ type: 'error', message: 'Please enter a category name' });
       return;
     }
     setIsSubmitting(true);
@@ -336,22 +338,20 @@ export default function ExpensesScreen() {
     }
   };
 
-  const handleDeleteExpense = (id: string) => {
-    Alert.alert('Delete Expense', 'Are you sure you want to delete this expense?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.delete(`/api/expenses/${id}`);
-            fetchData();
-          } catch (err: any) {
-            showToast({ type: 'error', message: 'Error', description: err.message || 'Failed to delete expense' });
-          }
-        },
-      },
-    ]);
+  const handleDeleteExpense = async (id: string) => {
+    const ok = await confirm({
+      title: 'Delete Expense',
+      message: 'Are you sure you want to delete this expense?',
+      confirmText: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/api/expenses/${id}`);
+      fetchData();
+    } catch (err: any) {
+      showToast({ type: 'error', message: 'Error', description: err.message || 'Failed to delete expense' });
+    }
   };
 
   const stats = useMemo(() => {

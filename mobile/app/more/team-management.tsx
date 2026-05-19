@@ -26,6 +26,7 @@ import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { TeamAvatar } from '../../src/components/TeamAvatar';
 import { showToast } from '../../src/lib/toast';
+import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface SubscriptionStatus {
   tier: 'free' | 'pro' | 'team' | 'trial';
@@ -1389,6 +1390,7 @@ const createStyles = (colors: any) => StyleSheet.create({
 
 export default function TeamManagementScreen() {
   const { colors } = useTheme();
+  const confirm = useConfirmDialog();
   const bottomInset = useBottomInset(40);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { user, isOwner } = useAuthStore();
@@ -1595,22 +1597,20 @@ export default function TeamManagementScreen() {
     setIsGeneratingCode(false);
   };
 
-  const handleRevokeInviteCode = (codeId: string, code: string) => {
-    Alert.alert('Revoke Code', `Are you sure you want to revoke code ${code}? It will no longer be usable.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Revoke',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.delete(`/api/team/invite-codes/${codeId}`);
-            setInviteCodes(prev => prev.map(c => c.id === codeId ? { ...c, isActive: false } : c));
-          } catch (error: any) {
-            showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to revoke code' });
-          }
-        },
-      },
-    ]);
+  const handleRevokeInviteCode = async (codeId: string, code: string) => {
+    const ok = await confirm({
+      title: 'Revoke Code',
+      message: `Are you sure you want to revoke code ${code}? It will no longer be usable.`,
+      confirmText: 'Revoke',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/api/team/invite-codes/${codeId}`);
+      setInviteCodes(prev => prev.map(c => c.id === codeId ? { ...c, isActive: false } : c));
+    } catch (error: any) {
+      showToast({ type: 'error', message: 'Error', description: error.message || 'Failed to revoke code' });
+    }
   };
 
   const getRolePermissions = useCallback((roleId: string): string[] => {
@@ -1754,11 +1754,11 @@ export default function TeamManagementScreen() {
 
   const handleInvite = async () => {
     if (!inviteEmail) {
-      Alert.alert('Required', 'Please enter an email address');
+      showToast({ type: 'error', message: 'Please enter an email address' });
       return;
     }
     if (!inviteFirstName || !inviteLastName) {
-      Alert.alert('Required', 'Please enter first and last name');
+      showToast({ type: 'error', message: 'Please enter first and last name' });
       return;
     }
     
@@ -1942,7 +1942,7 @@ export default function TeamManagementScreen() {
   // Assign job to member
   const handleAssignJob = async () => {
     if (!selectedMember || !selectedJobId) {
-      Alert.alert('Required', 'Please select a job to assign');
+      showToast({ type: 'error', message: 'Please select a job to assign' });
       return;
     }
     

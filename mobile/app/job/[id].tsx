@@ -2423,11 +2423,11 @@ export default function JobDetailScreen() {
   const handleInviteSubcontractor = async () => {
     if (!id) return;
     if (!subcontractorForm.contactName.trim()) {
-      Alert.alert('Please enter a name');
+      showToast({ type: 'error', message: 'Please enter a name' });
       return;
     }
     if (!subcontractorForm.contactPhone.trim() && !subcontractorForm.contactEmail.trim()) {
-      Alert.alert('Please enter a phone number or email');
+      showToast({ type: 'error', message: 'Please enter a phone number or email' });
       return;
     }
 
@@ -3260,11 +3260,11 @@ export default function JobDetailScreen() {
   const handleQuickMagicLink = async () => {
     if (!id) return;
     if (!magicLinkName.trim()) {
-      Alert.alert('Please enter a name');
+      showToast({ type: 'error', message: 'Please enter a name' });
       return;
     }
     if (!magicLinkPhone.trim()) {
-      Alert.alert('Please enter a phone number');
+      showToast({ type: 'error', message: 'Please enter a phone number' });
       return;
     }
     setIsSendingMagicLink(true);
@@ -5502,7 +5502,7 @@ export default function JobDetailScreen() {
 
   const handleSubmitSiteUpdate = async () => {
     if (!job || (!siteUpdateNote.trim() && !siteUpdatePhotoUri)) {
-      Alert.alert('Required', 'Please add a progress note or photo.');
+      showToast({ type: 'error', message: 'Please add a progress note or photo.' });
       return;
     }
 

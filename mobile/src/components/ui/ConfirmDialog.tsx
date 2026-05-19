@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, ReactNode } from 'react';
-import { Alert, Modal, View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { Alert, Modal, View, Text, Pressable, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../lib/theme';
 import { radius, spacing, typography, shadows } from '../../lib/design-tokens';
@@ -53,7 +53,12 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const { colors, isDark } = useTheme();
 
   const confirm = useCallback((options: ConfirmDialogOptions) => {
-    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    // iOS users expect the native system alert (it has the right typography,
+    // blur, and destructive-red colour out of the box). Android's native
+    // Alert looks unbranded and out of place next to our themed sheets, so
+    // on Android (and web) we use the in-app modal which respects the
+    // user's theme tokens and provides proper haptics.
+    if (Platform.OS === 'ios') {
       return nativeConfirm(options);
     }
     return new Promise<boolean>((resolve) => {
@@ -76,6 +81,10 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
         statusBarTranslucent
         onRequestClose={() => handleClose(false)}
       >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
         <Pressable style={styles.backdrop} onPress={() => handleClose(false)}>
           <Pressable
             style={[
@@ -142,6 +151,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </ConfirmDialogContext.Provider>
   );
