@@ -2290,7 +2290,17 @@ export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
         'Working on job',
         false
       );
-      
+
+      // Flip the lock-screen Live Activity back to in_progress after a
+      // resume-from-break. startTimer already fires LiveActivity.start()
+      // for the work-timer path, but an explicit update() guarantees the
+      // status field reflects "working" rather than the prior "on_break"
+      // even if the native side treats start() on an active activity as
+      // a no-op. Fire-and-forget; never block timer resume.
+      if (started && wasOnBreak) {
+        LiveActivity.update('in_progress').catch(() => {});
+      }
+
       set({ isLoading: false });
       return started;
     } catch (error: any) {
