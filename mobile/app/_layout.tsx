@@ -34,6 +34,7 @@ import { FloatingActionButton } from '../src/components/FloatingActionButton';
 import { isTablet, useShouldUseSidebar, isIPad, useOrientation } from '../src/lib/device';
 import { MapPreferenceModal } from '../src/components/MapPreferenceModal';
 import { WhatYouMissedPopup } from '../src/components/WhatYouMissedPopup';
+import { WhatsNewSheet } from '../src/components/WhatsNewSheet';
 import ErrorBoundary from '../src/components/ErrorBoundary';
 import { CustomAlertProvider } from '../src/components/CustomAlert';
 import { initGlobalIAP } from '../src/lib/iap-global';
@@ -862,6 +863,7 @@ function RootLayoutContent() {
       />
       <MapPreferenceModal />
       <WhatYouMissedPopup />
+      <WhatsNewSheet />
       <AuthenticatedLayout>
         <Stack
           screenOptions={{
