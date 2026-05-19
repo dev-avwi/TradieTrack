@@ -163,14 +163,29 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
         PanResponder.create({
           onStartShouldSetPanResponder: () => false,
           onStartShouldSetPanResponderCapture: () => false,
-          onMoveShouldSetPanResponder: (_e, g) =>
-            g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+          onMoveShouldSetPanResponder: (e, g) => {
+            // On Android, ignore gestures that started near the screen
+            // edges so the system back-swipe still wins. iOS doesn't have
+            // edge-back, so we keep the full sheet draggable there.
+            if (Platform.OS === 'android') {
+              const x = e.nativeEvent.pageX;
+              const w = Dimensions.get('window').width;
+              if (x < 24 || x > w - 24) return false;
+            }
+            return g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5;
+          },
           // Capture is the key bit — without it the inner ScrollView would
           // win the gesture and the sheet would feel undraggable from the
           // list area. We only capture on a clear downward swipe so the
           // ScrollView can still scroll up freely.
-          onMoveShouldSetPanResponderCapture: (_e, g) =>
-            g.dy > 4 && Math.abs(g.dy) > Math.abs(g.dx),
+          onMoveShouldSetPanResponderCapture: (e, g) => {
+            if (Platform.OS === 'android') {
+              const x = e.nativeEvent.pageX;
+              const w = Dimensions.get('window').width;
+              if (x < 24 || x > w - 24) return false;
+            }
+            return g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx) * 1.5;
+          },
           onPanResponderMove: (_e, g) => {
             // Clamp upward drag to 0 so the sheet never lifts off the
             // bottom of the screen (which would expose anything behind it).
@@ -320,23 +335,20 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, AppBottomSheetProps>(
             collapsable={false}
             {...panResponder.panHandlers}
             style={[
-              styles.sheet,
+              styles.sheetOuter,
               sheetSizeStyle,
-              {
-                backgroundColor: colors.background,
-                transform: [{ translateY }],
-              },
+              { transform: [{ translateY }] },
             ]}
           >
-            {/* Pan responder is attached to the whole Animated.View so the
-                entire sheet — header, body, footer — is a valid drag
-                target. The capture rules only steal the gesture on a
-                clear DOWNWARD swipe so the body ScrollView still scrolls
-                upward freely. */}
-            <View style={styles.dragZone} />
-            {Header}
-            {body}
-            {Footer}
+            {/* Outer view owns the elevation/shadow (no overflow:hidden
+                so the Android elevation shadow isn't clipped). Inner view
+                owns the rounded top corners + clipping for content. */}
+            <View style={[styles.sheetInner, { backgroundColor: colors.background }]}>
+              <View style={styles.dragZone} />
+              {Header}
+              {body}
+              {Footer}
+            </View>
           </Animated.View>
         </KeyboardAvoidingView>
       </Modal>
@@ -362,7 +374,22 @@ const styles = StyleSheet.create({
   backdropFill: {
     flex: 1,
   },
-  sheet: {
+  // Outer: owns the shadow/elevation. NO overflow:hidden — that would clip
+  // the Android elevation shadow. iOS shadow is intentionally omitted (a
+  // bottom sheet sliding up from the screen edge shouldn't have a halo
+  // above it on iOS; the backdrop provides the depth).
+  sheetOuter: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    ...Platform.select({
+      android: { elevation: 16 },
+      default: {},
+    }),
+  },
+  // Inner: owns the rounded corners + clipping so child content (lists,
+  // images, headers) stays inside the rounded top.
+  sheetInner: {
+    flex: 1,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
