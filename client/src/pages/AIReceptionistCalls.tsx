@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Calendar,
   Clock,
+  Zap,
   ChevronDown,
   ChevronUp,
   ArrowLeft,
@@ -54,7 +55,38 @@ interface CallLog {
   extractedInfo: Record<string, string> | null;
   endedReason: string | null;
   cost: string | null;
+  latencyMs: number | null;
   createdAt: string;
+}
+
+function latencyTone(ms: number): { className: string; label: string } {
+  if (ms > 3000) {
+    return {
+      className: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0",
+      label: "Slow",
+    };
+  }
+  if (ms > 1500) {
+    return {
+      className: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border-0",
+      label: "Above target",
+    };
+  }
+  return {
+    className: "bg-muted text-muted-foreground border-0",
+    label: "On target",
+  };
+}
+
+function LatencyBadge({ latencyMs, showLabel = false }: { latencyMs: number | null; showLabel?: boolean }) {
+  if (typeof latencyMs !== "number" || !Number.isFinite(latencyMs) || latencyMs <= 0) return null;
+  const tone = latencyTone(latencyMs);
+  return (
+    <Badge className={tone.className} data-testid="badge-call-latency">
+      <Zap className="h-3 w-3 mr-1" />
+      {latencyMs}ms{showLabel ? ` · ${tone.label}` : ""}
+    </Badge>
+  );
 }
 
 const OUTCOME_BADGES: Record<string, { label: string; className: string }> = {
@@ -142,6 +174,7 @@ function CallRow({ call, onNavigate }: { call: CallLog; onNavigate: (path: strin
                 <Clock className="h-3 w-3" />
                 {formatDuration(call.duration)}
               </span>
+              <LatencyBadge latencyMs={call.latencyMs} />
               <OutcomeBadge outcome={call.outcome} />
               {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
             </div>
@@ -149,6 +182,13 @@ function CallRow({ call, onNavigate }: { call: CallLog; onNavigate: (path: strin
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="px-3 pb-3 space-y-3 border-t pt-3">
+            {typeof call.latencyMs === "number" && call.latencyMs > 0 && (
+              <div className="flex items-center gap-2 text-sm">
+                <Zap className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Response time:</span>
+                <LatencyBadge latencyMs={call.latencyMs} showLabel />
+              </div>
+            )}
             {call.callerPhone && (
               <div className="flex items-center gap-2 text-sm">
                 <Phone className="h-4 w-4 text-muted-foreground" />

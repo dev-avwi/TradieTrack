@@ -7,7 +7,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { asHref } from '../../src/lib/nav';
 import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import { useTheme } from '../../src/lib/theme';
+import { useTheme, type ThemeColors } from '../../src/lib/theme';
 import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/lib/store';
 import { spacing, radius, shadows, typography, pageShell } from '../../src/lib/design-tokens';
@@ -51,7 +51,14 @@ interface CallLog {
   callerIntent: string | null;
   sentiment: string | null;
   sentimentScore: number | null;
+  latencyMs: number | null;
   createdAt: string;
+}
+
+function getLatencyTone(ms: number, colors: ThemeColors): { bg: string; text: string; label: string } {
+  if (ms > 3000) return { bg: '#fee2e2', text: '#b91c1c', label: 'Slow' };
+  if (ms > 1500) return { bg: '#fef3c7', text: '#92400e', label: 'Above target' };
+  return { bg: colors.cardBorder, text: colors.mutedForeground, label: 'On target' };
 }
 
 interface DaySchedule {
@@ -2075,6 +2082,15 @@ export default function AIReceptionistScreen() {
                           <Text style={{ fontSize: 10, fontWeight: '600', color: sc.text, textTransform: 'capitalize' }}>{call.sentiment}</Text>
                         </View>
                       )}
+                      {typeof call.latencyMs === 'number' && call.latencyMs > 0 && (() => {
+                        const lt = getLatencyTone(call.latencyMs, colors);
+                        return (
+                          <View style={{ backgroundColor: lt.bg, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                            <Feather name="zap" size={10} color={lt.text} />
+                            <Text style={{ fontSize: 10, fontWeight: '600', color: lt.text }}>{call.latencyMs}ms</Text>
+                          </View>
+                        );
+                      })()}
                       <View style={{ backgroundColor: oc.bg, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 }}>
                         <Text style={{ fontSize: 11, fontWeight: '600', color: oc.text }}>{oc.label}</Text>
                       </View>
@@ -2104,6 +2120,18 @@ export default function AIReceptionistScreen() {
                   )}
                   {isExpanded && (
                     <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md, borderTopWidth: 1, borderTopColor: colors.cardBorder, paddingTop: spacing.md, gap: spacing.sm }}>
+                      {typeof call.latencyMs === 'number' && call.latencyMs > 0 && (() => {
+                        const lt = getLatencyTone(call.latencyMs, colors);
+                        return (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                            <Feather name="zap" size={14} color={colors.mutedForeground} />
+                            <Text style={{ ...typography.caption, color: colors.mutedForeground }}>Response time:</Text>
+                            <View style={{ backgroundColor: lt.bg, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 11, fontWeight: '600', color: lt.text }}>{call.latencyMs}ms · {lt.label}</Text>
+                            </View>
+                          </View>
+                        );
+                      })()}
                       {call.summary && (
                         <View>
                           <Text style={{ ...typography.caption, color: colors.mutedForeground, fontWeight: '600', marginBottom: 4 }}>Summary</Text>
