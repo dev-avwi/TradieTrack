@@ -270,6 +270,8 @@ async function sendLifecycleEmail(user: UserWithMilestones, emailConfig: typeof 
         lastLifecycleEmailAt: new Date(),
       })
       .where(eq(users.id, user.id));
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(user.id);
 
     logger.info(`[Lifecycle] Sent ${emailConfig.key} to ${user.email}`);
     return true;

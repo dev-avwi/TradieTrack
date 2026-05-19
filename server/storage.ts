@@ -1309,6 +1309,8 @@ export class PostgresStorage implements IStorage {
         },
       })
       .returning();
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(user.id);
     return user;
   }
 
@@ -1361,6 +1363,8 @@ export class PostgresStorage implements IStorage {
       .set({ jobsCreatedThisMonth: count, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(id);
     return result[0];
   }
 
@@ -1374,6 +1378,8 @@ export class PostgresStorage implements IStorage {
       })
       .where(eq(users.id, id))
       .returning();
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(id);
     return result[0];
   }
 
@@ -1409,6 +1415,8 @@ export class PostgresStorage implements IStorage {
       .update(users)
       .set({ googleId: googleId, updatedAt: new Date() })
       .where(eq(users.id, userId));
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(userId);
   }
 
   async getUserByAppleId(appleId: string): Promise<User | undefined> {
@@ -1462,6 +1470,8 @@ export class PostgresStorage implements IStorage {
       .update(users)
       .set({ xeroId: xeroId, updatedAt: new Date() })
       .where(eq(users.id, userId));
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(userId);
   }
 
   async linkAppleAccount(userId: string, appleId: string): Promise<void> {
@@ -1469,6 +1479,8 @@ export class PostgresStorage implements IStorage {
       .update(users)
       .set({ appleId: appleId, updatedAt: new Date() })
       .where(eq(users.id, userId));
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(userId);
   }
 
   // Login Codes (Passwordless Email Auth)
@@ -1591,6 +1603,8 @@ export class PostgresStorage implements IStorage {
       // Delete used code (cleanup)
       await tx.delete(loginCodes).where(eq(loginCodes.id, loginCode.id));
       
+      const { invalidateUser } = await import('./cache');
+      invalidateUser(user.id);
       return user;
     });
   }
@@ -4490,6 +4504,8 @@ export class PostgresStorage implements IStorage {
     } else {
       await db.update(users).set({ quotesCreatedThisMonth: sql`${users.quotesCreatedThisMonth} + 1` }).where(eq(users.id, userId));
     }
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(userId);
   }
   
   async resetUserUsage(userId: string): Promise<void> {
@@ -4501,6 +4517,8 @@ export class PostgresStorage implements IStorage {
         usageResetDate: new Date(),
       })
       .where(eq(users.id, userId));
+    const { invalidateUser } = await import('./cache');
+    invalidateUser(userId);
   }
   
   async getUsersWithActiveTrial(): Promise<User[]> {
