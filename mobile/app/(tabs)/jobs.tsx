@@ -24,7 +24,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useContentWidth, useIsTablet } from '../../src/lib/device';
 import { Feather } from '@expo/vector-icons';
-import { useJobsStore, useClientsStore, useAuthStore } from '../../src/lib/store';
+import { useJobsStore, useClientsStore, useAuthStore, type Job } from '../../src/lib/store';
 import { api } from '../../src/lib/api';
 import { StatusBadge } from '../../src/components/ui/StatusBadge';
 import { XeroBadge } from '../../src/components/ui/XeroBadge';
@@ -217,7 +217,7 @@ function JobCard({
   return (
     <AnimatedCardPressable
       onPress={onPress}
-      style={[styles.jobCard, job.isXeroImport && { overflow: 'visible' }]}
+      style={job.isXeroImport ? { ...styles.jobCard, overflow: 'visible' as const } : styles.jobCard}
     >
       {job.isXeroImport && <XeroBadge size="sm" />}
       <View style={styles.jobCardContent}>
@@ -478,11 +478,11 @@ export default function JobsScreen() {
   }, []);
 
   const selectAllCompleted = useCallback(() => {
-    const visibleCompletedIds = sortedJobs
+    const visibleCompletedIds = (sortedJobsRef.current || [])
       .filter(j => j.status === 'done')
       .map(j => j.id);
     setSelectedJobIds(new Set(visibleCompletedIds));
-  }, [sortedJobs]);
+  }, []);
 
   const clearSelection = useCallback(() => {
     setSelectedJobIds(new Set());
@@ -514,14 +514,14 @@ export default function JobsScreen() {
         setBatchMode(false);
         setSelectedJobIds(new Set());
         setBatchConfirmVisible(false);
-        refreshData();
+        refreshDataRef.current?.();
       }
     } catch (err) {
       showToast({ type: 'error', message: 'Failed to create batch invoices. Please try again.' });
     } finally {
       setBatchProcessing(false);
     }
-  }, [selectedJobIds, refreshData]);
+  }, [selectedJobIds]);
 
   // Sort indicator with stacked up/down chevrons (matching Documents page)
   const SortIndicator = ({ field, isActive }: { field: SortField; isActive: boolean }) => (
@@ -544,6 +544,9 @@ export default function JobsScreen() {
   const refreshData = useCallback(async () => {
     await Promise.all([fetchJobs(), fetchClients(), fetchSavedFilters(), fetchTeamMembers()]);
   }, [fetchJobs, fetchClients, fetchSavedFilters, fetchTeamMembers]);
+
+  const refreshDataRef = useRef(refreshData);
+  useEffect(() => { refreshDataRef.current = refreshData; }, [refreshData]);
 
   const handleQuickAction = useCallback(async (action: string, jobId: string) => {
     if (action === 'schedule') {
@@ -711,6 +714,7 @@ export default function JobsScreen() {
     return isNaN(date.getTime()) ? null : date;
   };
 
+  const sortedJobsRef = useRef<Job[]>([]);
   // Sort jobs based on current sort field and direction
   const sortedJobs = useMemo(() => {
     const jobsCopy = [...filteredJobs];
@@ -771,6 +775,8 @@ export default function JobsScreen() {
       return sortDirection === 'asc' ? comparison : -comparison;
     });
   }, [filteredJobs, viewMode, sortField, sortDirection]);
+
+  useEffect(() => { sortedJobsRef.current = sortedJobs; }, [sortedJobs]);
 
   // Dynamic content container style for iPad-responsive padding
   const responsiveContentStyle = useMemo(() => ({

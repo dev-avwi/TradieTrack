@@ -3275,7 +3275,7 @@ export default function CollectScreen() {
               activeOpacity={0.7}
               onPress={() => router.push('/more/receipts')}
             >
-              <Feather name="receipt" size={14} color={colors.foreground} />
+              <Feather name="file-text" size={14} color={colors.foreground} />
               <Text style={styles.compactQuickLinkText}>Receipts</Text>
             </TouchableOpacity>
           </View>

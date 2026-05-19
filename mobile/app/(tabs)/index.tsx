@@ -18,6 +18,7 @@ import { PressableRow } from '@/components/ui/PressableRow';
 import { AppBottomSheet } from '@/components/ui/AppBottomSheet';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
+import { asHref } from '../../src/lib/nav';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -2054,10 +2055,10 @@ function GettingStartedChecklist() {
     try {
       const [quotesRes, healthRes] = await Promise.all([
         api.get<{ id: string }[]>('/api/quotes').catch(() => ({ data: [] as { id: string }[] })),
-        api.get<{ stripeConnect?: { connected?: boolean; chargesEnabled?: boolean; payoutsEnabled?: boolean } }>('/api/integrations/health').catch(() => ({ data: null })),
+        api.get<{ stripeConnect?: { connected?: boolean; chargesEnabled?: boolean; payoutsEnabled?: boolean } }>('/api/integrations/health').catch(() => ({ data: null as { stripeConnect?: { connected?: boolean; chargesEnabled?: boolean; payoutsEnabled?: boolean } } | null })),
       ]);
       setQuotes(quotesRes.data || []);
-      setIntegrationHealth(healthRes.data);
+      setIntegrationHealth(healthRes.data ?? null);
     } catch {} finally {
       setDataLoaded(true);
     }
@@ -2112,7 +2113,7 @@ function GettingStartedChecklist() {
             <TouchableOpacity
               key={step.id}
               style={[styles.gettingStartedStep, idx === checklistSteps.length - 1 && { borderBottomWidth: 0 }]}
-              onPress={() => router.push(step.route as `/${string}`)}
+              onPress={() => router.push(asHref(step.route))}
               activeOpacity={0.7}
             >
               <View style={[styles.gettingStartedStepIcon, {
@@ -2248,6 +2249,15 @@ function OwnerDashboardScreen() {
       latitude: number | null;
       longitude: number | null;
     } | null;
+    tomorrowJobs?: Array<{
+      id: string;
+      title: string;
+      address: string | null;
+      scheduledAt: string;
+      clientName: string | null;
+      latitude: number | null;
+      longitude: number | null;
+    }> | null;
     tomorrowJobCount: number;
     allJobsDone: boolean;
   } | null>(null);
@@ -3283,7 +3293,7 @@ function OwnerDashboardScreen() {
                     icon="phone"
                     iconBg={colors.successLight}
                     iconColor={colors.success}
-                    onPress={() => router.push('/more/ai-receptionist')}
+                    onPress={() => router.push(asHref('/more/ai-receptionist'))}
                   />
                 ) : (
                   <KPICard
@@ -3873,6 +3883,12 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   contentContainer: {
     paddingHorizontal: pageShell.paddingHorizontal,

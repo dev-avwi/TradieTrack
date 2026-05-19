@@ -2017,7 +2017,7 @@ export default function TemplatesScreen() {
             ) : stylePresets.length === 0 ? (
               <View style={styles.stylePresetCard}>
                 <View style={styles.emptyStylePresets}>
-                  <Feather name="palette" size={32} color={colors.mutedForeground} style={{ marginBottom: spacing.md }} />
+                  <Feather name="droplet" size={32} color={colors.mutedForeground} style={{ marginBottom: spacing.md }} />
                   <Text style={styles.emptyStylePresetsText}>
                     No style presets yet. Create them in the web dashboard to customize your document appearance.
                   </Text>
@@ -2533,7 +2533,7 @@ export default function TemplatesScreen() {
                     {template.defaults?.gstEnabled && (
                       <Text style={styles.badge}>GST included</Text>
                     )}
-                    {template.defaults?.depositPct > 0 && (
+                    {(template.defaults?.depositPct ?? 0) > 0 && (
                       <Text style={styles.badge}>{template.defaults.depositPct}% deposit</Text>
                     )}
                     {template.styling?.templateStyle && (

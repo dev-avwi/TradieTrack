@@ -752,6 +752,7 @@ export default function AppSettingsScreen() {
                       <Text style={styles.settingDescription}>
                         {getActivityStatus({ 
                           isEnabled: locationEnabled, 
+                          gpsOptOut: false,
                           status: locationStatus, 
                           lastLocation, 
                           lastGeofenceEvent,

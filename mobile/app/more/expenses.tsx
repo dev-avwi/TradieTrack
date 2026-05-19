@@ -526,7 +526,7 @@ export default function ExpensesScreen() {
             ) : sortedExpenses.length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyIconWrap}>
-                  <Feather name="receipt" size={28} color={colors.primary} />
+                  <Feather name="file-text" size={28} color={colors.primary} />
                 </View>
                 <Text style={styles.emptyTitle}>No Expenses Found</Text>
                 <Text style={styles.emptySubtitle}>

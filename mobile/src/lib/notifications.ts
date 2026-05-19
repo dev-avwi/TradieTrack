@@ -27,28 +27,42 @@ export interface PushToken {
   platform: 'ios' | 'android';
 }
 
+export type NotificationType =
+  | 'job_assigned'
+  | 'job_update'
+  | 'job_reminder'
+  | 'job_scheduled'
+  | 'job_started'
+  | 'job_completed'
+  | 'recurring_job_created'
+  | 'geofence_checkin'
+  | 'geofence_checkout'
+  | 'geofence'
+  | 'running_late'
+  | 'payment_received'
+  | 'payment_failed'
+  | 'quote_accepted'
+  | 'quote_rejected'
+  | 'quote_sent'
+  | 'quote_expiring'
+  | 'team_message'
+  | 'chat_message'
+  | 'sms_received'
+  | 'invoice_overdue'
+  | 'invoice_sent'
+  | 'installment_due'
+  | 'installment_received'
+  | 'recurring_invoice_created'
+  | 'team_invite'
+  | 'timesheet_submitted'
+  | 'trial_expiring'
+  | 'daily_summary'
+  | 'weekly_summary'
+  | 'automation'
+  | 'general';
+
 export interface NotificationPayload {
-  type: 
-    | 'job_assigned'
-    | 'job_update'
-    | 'job_reminder'
-    | 'job_scheduled'
-    | 'job_started'
-    | 'job_completed'
-    | 'recurring_job_created'
-    | 'geofence_checkin'
-    | 'geofence_checkout'
-    | 'geofence'
-    | 'running_late'
-    | 'payment_received'
-    | 'payment_failed'
-    | 'quote_accepted'
-    | 'quote_rejected'
-    | 'quote_sent'
-    | 'quote_expiring'
-    | 'team_message'
-    | 'invoice_overdue'
-    | 'general';
+  type: NotificationType;
   title: string;
   body: string;
   data?: {
@@ -60,6 +74,7 @@ export interface NotificationPayload {
     amount?: number;
     chatType?: 'job' | 'team' | 'direct';
     relatedType?: 'job' | 'quote' | 'invoice';
+    [key: string]: any;
   };
 }
 

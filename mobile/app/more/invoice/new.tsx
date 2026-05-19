@@ -748,20 +748,25 @@ export default function NewInvoiceScreen() {
           clientId: invoiceData.clientId || '',
           title: invoiceData.title || '',
           description: invoiceData.description || '',
-          dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          dueDate: invoiceData.dueDate
+            ? formatLocalDate(new Date(invoiceData.dueDate))
+            : formatLocalDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
           notes: invoiceData.notes || '',
           terms: invoiceData.terms || '',
-          includeGst: invoiceData.gstAmount > 0,
-          isRecurring: invoiceData.isRecurring || false,
-          recurrencePattern: invoiceData.recurrencePattern || 'monthly',
-          recurrenceEndDate: invoiceData.recurrenceEndDate ? new Date(invoiceData.recurrenceEndDate) : null,
         }));
+        setIsRecurring(invoiceData.isRecurring || false);
+        if (invoiceData.recurrencePattern) {
+          setRecurrencePattern(invoiceData.recurrencePattern as typeof recurrencePattern);
+        }
+        if (invoiceData.recurrenceEndDate) {
+          setRecurrenceEndDate(formatLocalDate(new Date(invoiceData.recurrenceEndDate)));
+        }
         if (invoiceData.lineItems && invoiceData.lineItems.length > 0) {
-          setLineItems(invoiceData.lineItems.map((item: any) => ({
-            id: item.id || `line-${Date.now()}-${Math.random()}`,
-            description: item.description || '',
-            quantity: item.quantity || 1,
-            rate: item.unitPrice || 0,
+          setLineItems(invoiceData.lineItems.map((item: any): LineItem => ({
+            id: String(item.id || `line-${Date.now()}-${Math.random()}`),
+            description: String(item.description || ''),
+            quantity: String(item.quantity ?? 1),
+            unitPrice: String(item.unitPrice ?? 0),
           })));
         }
       }
@@ -776,7 +781,7 @@ export default function NewInvoiceScreen() {
   const fetchJobAndPrefill = async (jId: string) => {
     setIsLoadingJob(true);
     try {
-      const response = await api.get(`/api/jobs/${jId}`);
+      const response = await api.get<{ clientId?: string; title?: string; description?: string }>(`/api/jobs/${jId}`);
       if (response.data) {
         const job = response.data;
         setForm(prev => ({
@@ -786,18 +791,18 @@ export default function NewInvoiceScreen() {
           description: job.description || prev.description,
         }));
         if (job.clientId) {
-          const clientResponse = await api.get(`/api/clients/${job.clientId}`);
+          const clientResponse = await api.get<{ name?: string }>(`/api/clients/${job.clientId}`);
           if (clientResponse.data) {
             setForm(prev => ({
               ...prev,
-              clientName: clientResponse.data.name || '',
+              clientName: clientResponse.data!.name || '',
             }));
           }
         }
 
         let prefilledFromQuote = false;
         try {
-          const quotesResponse = await api.get(`/api/quotes`);
+          const quotesResponse = await api.get<any[]>(`/api/quotes`);
           if (quotesResponse.data && Array.isArray(quotesResponse.data)) {
             const jobQuotes = quotesResponse.data
               .filter((q: any) => q.jobId === jId && (q.status === 'accepted' || q.status === 'sent'))
@@ -977,7 +982,7 @@ export default function NewInvoiceScreen() {
 
     setIsCreatingClient(true);
     try {
-      const response = await api.post('/api/clients', {
+      const response = await api.post<{ id: string; name: string }>('/api/clients', {
         name: quickAddForm.name.trim(),
         email: quickAddForm.email.trim() || undefined,
         phone: quickAddForm.phone.trim() || undefined,
@@ -987,15 +992,15 @@ export default function NewInvoiceScreen() {
       
       setForm({
         ...form,
-        clientId: response.data.id,
-        clientName: response.data.name
+        clientId: response.data!.id,
+        clientName: response.data!.name
       });
       
       setShowQuickAddClient(false);
       setShowClientPicker(false);
       setQuickAddForm({ name: '', email: '', phone: '' });
       
-      Alert.alert('Success', `${response.data.name} has been added and selected`);
+      Alert.alert('Success', `${response.data!.name} has been added and selected`);
     } catch (error: any) {
       console.error('Failed to create client:', error);
       Alert.alert('Error', error.response?.data?.error || 'Failed to create client');
@@ -1120,7 +1125,7 @@ export default function NewInvoiceScreen() {
     setShowCatalog(true);
     setIsLoadingCatalog(true);
     try {
-      const response = await api.get('/api/catalog');
+      const response = await api.get<any[]>('/api/catalog');
       if (response.data) {
         setCatalogItems(response.data);
       }

@@ -17,8 +17,9 @@ import {
 import { PressableRow } from '@/components/ui/PressableRow';
 import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { router, Stack, useFocusEffect } from 'expo-router';
+import { asHref } from '../../src/lib/nav';
 import { Feather } from '@expo/vector-icons';
-import { useTheme } from '../../src/lib/theme';
+import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { AppBottomSheet } from '../../src/components/ui/AppBottomSheet';
 import { spacing, radius, shadows, typography } from '../../src/lib/design-tokens';
 import { api } from '../../src/lib/api';
@@ -244,7 +245,7 @@ interface MobileSubInvoice {
   businessName: string;
 }
 
-function SubcontractorInvoicesSection({ colors }: { colors: Record<string, string> }) {
+function SubcontractorInvoicesSection({ colors }: { colors: ThemeColors }) {
   const [invoices, setInvoices] = useState<MobileSubInvoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -1788,7 +1789,7 @@ export default function TeamManagementScreen() {
       });
       let sentVia = 'email';
       if (invitePhone.trim()) {
-        sentVia = result.data?.smsSent ? 'email and SMS' : 'email (SMS could not be sent)';
+        sentVia = (result.data as { smsSent?: boolean } | null)?.smsSent ? 'email and SMS' : 'email (SMS could not be sent)';
       }
       showToast({ type: 'info', message: 'Invite Sent', description: `Invitation sent via ${sentVia} to ${inviteFirstName}` });
       setShowInviteModal(false);
@@ -1998,8 +1999,8 @@ export default function TeamManagementScreen() {
             lastName={member.lastName || member.user?.lastName}
             email={memberEmail}
             userId={member.userId ? String(member.userId) : undefined}
-            profileImageUrl={member.user?.profileImageUrl}
-            themeColor={(member as any).themeColor}
+            profileImageUrl={(member.user as any)?.profileImageUrl}
+            themeColor={(member as any).themeColor ?? undefined}
             size={40}
           />
           <View style={styles.memberInfo}>
@@ -2423,7 +2424,7 @@ export default function TeamManagementScreen() {
 
           <TouchableOpacity
             testID="button-manage-subcontractors"
-            onPress={() => router.push('/more/subcontractors')}
+            onPress={() => router.push(asHref('/more/subcontractors'))}
             style={{
               flexDirection: 'row',
               alignItems: 'center',

@@ -700,12 +700,12 @@ export default function AutopilotScreen() {
 
   useEffect(() => {
     fetchData();
-    api.get('/api/notification-preferences').then(res => {
+    api.get<{ smartRunningLateEnabled?: boolean }>('/api/notification-preferences').then(res => {
       if (res.data && !res.error) {
         setRunningLateEnabled(res.data.smartRunningLateEnabled !== false);
       }
     });
-    api.get('/api/business-settings').then(res => {
+    api.get<{ emailOnQuoteAccepted?: boolean; emailOnInvoicePaid?: boolean }>('/api/business-settings').then(res => {
       if (res.data && !res.error) {
         setEmailOnQuoteAccepted(res.data.emailOnQuoteAccepted === true);
         setEmailOnInvoicePaid(res.data.emailOnInvoicePaid === true);
@@ -716,7 +716,7 @@ export default function AutopilotScreen() {
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchData();
-    api.get('/api/notification-preferences').then(res => {
+    api.get<{ smartRunningLateEnabled?: boolean }>('/api/notification-preferences').then(res => {
       if (res.data && !res.error) {
         setRunningLateEnabled(res.data.smartRunningLateEnabled !== false);
       }

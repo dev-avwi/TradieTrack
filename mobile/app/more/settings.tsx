@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
+import { asHref } from '../../src/lib/nav';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -1896,7 +1897,7 @@ export default function SettingsScreen() {
                             onPress: async () => {
                               setIsLoading(true);
                               try {
-                                const response = await api.post('/api/onboarding/clear-demo-data');
+                                const response = await api.post<{ message?: string }>('/api/onboarding/clear-demo-data');
                                 if (response.error) {
                                   showToast({ type: 'error', message: 'Error', description: response.error });
                                 } else {
@@ -2008,7 +2009,7 @@ export default function SettingsScreen() {
                 {businessSettings?.dedicatedPhoneNumber ? (
                   <PressableRow 
                     style={styles.businessInfoRow}
-                    onPress={() => router.push('/more/phone-numbers')}
+                    onPress={() => router.push(asHref('/more/phone-numbers'))}
 
                   >
                     <Text style={styles.businessInfoLabel}>Active Number</Text>
@@ -2024,7 +2025,7 @@ export default function SettingsScreen() {
                     </Text>
                     <TouchableOpacity
                       style={[styles.upgradeButton, { marginTop: 0 }]}
-                      onPress={() => router.push('/more/phone-numbers')}
+                      onPress={() => router.push(asHref('/more/phone-numbers'))}
                     >
                       <Text style={styles.upgradeButtonText}>Get a Phone Number</Text>
                     </TouchableOpacity>

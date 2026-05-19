@@ -347,7 +347,7 @@ export default function DispatchBoardScreen() {
     ];
 
     const available = statusOptions.filter(o => o.status !== job.status);
-    const buttons = available.map(opt => ({
+    const buttons: { text: string; onPress: () => void | Promise<void> }[] = available.map(opt => ({
       text: opt.label,
       onPress: () => handleStatusChange(job, opt.status),
     }));

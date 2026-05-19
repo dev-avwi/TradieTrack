@@ -182,11 +182,11 @@ export default function PaymentHubScreen() {
       
       if (statusRes.data?.connected && statusRes.data?.chargesEnabled) {
         const [balanceRes, payoutsRes] = await Promise.all([
-          api.get<StripeBalance>('/api/stripe-connect/balance').catch(() => ({ data: null })),
-          api.get<{ payouts: StripePayout[] }>('/api/stripe-connect/payouts').catch(() => ({ data: { payouts: [] } })),
+          api.get<StripeBalance>('/api/stripe-connect/balance').catch(() => ({ data: null, error: 'fetch failed' })),
+          api.get<{ payouts: StripePayout[] }>('/api/stripe-connect/payouts').catch(() => ({ data: { payouts: [] as StripePayout[] }, error: 'fetch failed' })),
         ]);
-        setStripeBalance(balanceRes.error ? null : (balanceRes.data ?? null));
-        setStripePayouts(payoutsRes.error ? [] : (payoutsRes.data?.payouts || []));
+        setStripeBalance(('error' in balanceRes && balanceRes.error) ? null : (balanceRes.data ?? null));
+        setStripePayouts(('error' in payoutsRes && payoutsRes.error) ? [] : (payoutsRes.data?.payouts || []));
       }
     } catch (error) {
       console.warn('Failed to fetch Stripe data:', error);

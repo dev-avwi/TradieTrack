@@ -651,11 +651,11 @@ export default function NewQuoteScreen() {
     const fetchJobAndSetClient = async () => {
       if (params.jobId && !params.clientId) {
         try {
-          const response = await api.get(`/api/jobs/${params.jobId}`);
+          const response = await api.get<{ clientId?: string }>(`/api/jobs/${params.jobId}`);
           if (response.data && response.data.clientId) {
             setForm(prev => ({
               ...prev,
-              clientId: response.data.clientId,
+              clientId: response.data!.clientId!,
             }));
           }
         } catch (error) {
@@ -669,7 +669,8 @@ export default function NewQuoteScreen() {
   useEffect(() => {
     const loadQuoteForEditing = async (quoteId: string) => {
       try {
-        const response = await api.get(`/api/quotes/${quoteId}`);
+        type QuoteResp = { clientId?: string; title?: string; description?: string; notes?: string; terms?: string; validUntil?: string; quoteDate?: string; depositRequired?: boolean; depositAmount?: number; depositPercent?: number | string; jobId?: string; lineItems?: Array<{ id?: string; description?: string; quantity?: number | string; unitPrice?: number | string }> };
+        const response = await api.get<QuoteResp>(`/api/quotes/${quoteId}`);
         const q = response.data;
         if (q) {
           setForm({
@@ -791,7 +792,7 @@ export default function NewQuoteScreen() {
 
     setIsCreatingClient(true);
     try {
-      const response = await api.post('/api/clients', {
+      const response = await api.post<{ id: string; name: string }>('/api/clients', {
         name: quickAddForm.name.trim(),
         email: quickAddForm.email.trim() || undefined,
         phone: quickAddForm.phone.trim() || undefined,
@@ -801,15 +802,15 @@ export default function NewQuoteScreen() {
       
       setForm({
         ...form,
-        clientId: response.data.id,
-        clientName: response.data.name
+        clientId: response.data!.id,
+        clientName: response.data!.name
       });
       
       setShowQuickAddClient(false);
       setShowClientPicker(false);
       setQuickAddForm({ name: '', email: '', phone: '' });
       
-      showToast({ type: 'success', message: `${response.data.name} has been added and selected` });
+      showToast({ type: 'success', message: `${response.data!.name} has been added and selected` });
     } catch (error: any) {
       console.error('Failed to create client:', error);
       showToast({ type: 'error', message: error.response?.data?.error || 'Failed to create client' });
@@ -1002,15 +1003,16 @@ export default function NewQuoteScreen() {
         setIsUploadingPhotos(false);
       }
 
-      const response = await api.post('/api/ai/generate-quote', {
+      type AIQuoteResp = { lineItems?: Array<{ description?: string; quantity?: number | string; unitPrice?: number | string }>; suggestedTitle?: string; notes?: string[] };
+      const response = await api.post<AIQuoteResp>('/api/ai/generate-quote', {
         jobId: jobId || undefined,
         jobDescription: aiDescription.trim() || undefined,
         photoUrls: photoUrls.length > 0 ? photoUrls : undefined,
       });
       if (response.data && response.data.lineItems) {
-        const aiItems = response.data.lineItems.map((item: any) => ({
+        const aiItems = response.data.lineItems.map((item) => ({
           id: Date.now().toString() + Math.random(),
-          description: item.description,
+          description: item.description || '',
           quantity: String(item.quantity || 1),
           unitPrice: String(item.unitPrice || 0),
         }));
@@ -1037,7 +1039,7 @@ export default function NewQuoteScreen() {
     setShowCatalog(true);
     setIsLoadingCatalog(true);
     try {
-      const response = await api.get('/api/catalog');
+      const response = await api.get<any[]>('/api/catalog');
       if (response.data) {
         setCatalogItems(response.data);
       }

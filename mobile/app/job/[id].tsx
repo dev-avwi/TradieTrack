@@ -89,16 +89,28 @@ interface Job {
   geofenceRadius?: number;
   geofenceAutoClockIn?: boolean;
   geofenceAutoClockOut?: boolean;
+  workerStatus?: string | null;
+  isRecurring?: boolean;
+  recurrencePattern?: string | null;
+  nextRecurrenceDate?: string | null;
+  recurrenceEndDate?: string | null;
+  estimatedDuration?: number;
+  portalEnabled?: boolean;
 }
 
 interface Invoice {
   id: string;
   number: string;
   title: string;
+  description?: string;
+  terms?: string;
   total: number;
   status: 'draft' | 'sent' | 'viewed' | 'paid' | 'overdue' | 'partial';
   dueDate?: string;
   paidAmount?: number;
+  isRecurring?: boolean;
+  recurrencePattern?: string | null;
+  recurrenceEndDate?: string | null;
 }
 
 interface Quote {
@@ -147,6 +159,8 @@ interface TeamMember {
   email?: string;
   role?: string;
   memberId?: string;
+  userId?: string;
+  themeColor?: string;
 }
 
 interface JobChatMessage {
@@ -207,6 +221,7 @@ interface ActivityItem {
   createdAt: string;
   userId?: string;
   userName?: string;
+  title?: string;
 }
 
 interface VoiceNote {
@@ -1902,7 +1917,8 @@ export default function JobDetailScreen() {
   const [sliderRadius, setSliderRadius] = useState(100);
   
   const [timeEntries, setTimeEntries] = useState<CompletedTimeEntry[]>([]);
-  const [siteAttendance, setSiteAttendance] = useState<{ events: any[]; arrivalCount: number; departureCount: number; firstArrival: string | null; lastDeparture: string | null } | null>(null);
+  type SiteAttendance = { events: Array<{ userId?: string; type?: string; timestamp?: string; latitude?: number; longitude?: number; userName?: string }>; arrivalCount: number; departureCount: number; firstArrival: string | null; lastDeparture: string | null };
+  const [siteAttendance, setSiteAttendance] = useState<SiteAttendance | null>(null);
   const [activityLog, setActivityLog] = useState<ActivityItem[]>([]);
   const [isConvertingToInvoice, setIsConvertingToInvoice] = useState(false);
   
@@ -1964,7 +1980,8 @@ export default function JobDetailScreen() {
     additionalAmount: string;
     gstAmount: string;
     totalAmount: string;
-    status: 'draft' | 'sent' | 'approved' | 'rejected';
+    status: 'draft' | 'sent' | 'approved' | 'rejected' | 'pending';
+    amount?: string | number;
     approvedByName: string | null;
     approvedBySignature: string | null;
     rejectionReason: string | null;
@@ -2140,7 +2157,7 @@ export default function JobDetailScreen() {
     clientName: string;
     quoted: { amount: number; gst: number; quoteNumber: string } | null;
     revenue: { invoiced: number; pending: number; received: number };
-    costs: { labour: number; subcontractor: number; materials: number; otherExpenses: number; total: number };
+    costs: { labour: number; subcontractor: number; materials: number; otherExpenses: number; expenses?: number; total: number };
     profit: { amount: number; margin: number; vsQuote: number | null };
     hours: { total: number; billable: number; nonBillable: number };
     status: 'profitable' | 'tight' | 'loss';
@@ -2152,7 +2169,10 @@ export default function JobDetailScreen() {
   const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
   const [rollbackTargetStatus, setRollbackTargetStatus] = useState<string | null>(null);
   
-  const { updateJobStatus, updateJobNotes } = useJobsStore();
+  const { updateJobStatus } = useJobsStore();
+  const updateJobNotes = async (jobId: string, notes: string): Promise<void> => {
+    await api.patch(`/api/jobs/${jobId}`, { notes });
+  };
   const { businessSettings, roleInfo, user, hasPermission } = useAuthStore();
   const { isSmsReady } = useIntegrationHealth();
   
@@ -3262,7 +3282,7 @@ export default function JobDetailScreen() {
       if (res.error) {
         showToast({ type: 'error', message: res.error });
       } else {
-        const smsStatus = res.data?.sendResults?.sms;
+        const smsStatus = (res.data as { sendResults?: { sms?: boolean } } | null)?.sendResults?.sms;
         showToast({ type: 'info', message: 'Invite Sent', description: smsStatus !== false
             ? `Magic link sent to ${magicLinkName.trim()} via SMS`
             : `Invite created for ${magicLinkName.trim()}. SMS delivery may be pending.` });
@@ -3325,7 +3345,7 @@ export default function JobDetailScreen() {
           return true;
 
         case 'mark_complete':
-          api.get(`/api/jobs/${job.id}/site-attendance`).then(res => {
+          api.get<SiteAttendance>(`/api/jobs/${job.id}/site-attendance`).then(res => {
             if (res.data && !res.error) setSiteAttendance(res.data);
           }).catch(() => {});
           setShowCompletionModal(true);
@@ -3521,7 +3541,7 @@ export default function JobDetailScreen() {
           prev.map(a => a.id === action.id ? { ...a, status: success ? 'completed' as const : 'pending' as const } : a)
         );
 
-        if (action.type === 'create_invoice' || action.type === 'create_quote') {
+        if ((action.type as string) === 'create_invoice' || (action.type as string) === 'create_quote') {
           break;
         }
       }
@@ -3559,7 +3579,7 @@ export default function JobDetailScreen() {
         setJob(response.data);
         setEditedNotes(response.data.notes || '');
         setSliderRadius(response.data.geofenceRadius || 100);
-        setPortalEnabled(!!(response.data as any).portalEnabled);
+        setPortalEnabled(!!response.data.portalEnabled);
         if (response.data.clientId) {
           const clientResponse = await api.get<Client>(`/api/clients/${response.data.clientId}`);
           if (clientResponse.data) {
@@ -4099,7 +4119,7 @@ export default function JobDetailScreen() {
     
     setIsConvertingToInvoice(true);
     try {
-      const response = await api.post(`/api/quotes/${quote.id}/convert-to-invoice`, {});
+      const response = await api.post<{ id: string }>(`/api/quotes/${quote.id}/convert-to-invoice`, {});
       if (response.data) {
         showToast({ type: 'success', message: 'Quote converted to invoice successfully' });
         router.push(`/more/invoice/${response.data.id}`);
@@ -4939,7 +4959,7 @@ export default function JobDetailScreen() {
           return;
         }
       }
-      api.get(`/api/jobs/${job.id}/site-attendance`).then(res => {
+      api.get<SiteAttendance>(`/api/jobs/${job.id}/site-attendance`).then(res => {
         if (res.data && !res.error) setSiteAttendance(res.data);
       }).catch(() => {});
       setShowCompletionModal(true);
@@ -5209,7 +5229,8 @@ export default function JobDetailScreen() {
         if (__DEV__) console.log('[OnMyWay] Could not get GPS location:', locErr);
       }
 
-      const response = await api.post(`/api/jobs/${job.id}/on-my-way`, {
+      type OnMyWayResp = { notConfigured?: boolean; estimatedMinutes?: number; distanceKm?: number; etaSource?: string };
+      const response = await api.post<OnMyWayResp>(`/api/jobs/${job.id}/on-my-way`, {
         latitude: coords?.latitude,
         longitude: coords?.longitude,
       });
@@ -5293,7 +5314,7 @@ export default function JobDetailScreen() {
 
               if (nextScheduledJob.clientId) {
                 try {
-                  const clientRes = await api.get(`/api/clients/${nextScheduledJob.clientId}`);
+                  const clientRes = await api.get<{ phone?: string }>(`/api/clients/${nextScheduledJob.clientId}`);
                   if (clientRes.data?.phone) {
                     setNextJobClientPhone(clientRes.data.phone);
                   } else {
@@ -5391,7 +5412,7 @@ export default function JobDetailScreen() {
     setShowRenameModal(false);
     
     try {
-      const response = await api.patch(`/api/jobs/${job.id}`, { title: newJobTitle.trim() });
+      const response = await api.patch<Job>(`/api/jobs/${job.id}`, { title: newJobTitle.trim() });
       if (response.data) {
         setJob(response.data);
         showToast({ type: 'success', message: 'Job title updated' });
@@ -6169,7 +6190,7 @@ export default function JobDetailScreen() {
         ]}>
           <View style={[styles.cardIconContainer, { backgroundColor: (pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) ? `${colors.warning}15` : `${colors.success}15` }]}>
             <Feather 
-              name={(pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) ? "alert-triangle" : "shield-check"} 
+              name={(pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) ? "alert-triangle" : "shield"} 
               size={iconSizes.xl} 
               color={(pendingSafetyForms.length > 0 || hasIncompleteSwms || hasNoSafetyDocs) ? colors.warning : colors.success} 
             />
@@ -7685,10 +7706,10 @@ export default function JobDetailScreen() {
                   <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Materials</Text>
                   <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>{formatCurrency(pd.costs.materials)}</Text>
                 </View>
-                {pd.costs.expenses > 0 && (
+                {(pd.costs.expenses ?? 0) > 0 && (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={{ fontSize: 14, color: colors.mutedForeground }}>Expenses</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>{formatCurrency(pd.costs.expenses)}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.foreground }}>{formatCurrency(pd.costs.expenses ?? 0)}</Text>
                   </View>
                 )}
               </View>
@@ -8002,7 +8023,7 @@ export default function JobDetailScreen() {
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm }}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: colors.foreground }}>
-                          {formatCurrency(parseFloat(v.amount) || 0)}
+                          {formatCurrency(parseFloat(String(v.amount ?? '0')) || 0)}
                         </Text>
                         {v.status === 'pending' && (
                           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
@@ -9905,8 +9926,8 @@ export default function JobDetailScreen() {
                   if (value && job.latitude && job.longitude) {
                     await locationTracking.addJobGeofence(
                       job.id,
-                      job.latitude,
-                      job.longitude,
+                      Number(job.latitude),
+                      Number(job.longitude),
                       job.geofenceRadius || 100
                     );
                   } else if (!value) {
@@ -9930,7 +9951,7 @@ export default function JobDetailScreen() {
                       if (value) {
                         await locationTracking.removeJobGeofence(job.id);
                       } else if (previousValue && job.latitude && job.longitude) {
-                        await locationTracking.addJobGeofence(job.id, job.latitude, job.longitude, job.geofenceRadius || 100);
+                        await locationTracking.addJobGeofence(job.id, Number(job.latitude), Number(job.longitude), job.geofenceRadius || 100);
                       }
                       setJob({ ...job, geofenceEnabled: previousValue });
                       showToast({ type: 'error', message: 'Failed to update geofence settings' });
@@ -9964,7 +9985,7 @@ export default function JobDetailScreen() {
                       // Update the native geofence with new radius
                       if (job.geofenceEnabled && job.latitude && job.longitude) {
                         await locationTracking.removeJobGeofence(job.id);
-                        await locationTracking.addJobGeofence(job.id, job.latitude, job.longitude, value);
+                        await locationTracking.addJobGeofence(job.id, Number(job.latitude), Number(job.longitude), value);
                       }
                       
                       if (!isOnline) {
@@ -9983,7 +10004,7 @@ export default function JobDetailScreen() {
                           // Rollback native geofence
                           if (job.geofenceEnabled && job.latitude && job.longitude) {
                             await locationTracking.removeJobGeofence(job.id);
-                            await locationTracking.addJobGeofence(job.id, job.latitude, job.longitude, previousValue || 100);
+                            await locationTracking.addJobGeofence(job.id, Number(job.latitude), Number(job.longitude), previousValue || 100);
                           }
                           setJob({ ...job, geofenceRadius: previousValue });
                           setSliderRadius(previousValue || 100);
@@ -11648,7 +11669,7 @@ export default function JobDetailScreen() {
                   </View>
                 </View>
                 {siteAttendance && siteAttendance.firstArrival && (
-                  <View style={{ marginTop: spacing.xs, gap: spacing.xxs || 2 }}>
+                  <View style={{ marginTop: spacing.xs, gap: 2 }}>
                     <Text style={[styles.completionSectionDetail]}>
                       Arrived: {new Date(siteAttendance.firstArrival).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
                     </Text>

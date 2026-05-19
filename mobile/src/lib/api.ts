@@ -149,7 +149,7 @@ class ApiClient {
     return headers;
   }
 
-  async request<T>(
+  async request<T = unknown>(
     method: string,
     endpoint: string,
     body?: any,
@@ -248,23 +248,23 @@ class ApiClient {
     }
   }
 
-  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
+  async get<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>('GET', endpoint);
   }
 
-  async post<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+  async post<T = unknown>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>('POST', endpoint, body);
   }
 
-  async patch<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+  async patch<T = unknown>(endpoint: string, body?: unknown): Promise<ApiResponse<T>> {
     return this.request<T>('PATCH', endpoint, body);
   }
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+  async delete<T = unknown>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>('DELETE', endpoint);
   }
 
-  async uploadFile<T>(endpoint: string, formData: FormData, timeoutMs: number = 60000): Promise<ApiResponse<T>> {
+  async uploadFile<T = unknown>(endpoint: string, formData: FormData, timeoutMs: number = 60000): Promise<ApiResponse<T>> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

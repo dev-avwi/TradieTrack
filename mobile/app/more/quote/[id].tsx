@@ -603,9 +603,9 @@ ${businessName}`;
           ? `${API_URL.replace('/api', '')}/q/${quote.acceptanceToken}` 
           : '';
         
-        const body = `G'day ${client.name || 'there'},\n\nPlease find your quote for ${quote.title || 'the requested work'}.\n\nTotal: ${total}\n\n${publicUrl ? `View and accept your quote here:\n${publicUrl}\n\n` : ''}Let me know if you have any questions!\n\nCheers`;
+        const body = `G'day ${client?.name || 'there'},\n\nPlease find your quote for ${quote.title || 'the requested work'}.\n\nTotal: ${total}\n\n${publicUrl ? `View and accept your quote here:\n${publicUrl}\n\n` : ''}Let me know if you have any questions!\n\nCheers`;
         
-        const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        const mailtoUrl = `mailto:${client?.email ?? ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         
         const canOpen = await Linking.canOpenURL(mailtoUrl);
         if (canOpen) {
@@ -749,11 +749,11 @@ ${businessName}`;
                   notes: quote.notes,
                   includesGst: quote.includesGst,
                   status: 'draft',
-                  depositRequired: (quote as any).depositRequired || false,
-                  depositPercent: (quote as any).depositPercent || undefined,
-                  depositAmount: (quote as any).depositAmount || undefined,
-                  documentTemplate: (quote as any).documentTemplate || businessSettings?.documentTemplate || 'professional',
-                  documentTemplateSettings: (quote as any).documentTemplateSettings || businessSettings?.documentTemplateSettings || null,
+                  depositRequired: quote.depositRequired || false,
+                  depositPercent: quote.depositPercent || undefined,
+                  depositAmount: quote.depositAmount || undefined,
+                  documentTemplate: quote.documentTemplate || businessSettings?.documentTemplate || 'professional',
+                  documentTemplateSettings: quote.documentTemplateSettings || businessSettings?.documentTemplateSettings || null,
                 }),
               });
 
@@ -1054,7 +1054,7 @@ ${businessName}`;
     try {
       let token = quote?.acceptanceToken;
       if (!token) {
-        const response = await api.post(`/api/quotes/${quote?.id}/generate-token`);
+        const response = await api.post<{ acceptanceToken?: string }>(`/api/quotes/${quote?.id}/generate-token`);
         token = response.data?.acceptanceToken;
         if (!token) {
           showToast({ type: 'error', message: 'Could not generate a shareable link. Please try again.' });
@@ -1895,8 +1895,8 @@ ${businessName}`;
             depositPercent={quote.depositAmount && quote.total ? Math.round((quote.depositAmount / quote.total) * 100) : 0}
             gstEnabled={user?.gstEnabled !== false}
             status={quote.status}
-            templateId={(quote as any).documentTemplate || businessSettings?.documentTemplate}
-            templateCustomization={(quote as any).documentTemplateSettings || businessSettings?.documentTemplateSettings}
+            templateId={quote.documentTemplate || businessSettings?.documentTemplate}
+            templateCustomization={quote.documentTemplateSettings || businessSettings?.documentTemplateSettings}
             jobSignatures={!hideSignature ? allSignatures.map(sig => ({
               id: sig.id,
               signerName: sig.signerName || 'Client',
@@ -1906,7 +1906,7 @@ ${businessName}`;
             })) : []}
             acceptedAt={!hideSignature ? quote.acceptedAt : undefined}
             acceptedBy={!hideSignature ? quote.acceptedBy : undefined}
-            clientSignatureData={!hideSignature ? client?.savedSignatureData : undefined}
+            clientSignatureData={!hideSignature ? client?.savedSignatureData ?? undefined : undefined}
             serverSubtotal={quote.subtotal}
             serverGstAmount={quote.gstAmount}
             serverTotal={quote.total}
@@ -1955,7 +1955,7 @@ ${businessName}`;
                   selectedTemplate === template.id && styles.templateOptionSelected
                 ]}
                 onPress={() => {
-                  setSelectedTemplate(template.id);
+                  setSelectedTemplate(template.id as 'minimal' | 'professional' | 'modern');
                   setShowTemplateSelector(false);
                 }}
               >

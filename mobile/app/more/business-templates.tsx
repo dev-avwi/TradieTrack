@@ -825,7 +825,7 @@ export default function BusinessTemplatesScreen() {
             Some integrations need setup
           </Text>
           
-          {!integrationHealth.servicesReady.sendgrid && (
+          {!integrationHealth.services?.sendgrid?.verified && (
             <View>
               <View style={styles.integrationItem}>
                 <Text style={[styles.integrationItemText, styles.integrationItemTextWarning]}>
@@ -847,7 +847,7 @@ export default function BusinessTemplatesScreen() {
             </View>
           )}
           
-          {!integrationHealth.servicesReady.twilio && (
+          {!integrationHealth.services?.twilio?.verified && (
             <View style={styles.integrationItem}>
               <Text style={[styles.integrationItemText, styles.integrationItemTextWarning]}>
                 <Feather name="message-square" size={14} color="#b45309" /> SMS: Not configured

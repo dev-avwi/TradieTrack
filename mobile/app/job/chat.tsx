@@ -39,6 +39,10 @@ interface JobChatMessage {
   createdAt: string;
   senderName: string;
   senderAvatar?: string | null;
+  senderId?: string;
+  avatar?: string | null;
+  sendStatus?: 'sending' | 'sent' | 'failed';
+  localId?: string;
 }
 
 interface SmsMessage {
@@ -1080,7 +1084,12 @@ export default function JobChatScreen() {
       attachmentName?: string | null;
       attachmentUrl?: string | null;
       messageType?: string;
-      originalMessage: any;
+      mediaUrls?: string[];
+      senderId?: string;
+      avatar?: string | null;
+      sendStatus?: 'sending' | 'sent' | 'failed';
+      localId?: string;
+      originalMessage: JobChatMessage | SmsMessage;
     }> = [];
 
     messages.forEach(msg => {
@@ -1095,6 +1104,8 @@ export default function JobChatScreen() {
         attachmentName: msg.attachmentName,
         attachmentUrl: msg.attachmentUrl,
         messageType: msg.messageType,
+        senderId: msg.userId,
+        avatar: msg.senderAvatar,
         originalMessage: msg,
       });
     });
@@ -1238,8 +1249,8 @@ export default function JobChatScreen() {
               <View style={styles.avatarContainer}>
                 <TeamAvatar
                   name={msg.senderName}
-                  userId={String(msg.senderId)}
-                  profileImageUrl={msg.avatar}
+                  userId={String(msg.senderId ?? '')}
+                  profileImageUrl={msg.avatar ?? undefined}
                   size={32}
                 />
               </View>
@@ -1258,7 +1269,7 @@ export default function JobChatScreen() {
                     <PressableRow key={`media-${i}`} onPress={() => Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open image'))} >
                       <Image
                         source={{ uri: url }}
-                        style={{ width: 200, height: 200, borderRadius: 8, marginBottom: i < msg.mediaUrls.length - 1 ? 4 : 0 }}
+                        style={{ width: 200, height: 200, borderRadius: 8, marginBottom: i < (msg.mediaUrls?.length ?? 0) - 1 ? 4 : 0 }}
                         resizeMode="cover"
                       />
                     </PressableRow>
@@ -1270,7 +1281,7 @@ export default function JobChatScreen() {
                   {isSms ? formatMessageText(msg.message) : msg.message}
                 </Text>
               ) : null}
-              {msg.type === 'chat' && renderAttachment(msg.originalMessage)}
+              {msg.type === 'chat' && renderAttachment(msg.originalMessage as JobChatMessage)}
               <View style={styles.messageFooter}>
                 <Text style={[styles.messageTime, timeStyle]}>
                   {formatTime(msg.createdAt)}
@@ -1291,8 +1302,8 @@ export default function JobChatScreen() {
                   </View>
                 )}
               </View>
-              {(msg as any).sendStatus === 'failed' && (
-                <PressableRow onPress={async () => { const { offlineStorage } = await import('@/lib/offline-storage'); const ok = await offlineStorage.retryFailedChatMessage((msg as any).localId || msg.id); if (ok) loadMessages(); }} style={{ marginTop: 4 }} >
+              {msg.sendStatus === 'failed' && (
+                <PressableRow onPress={async () => { const { offlineStorage } = await import('@/lib/offline-storage'); const ok = await offlineStorage.retryFailedChatMessage(msg.localId || msg.id); if (ok) loadMessages(); }} style={{ marginTop: 4 }} >
                   <Text style={{ color: colors.destructive, fontSize: 11, fontWeight: '600' }}>
                     Failed to send · tap to retry
                   </Text>

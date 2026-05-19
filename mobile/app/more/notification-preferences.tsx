@@ -276,7 +276,7 @@ export default function NotificationPreferencesScreen() {
       // First try to load from server
       try {
         const response = await apiClient.get<Record<string, boolean>>('/api/notification-preferences');
-        const serverPrefs = response.data;
+        const serverPrefs = response.data ?? ({} as Record<string, boolean>);
         
         // Map server preferences to local preference keys
         const mappedPrefs: Record<string, boolean> = {

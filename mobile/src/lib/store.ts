@@ -5,6 +5,7 @@ import { clearRoleCache } from './role-cache';
 import { useThemeStore, ThemeMode } from './theme-store';
 import locationTracking from './location-tracking';
 import notificationService from './notifications';
+import type { TemplateCustomization } from './document-templates';
 
 // ============ TYPES ============
 
@@ -13,9 +14,14 @@ interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  /** Pre-computed display name from the server (falls back to firstName + lastName). */
+  name?: string;
   businessName?: string;
   tradeType?: string;
   role?: string;
+  roleName?: string;
+  profileImageUrl?: string;
+  defaultHourlyRate?: number | string;
   abn?: string;
   phone?: string;
   address?: string;
@@ -28,6 +34,8 @@ interface User {
   subscriptionStatus?: string;
   subscriptionSource?: string;
   isOwner?: boolean;
+  teamOwnerId?: string | null;
+  activeTeamId?: string | null;
   isWorker?: boolean;
   businessOwnerId?: string | null;
   ownerSubscriptionValid?: boolean;
@@ -47,18 +55,9 @@ interface User {
   };
 }
 
-interface TemplateCustomization {
-  tableStyle?: 'bordered' | 'striped' | 'minimal';
-  noteStyle?: 'bordered' | 'highlighted' | 'simple';
-  headerBorderWidth?: '1px' | '2px' | '3px' | '4px';
-  showHeaderDivider?: boolean;
-  bodyWeight?: 400 | 500 | 600 | 700;
-  headingWeight?: 600 | 700 | 800;
-  accentColor?: string;
-  fontStyle?: 'default' | 'serif' | 'mono';
-}
-
 interface BusinessSettings {
+  simpleMode?: boolean;
+  businessAddress?: string;
   id: string;
   businessName: string;
   abn?: string;
@@ -86,7 +85,7 @@ interface BusinessSettings {
   aiReceptionistMode?: string;
 }
 
-interface Job {
+export interface Job {
   id: string;
   title: string;
   description?: string;
@@ -99,6 +98,16 @@ interface Job {
   latitude?: number;
   longitude?: number;
   estimatedDuration?: number;
+  workerStatus?: string | null;
+  isRecurring?: boolean;
+  recurrencePattern?: string | null;
+  nextRecurrenceDate?: string | null;
+  recurrenceEndDate?: string | null;
+  portalEnabled?: boolean;
+  geofenceRadius?: number;
+  notes?: string;
+  completedAt?: string;
+  createdAt?: string;
 }
 
 interface Client {
@@ -111,6 +120,7 @@ interface Client {
   tags?: string[];
   clientType?: string;
   referralSource?: string;
+  savedSignatureData?: string | null;
 }
 
 interface QuoteLineItem {
@@ -127,7 +137,7 @@ interface Quote {
   quoteNumber: string;
   clientId: string;
   jobId?: string;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired' | 'archived';
   subtotal: number;
   gstAmount: number;
   total: number;
@@ -136,6 +146,17 @@ interface Quote {
   createdAt: string;
   lineItems?: QuoteLineItem[];
   clientName?: string;
+  title?: string;
+  description?: string;
+  archived?: boolean;
+  depositRequired?: boolean;
+  depositPercent?: number;
+  depositAmount?: number;
+  documentTemplate?: string;
+  documentTemplateSettings?: TemplateCustomization | null;
+  includesGst?: boolean;
+  acceptedAt?: string;
+  acceptedBy?: string;
 }
 
 interface InvoiceLineItem {
@@ -164,6 +185,12 @@ interface Invoice {
   createdAt: string;
   lineItems?: InvoiceLineItem[];
   clientName?: string;
+  title?: string;
+  description?: string;
+  terms?: string;
+  isRecurring?: boolean;
+  recurrencePattern?: string | null;
+  recurrenceEndDate?: string | null;
 }
 
 interface TimeEntry {

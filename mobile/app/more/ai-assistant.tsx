@@ -442,7 +442,7 @@ export default function AIAssistantScreen() {
   const fetchSuggestions = useCallback(async () => {
     setIsLoadingSuggestions(true);
     try {
-      const response = await api.get('/api/ai/suggestions');
+      const response = await api.get<{ suggestions?: any[] }>('/api/ai/suggestions');
       setSuggestions(response.data?.suggestions || []);
     } catch (error) {
       if (__DEV__) console.log('Failed to fetch AI suggestions:', error);
@@ -454,8 +454,8 @@ export default function AIAssistantScreen() {
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const response = await api.get('/api/ai/notifications');
-      const data = response.data?.notifications ?? response.data ?? [];
+      const response = await api.get<{ notifications?: AINotification[] } | AINotification[]>('/api/ai/notifications');
+      const data = (response.data as any)?.notifications ?? response.data ?? [];
       setNotifications(Array.isArray(data) ? data : []);
     } catch (error) {
       if (__DEV__) console.log('Failed to fetch AI notifications:', error);
@@ -515,7 +515,8 @@ export default function AIAssistantScreen() {
     setChatHistory(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
-      const response = await api.post('/api/ai/chat', { message: userMessage });
+      type ChatResp = { response?: string; richContent?: any; action?: any; suggestedFollowups?: string[] };
+      const response = await api.post<ChatResp>('/api/ai/chat', { message: userMessage });
       const data = response.data;
       
       const assistantMessage: ChatMessage = {
@@ -548,7 +549,7 @@ export default function AIAssistantScreen() {
     
     setIsExecutingAction(true);
     try {
-      const response = await api.post('/api/ai/execute-action', { action: pendingAction });
+      const response = await api.post<{ response?: string }>('/api/ai/execute-action', { action: pendingAction });
       const data = response.data;
       
       setPendingAction(null);

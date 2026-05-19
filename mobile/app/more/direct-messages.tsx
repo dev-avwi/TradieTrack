@@ -347,8 +347,8 @@ export default function DirectMessagesScreen() {
   const fetchData = useCallback(async () => {
     try {
       const [conversationsRes, teamRes] = await Promise.all([
-        api.get('/api/direct-messages/conversations'),
-        api.get('/api/team/members')
+        api.get<Conversation[]>('/api/direct-messages/conversations'),
+        api.get<User[]>('/api/team/members')
       ]);
       setConversations(conversationsRes.data || []);
       setTeamMembers(teamRes.data || []);
@@ -484,11 +484,11 @@ export default function DirectMessagesScreen() {
               {filteredConversations.map((conversation) => (
                 <PressableRow key={conversation.otherUser.id} style={styles.conversationItem} onPress={() => setSelectedUser(conversation.otherUser)} >
                   <TeamAvatar
-                    firstName={conversation.otherUser.firstName}
-                    lastName={conversation.otherUser.lastName}
+                    firstName={conversation.otherUser.firstName ?? undefined}
+                    lastName={conversation.otherUser.lastName ?? undefined}
                     email={conversation.otherUser.email || undefined}
                     userId={String(conversation.otherUser.id)}
-                    profileImageUrl={conversation.otherUser.profileImageUrl}
+                    profileImageUrl={conversation.otherUser.profileImageUrl ?? undefined}
                     size={44}
                   />
                   <View style={styles.conversationContent}>
@@ -524,11 +524,11 @@ export default function DirectMessagesScreen() {
                   {availableNewContacts.map((member) => (
                     <PressableRow key={member.id} style={styles.conversationItem} onPress={() => setSelectedUser(member)} >
                       <TeamAvatar
-                        firstName={member.firstName}
-                        lastName={member.lastName}
+                        firstName={member.firstName ?? undefined}
+                        lastName={member.lastName ?? undefined}
                         email={member.email || undefined}
                         userId={String(member.id)}
-                        profileImageUrl={member.profileImageUrl}
+                        profileImageUrl={member.profileImageUrl ?? undefined}
                         size={44}
                       />
                       <View style={styles.conversationContent}>
@@ -722,11 +722,11 @@ function ChatView({
           <Feather name="arrow-left" size={24} color={colors.foreground} />
         </PressableRow>
         <TeamAvatar
-          firstName={selectedUser.firstName}
-          lastName={selectedUser.lastName}
+          firstName={selectedUser.firstName ?? undefined}
+          lastName={selectedUser.lastName ?? undefined}
           email={selectedUser.email || undefined}
           userId={String(selectedUser.id)}
-          profileImageUrl={selectedUser.profileImageUrl}
+          profileImageUrl={selectedUser.profileImageUrl ?? undefined}
           size={40}
         />
         <View style={styles.chatHeaderInfo}>

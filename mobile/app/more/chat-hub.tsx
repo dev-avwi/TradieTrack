@@ -18,6 +18,7 @@ import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { useConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { useActionSheet } from '../../src/components/ui/ActionSheet';
 import { Stack, router, useFocusEffect } from 'expo-router';
+import { asHref } from '../../src/lib/nav';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -1349,7 +1350,7 @@ export default function ChatHubScreen() {
 
     if (twilioConnected) {
       return (
-        <PressableRow style={styles.twilioConnectedBanner} onPress={() => router.push('/more/phone-numbers' as never)} >
+        <PressableRow style={styles.twilioConnectedBanner} onPress={() => router.push(asHref('/more/phone-numbers'))} >
           <View style={styles.twilioConnectedIcon}>
             <Feather name="check" size={16} color={colors.white} />
           </View>
@@ -1372,7 +1373,7 @@ export default function ChatHubScreen() {
             Connect a number for SMS and AI Receptionist calls
           </Text>
         </View>
-        <PressableRow style={styles.twilioSetupButton} onPress={() => router.push('/more/phone-numbers')} >
+        <PressableRow style={styles.twilioSetupButton} onPress={() => router.push(asHref('/more/phone-numbers'))} >
           <Text style={styles.twilioSetupButtonText}>Set Up</Text>
         </PressableRow>
       </View>

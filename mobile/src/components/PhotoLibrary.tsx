@@ -18,7 +18,7 @@ import {
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useTheme, ThemeColors } from '../lib/theme';
 import { AppBottomSheet } from './ui/AppBottomSheet';
 import { api } from '../lib/api';

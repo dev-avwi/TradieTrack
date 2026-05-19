@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { PressableRow } from '../../src/components/ui/PressableRow';
 import { Stack, router } from 'expo-router';
+import { asHref } from '../../src/lib/nav';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { useAuthStore } from '../../src/lib/store';
@@ -525,8 +526,9 @@ export default function SubscriptionPage() {
         const prices: Record<string, string> = {};
         subs.forEach((sub) => {
           const tier = productIdToTier(sub.productId);
-          if (tier && sub.localizedPrice) {
-            prices[tier] = sub.localizedPrice;
+          const localizedPrice = 'localizedPrice' in sub ? (sub as { localizedPrice?: string }).localizedPrice : undefined;
+          if (tier && localizedPrice) {
+            prices[tier] = localizedPrice;
           }
         });
         if (Object.keys(prices).length > 0) {
@@ -998,7 +1000,7 @@ export default function SubscriptionPage() {
         <View style={styles.addOnSection}>
           <Text style={[styles.infoSectionTitle, { marginBottom: spacing.md }]}>Available Add-Ons</Text>
           
-          <PressableRow style={styles.addOnCard} onPress={() => router.push('/more/ai-receptionist')} >
+          <PressableRow style={styles.addOnCard} onPress={() => router.push(asHref('/more/ai-receptionist'))} >
             <View style={styles.addOnHeader}>
               <View style={styles.addOnIconCircle}>
                 <Feather name="phone" size={16} color={colors.primary} />
@@ -1016,7 +1018,7 @@ export default function SubscriptionPage() {
             </Text>
           </PressableRow>
 
-          <PressableRow style={styles.addOnCard} onPress={() => router.push('/more/phone-numbers')} >
+          <PressableRow style={styles.addOnCard} onPress={() => router.push(asHref('/more/phone-numbers'))} >
             <View style={styles.addOnHeader}>
               <View style={styles.addOnIconCircle}>
                 <Feather name="smartphone" size={16} color={colors.primary} />

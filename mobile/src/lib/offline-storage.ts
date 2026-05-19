@@ -41,6 +41,16 @@ export interface CachedJob {
   clientName?: string;
   assignedTo?: string;
   notes?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  geofenceEnabled?: boolean;
+  geofenceRadius?: number;
+  geofenceAutoClockIn?: boolean;
+  geofenceAutoClockOut?: boolean;
+  isRecurring?: boolean;
+  recurrencePattern?: string | null;
+  nextRecurrenceDate?: string | null;
+  recurrenceEndDate?: string | null;
   cachedAt: number;
   pendingSync: boolean;
   syncAction?: 'create' | 'update' | 'delete';

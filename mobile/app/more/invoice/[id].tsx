@@ -461,7 +461,7 @@ export default function InvoiceDetailScreen() {
       // Compose email with payment link
       const businessName = businessSettings?.businessName || user?.name || 'Your tradie';
       const total = formatCurrency(invoice.total);
-      const dueDate = invoice.dueDate ? formatDate(new Date(invoice.dueDate)) : 'Upon receipt';
+      const dueDate = invoice.dueDate ? formatDate(new Date(invoice.dueDate).toISOString()) : 'Upon receipt';
       const subject = `Invoice ${invoiceNumber} from ${businessName}`;
       const body = `Hi ${client?.name || 'there'},
 
@@ -501,6 +501,7 @@ ${businessName}`;
         );
       } else {
         // Fallback: copy link to clipboard
+        const Clipboard = await import('expo-clipboard');
         await Clipboard.setStringAsync(publicUrl);
         showToast({ type: 'info', message: 'Email Not Available', description: `Payment link copied to clipboard:\n${publicUrl}` });
       }
@@ -745,7 +746,7 @@ ${businessName}`;
     const previousValue = invoice.allowOnlinePayment;
     const newValue = !previousValue;
     
-    setInvoice(prev => prev ? { ...prev, allowOnlinePayment: newValue } : prev);
+    setInvoice((prev: any) => prev ? { ...prev, allowOnlinePayment: newValue } : prev);
     setIsTogglingPayment(true);
     
     try {
@@ -766,13 +767,13 @@ ${businessName}`;
             ? 'Online payment enabled - clients can pay with card' 
             : 'Online payment disabled for this invoice' });
       } else {
-        setInvoice(prev => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
+        setInvoice((prev: any) => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || 'Failed to update payment settings';
         showToast({ type: 'error', message: errorMessage });
       }
     } catch (error) {
-      setInvoice(prev => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
+      setInvoice((prev: any) => prev ? { ...prev, allowOnlinePayment: previousValue } : prev);
       showToast({ type: 'error', message: 'Failed to update payment settings' });
     } finally {
       setIsTogglingPayment(false);
@@ -1045,7 +1046,7 @@ ${businessName}`;
     try {
       const businessName = businessSettings?.businessName || user?.name || 'Your tradie';
       const amount = formatCurrency(linkedReceipt.amount);
-      const paidDate = linkedReceipt.paidAt ? formatDate(new Date(linkedReceipt.paidAt)) : formatDate(new Date());
+      const paidDate = linkedReceipt.paidAt ? formatDate(new Date(linkedReceipt.paidAt).toISOString()) : formatDate(new Date().toISOString());
       const invoiceNumber = invoice.invoiceNumber || invoice.number || invoice.id?.slice(0, 8);
       
       const subject = `Payment Receipt ${receiptNumber} from ${businessName}`;
@@ -3217,7 +3218,7 @@ ${businessName}`;
                   selectedTemplate === template.id && styles.templateOptionSelected
                 ]}
                 onPress={() => {
-                  setSelectedTemplate(template.id);
+                  setSelectedTemplate(template.id as 'minimal' | 'professional' | 'modern');
                   setShowTemplateSelector(false);
                 }}
               >

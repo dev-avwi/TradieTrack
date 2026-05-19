@@ -16,6 +16,7 @@ import {
 import { PressableRow } from '../../src/components/ui/PressableRow';
 import { useBottomInset } from '../../src/components/ui/BottomInsetSpacer';
 import { Stack, router } from 'expo-router';
+import { asHref } from '../../src/lib/nav';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, ThemeColors } from '../../src/lib/theme';
 import { spacing, radius, typography } from '../../src/lib/design-tokens';
@@ -312,7 +313,7 @@ export default function PhoneNumbersPage() {
                   'Number Activated!',
                   `${formatPhone(number.phoneNumber)} is now your dedicated business number.\n\nYou've upgraded from the shared JobRunner number (0485 013 993). Your clients will now see your own number when you send SMS.\n\nYou can also set up an AI Receptionist on this number.`,
                   [
-                    { text: 'Set Up AI Receptionist', onPress: () => router.replace('/more/ai-receptionist') },
+                    { text: 'Set Up AI Receptionist', onPress: () => router.replace(asHref('/more/ai-receptionist')) },
                     { text: 'Go to Chat Hub', onPress: () => router.replace('/more/chat-hub') },
                   ]
                 );
@@ -585,7 +586,7 @@ export default function PhoneNumbersPage() {
                 </View>
 
                 <View style={styles.currentNumberActions}>
-                  <PressableRow style={styles.actionButton} onPress={() => router.push(`/more/ai-receptionist?configId=${cfg.id}`)} >
+                  <PressableRow style={styles.actionButton} onPress={() => router.push(asHref(`/more/ai-receptionist?configId=${cfg.id}`))} >
                     <Feather name="settings" size={14} color={colors.primary} />
                     <Text style={[styles.actionButtonText, { color: colors.primary }]}>Configure AI</Text>
                   </PressableRow>
@@ -626,7 +627,7 @@ export default function PhoneNumbersPage() {
               </View>
 
               <View style={styles.currentNumberActions}>
-                <PressableRow style={styles.actionButton} onPress={() => router.push('/more/ai-receptionist')} >
+                <PressableRow style={styles.actionButton} onPress={() => router.push(asHref('/more/ai-receptionist'))} >
                   <Feather name="cpu" size={14} color={colors.primary} />
                   <Text style={[styles.actionButtonText, { color: colors.primary }]}>AI Receptionist</Text>
                 </PressableRow>

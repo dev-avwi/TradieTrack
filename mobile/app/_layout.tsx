@@ -360,13 +360,13 @@ function ServicesInitializer() {
           const jobId = event.identifier.replace('job_', '');
           
           try {
-            const response = await api.post('/api/geofence-events', {
+            const response = await api.post<{ jobTitle?: string; timeEntryAction?: { type: string; duration?: number } }>('/api/geofence-events', {
               identifier: event.identifier,
               action: event.action,
               timestamp: event.timestamp,
             });
 
-            const data = response.data || response;
+            const data = response.data ?? {};
             const jobTitle = data?.jobTitle || 'Job site';
             const timeAction = data?.timeEntryAction;
 
@@ -417,22 +417,23 @@ function ServicesInitializer() {
         try {
           if (useLocationStore.getState().gpsOptOut) return;
 
-          const prefsRes = await api.get('/api/notification-preferences');
+          const prefsRes = await api.get<{ smartRunningLateEnabled?: boolean; pushNotificationsEnabled?: boolean }>('/api/notification-preferences');
           if (prefsRes.error || prefsRes.data?.smartRunningLateEnabled === false || prefsRes.data?.pushNotificationsEnabled === false) return;
 
-          let loc = location.getLastLocation();
+          let loc = location.currentLocation;
           const locationAge = loc ? Date.now() - loc.timestamp : Infinity;
           if (!loc || locationAge > 10 * 60 * 1000) {
             loc = await location.getCurrentLocation();
           }
           if (!loc?.latitude) return;
 
-          const checkRes = await api.post('/api/smart-running-late/check', {
+          type LateCheck = { runningLate?: boolean; jobId?: string; scheduledAt?: string; jobTitle?: string; lateByMinutes?: number; clientName?: string };
+          const checkRes = await api.post<LateCheck>('/api/smart-running-late/check', {
             latitude: loc.latitude,
             longitude: loc.longitude,
           });
 
-          const result = checkRes.data || checkRes;
+          const result: LateCheck = (checkRes.data as LateCheck) || ({} as LateCheck);
           if (result?.runningLate && result.jobId && result.jobId !== lastRunningLateJobRef.current) {
             lastRunningLateJobRef.current = result.jobId;
             const scheduledTime = result.scheduledAt ? new Date(result.scheduledAt).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -843,7 +844,7 @@ function RootLayoutContent() {
     if (isInitialized && !isLoading) setAppReady(true);
   }, [isInitialized, isLoading]);
 
-  const firstSegment = segments[0] || '';
+  const firstSegment = (segments[0] as string | undefined) ?? '';
   const navigationDone = firstSegment !== '';
   const ready = isInitialized && !isLoading && appReady && navigationDone;
 

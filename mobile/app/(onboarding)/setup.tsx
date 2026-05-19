@@ -157,7 +157,7 @@ export default function OnboardingSetupScreen() {
         }
 
         try {
-          const invitesRes = await api.get('/api/auth/pending-invites');
+          const invitesRes = await api.get<{ invites?: Array<{ id: string }> }>('/api/auth/pending-invites');
           const invites = invitesRes?.data?.invites;
           if (invites && invites.length > 0) {
             const invite = invites[0];

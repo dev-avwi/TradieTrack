@@ -134,13 +134,14 @@ export function FloatingAIWidget({ isVisible, onClose }: FloatingAIWidgetProps) 
 
         setChatHistory(prev => [...prev, assistantMessage]);
 
-        if (response.data.action) {
-          if (response.data.action.type === 'navigate' && !response.data.action.confirmationRequired) {
+        const respAction = response.data?.action;
+        if (respAction) {
+          if (respAction.type === 'navigate' && !respAction.confirmationRequired) {
             setTimeout(() => {
-              handleNavigation(response.data.action!.data?.path);
+              handleNavigation(respAction.data?.path);
             }, 1500);
-          } else if (response.data.action.confirmationRequired) {
-            setPendingAction(response.data.action);
+          } else if (respAction.confirmationRequired) {
+            setPendingAction(respAction);
           }
         }
       }

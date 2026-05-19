@@ -798,8 +798,9 @@ export default function MapScreen() {
       // Transform API response to match TeamMember interface
       // API returns: { id, name, email, latitude, longitude, lastUpdated, currentJobId, currentJobTitle }
       // We need: { id, userId, role, user: { firstName, lastName }, lastLocation: { latitude, longitude, timestamp }, activityStatus }
-      const transformedMembers: TeamMember[] = data
-        .map((m: any) => {
+      type RawTeamMember = { id: string; name?: string; latitude?: number | string; longitude?: number | string; isSubcontractor?: boolean; currentJobId?: string; currentJobTitle?: string; userId?: string; role?: string; themeColor?: string | null; lastUpdated?: string; speed?: number | null; batteryLevel?: number | null; activityStatus?: string | null; activeJobName?: string | null };
+      const transformedMembers: TeamMember[] = (data as RawTeamMember[])
+        .map((m): TeamMember | null => {
           const nameParts = (m.name || '').trim().split(' ');
           const firstName = nameParts[0] || '';
           const lastName = nameParts.slice(1).join(' ') || '';
@@ -871,12 +872,12 @@ export default function MapScreen() {
               speed: m.speed != null ? Number(m.speed) : undefined,
               battery: m.batteryLevel != null ? Number(m.batteryLevel) : undefined,
             },
-            activityStatus: m.activityStatus || (m.currentJobId ? 'working' : 'online'),
+            activityStatus: ((m.activityStatus as TeamMember['activityStatus']) || (m.currentJobId ? 'working' : 'online')),
             isSubcontractor: m.isSubcontractor || false,
             activeJobName: m.activeJobName || m.currentJobTitle || undefined,
           };
         })
-        .filter((m): m is TeamMember => m !== null);
+        .filter((m: TeamMember | null): m is TeamMember => m !== null);
       
       // Deduplicate by name to prevent multiple markers for the same person
       const uniqueMembers = transformedMembers.reduce((acc, member) => {
@@ -1437,8 +1438,8 @@ export default function MapScreen() {
         userLongitude: userLocation?.longitude,
       });
       
-      if (response.ok) {
-        const data = await response.json();
+      if (!response.error) {
+        const data = response.data as any;
         if (data.optimizedJobIds) {
           // Reorder routeJobs based on optimized order
           const optimizedJobs = data.optimizedJobIds

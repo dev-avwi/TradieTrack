@@ -24,11 +24,11 @@ export default function UsageLimitBanner({ variant = 'compact' }: UsageLimitBann
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
-  const { data: usage, isLoading } = useQuery<UsageInfo>({
+  const { data: usage, isLoading } = useQuery<UsageInfo | null>({
     queryKey: ['usage'],
     queryFn: async () => {
       const response = await api.get<UsageInfo>('/api/usage');
-      return response.data;
+      return response.data ?? null;
     },
   });
 

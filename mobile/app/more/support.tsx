@@ -575,7 +575,7 @@ export default function SupportScreen() {
     const deviceModel = Device.modelName || 'unknown';
     const osName = Platform.OS;
     const osVersion = Platform.Version?.toString() || 'unknown';
-    const apiUrl = api?.defaults?.baseURL || process.env.EXPO_PUBLIC_API_URL || 'default';
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'default';
     const lastSync = lastSyncTime ? new Date(lastSyncTime).toLocaleString('en-AU') : 'Never';
     
     return {

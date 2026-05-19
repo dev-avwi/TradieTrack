@@ -4,6 +4,7 @@ import { useConfirmDialog } from '../../src/components/ui/ConfirmDialog';
 import { useActionSheet } from '../../src/components/ui/ActionSheet';
 import { PressableRow } from '@/components/ui/PressableRow';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { asHref } from '../../src/lib/nav';
 import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { useTheme } from '../../src/lib/theme';
@@ -418,7 +419,7 @@ export default function AIReceptionistScreen() {
             title: 'Dedicated Number Required',
             message: 'You need a dedicated phone number before setting up AI Receptionist.',
             confirmText: 'Get a Number',
-          }).then((ok3) => { if (ok3) router.push('/more/phone-numbers'); });
+          }).then((ok3) => { if (ok3) router.push(asHref('/more/phone-numbers')); });
         } else if (errorData?.upgradeRequired) {
           confirm({
             title: 'Plan Upgrade Required',
@@ -905,7 +906,7 @@ export default function AIReceptionistScreen() {
               </Text>
               <TouchableOpacity
                 style={{ backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: spacing.xl, flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}
-                onPress={() => router.push('/more/phone-numbers')}
+                onPress={() => router.push(asHref('/more/phone-numbers'))}
                 activeOpacity={0.7}
               >
                 <Feather name="phone" size={16} color={colors.primaryForeground} />

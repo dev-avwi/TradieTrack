@@ -489,7 +489,7 @@ export default function TapToPaySetupScreen() {
   const bottomNavHeight = getBottomNavHeight(insets.bottom);
   const styles = createStyles(colors, bottomNavHeight);
   const { user } = useAuthStore();
-  const { isReady: stripeTerminalReady } = useStripeTerminal();
+  const { isInitialized: stripeTerminalReady } = useStripeTerminal();
 
   const [step, setStep] = useState<OnboardingStep>('splash');
   const [loading, setLoading] = useState(true);
@@ -522,11 +522,12 @@ export default function TapToPaySetupScreen() {
     return true;
   }, []);
 
-  const fetchTermsStatus = useCallback(async () => {
+  const fetchTermsStatus = useCallback(async (): Promise<TermsStatus | null> => {
     try {
-      const response = await api.get('/api/tap-to-pay/terms-status');
-      setTermsStatus(response);
-      return response;
+      const response = await api.get<TermsStatus>('/api/tap-to-pay/terms-status');
+      const status = response.data ?? null;
+      setTermsStatus(status);
+      return status;
     } catch (error) {
       console.error('Error fetching terms status:', error);
       return null;
@@ -579,9 +580,9 @@ export default function TapToPaySetupScreen() {
 
     setAcceptingTerms(true);
     try {
-      const response = await api.post('/api/tap-to-pay/accept-terms', {});
+      const response = await api.post<{ success?: boolean }>('/api/tap-to-pay/accept-terms', {});
       
-      if (response.success) {
+      if (response.data?.success) {
         setStep('tutorial');
       }
     } catch (error: any) {
@@ -833,7 +834,6 @@ export default function TapToPaySetupScreen() {
 
             <Badge 
               variant="secondary" 
-              size="sm"
               style={styles.tutorialBadge}
             >
               {TUTORIAL_SLIDES[tutorialSlide].subtitle}

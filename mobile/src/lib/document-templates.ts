@@ -25,10 +25,10 @@ export interface DocumentTemplate {
 export interface TemplateCustomization {
   tableStyle?: 'bordered' | 'striped' | 'minimal';
   noteStyle?: 'bordered' | 'highlighted' | 'simple';
-  headerBorderWidth?: number;
+  headerBorderWidth?: number | '1px' | '2px' | '3px' | '4px';
   showHeaderDivider?: boolean;
-  bodyWeight?: '400' | '500' | '600' | '700';
-  headingWeight?: '600' | '700' | '800';
+  bodyWeight?: '400' | '500' | '600' | '700' | 400 | 500 | 600 | 700;
+  headingWeight?: '600' | '700' | '800' | 600 | 700 | 800;
   accentColor?: string;
   fontStyle?: 'default' | 'serif' | 'mono';
 }
@@ -130,6 +130,10 @@ export interface TemplateStyles {
     borderTopWidth?: number;
     borderTopColor?: string;
   };
+  /** Optional preview-only style hooks consumed by `src/components/DocumentPreview.tsx`. */
+  headerStyle?: Record<string, unknown>;
+  borderRadius?: number;
+  sectionStyle?: Record<string, unknown>;
 }
 
 export function getTemplateStyles(
@@ -139,16 +143,20 @@ export function getTemplateStyles(
 ): TemplateStyles {
   const baseTemplate = DOCUMENT_TEMPLATES[templateId] || DOCUMENT_TEMPLATES.minimal;
   
-  const template = {
+  const normalizeWeight = <T extends string>(w: string | number | undefined, fallback: T): T => {
+    if (w === undefined) return fallback;
+    return String(w) as T;
+  };
+  const template: DocumentTemplate = {
     ...baseTemplate,
     tableStyle: customization?.tableStyle ?? baseTemplate.tableStyle,
     noteStyle: customization?.noteStyle ?? baseTemplate.noteStyle,
-    headerBorderWidth: typeof customization?.headerBorderWidth === 'string' 
-      ? parseInt(customization.headerBorderWidth) 
+    headerBorderWidth: typeof customization?.headerBorderWidth === 'string'
+      ? parseInt(customization.headerBorderWidth)
       : (customization?.headerBorderWidth ?? baseTemplate.headerBorderWidth),
     showHeaderDivider: customization?.showHeaderDivider ?? baseTemplate.showHeaderDivider,
-    bodyWeight: customization?.bodyWeight ?? baseTemplate.bodyWeight,
-    headingWeight: customization?.headingWeight ?? baseTemplate.headingWeight,
+    bodyWeight: normalizeWeight(customization?.bodyWeight, baseTemplate.bodyWeight),
+    headingWeight: normalizeWeight(customization?.headingWeight, baseTemplate.headingWeight),
   };
   
   const primaryColor = customization?.accentColor || DOCUMENT_ACCENT_COLOR;
