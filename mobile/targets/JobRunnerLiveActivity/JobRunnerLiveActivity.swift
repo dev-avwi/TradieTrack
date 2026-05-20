@@ -2,10 +2,9 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-// JobRunner brand palette. Kept inline rather than pulled from an asset
-// catalog to keep the extension target dependency-free — extensions can use
-// the host app's asset catalog only via App Groups, which adds complexity
-// we don't need for a handful of colors.
+// JobRunner brand palette. Kept inline so the extension target stays
+// dependency-free (extensions can only reach the host app's asset
+// catalog via App Groups, which is overkill for a handful of colors).
 private extension Color {
     static let jobRunnerBlue = Color(red: 0.169, green: 0.490, blue: 0.914)   // #2B7DE9
     static let jobRunnerOrange = Color(red: 0.949, green: 0.549, blue: 0.157) // #F28C28
@@ -25,29 +24,34 @@ struct JobRunnerLiveActivity: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     BrandBadge()
-                        .frame(width: 36, height: 36)
+                        .frame(width: 40, height: 40)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     TimerColumn(startedAt: context.attributes.startedAt, size: 18)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    AddressBlock(
-                        address: context.attributes.address,
-                        customerName: context.attributes.customerName,
-                        primarySize: 14,
-                        secondarySize: 11
-                    )
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(AddressParts(address: context.attributes.address).street)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        StatusLine(
+                            status: context.state.status,
+                            customerName: context.attributes.customerName,
+                            size: 11
+                        )
+                    }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
-                        StatusRow(status: context.state.status, compact: true)
-                        Spacer()
-                    }
-                }
             } compactLeading: {
-                BrandBadge()
-                    .frame(width: 20, height: 20)
+                // The compact slot is ~22pt wide — too small to render a
+                // brand mark legibly. Apple's own compact islands show
+                // dynamic state (waveform, arrow, etc.), not branding.
+                // A status-coloured dot reads as "the job is live" and
+                // shifts meaning with the activity state (blue / orange
+                // / green). Subtle blue glow to break the flat-disc look.
+                StatusDot(status: context.state.status, size: 14)
+                    .padding(.leading, 2)
             } compactTrailing: {
                 Text(context.attributes.startedAt, style: .timer)
                     .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
@@ -55,8 +59,12 @@ struct JobRunnerLiveActivity: Widget {
                     .frame(maxWidth: 56)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .padding(.trailing, 2)
             } minimal: {
-                BrandBadge()
+                // Minimal is even tinier (~10pt) — same rule: status dot,
+                // not branding. Filling the available square via
+                // GeometryReader keeps it crisp at any size.
+                StatusDot(status: context.state.status)
             }
             .keylineTint(Color.jobRunnerBlue)
         }
@@ -65,125 +73,130 @@ struct JobRunnerLiveActivity: Widget {
 
 // MARK: - Lock-screen view
 
+// Single-row layout: 48pt brand badge on the left, three-line content
+// column in the middle, oversized timer column on the right. No brand
+// label, no divider, no faux "View job" affordance — every pixel earns
+// its keep. Vertical breathing is a uniform 14pt; horizontal is 16pt
+// (Apple's default card inset) — no padding zoo.
 private struct LockScreenView: View {
     let attributes: JobRunnerLiveActivityAttributes
     let state: JobRunnerLiveActivityAttributes.ContentState
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Top row: brand badge + small caption on the left,
-            //          oversized elapsed timer on the right.
-            HStack(alignment: .center, spacing: 12) {
-                BrandBadge()
-                    .frame(width: 38, height: 38)
+        HStack(alignment: .top, spacing: 14) {
+            BrandBadge()
+                .frame(width: 48, height: 48)
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("JobRunner")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
-                    Text("Live job")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.secondaryText)
-                }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(AddressParts(address: attributes.address).street)
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
 
-                Spacer()
+                Text(AddressParts(address: attributes.address).suburbOrFallback)
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.secondaryText)
+                    .lineLimit(1)
 
-                TimerColumn(startedAt: attributes.startedAt, size: 26)
+                StatusLine(
+                    status: state.status,
+                    customerName: attributes.customerName,
+                    size: 13
+                )
+                .padding(.top, 1)
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 14)
 
-            // Headline section: street name as the primary read, suburb
-            // (and optional customer) as a single muted secondary line.
-            AddressBlock(
-                address: attributes.address,
-                customerName: attributes.customerName,
-                primarySize: 20,
-                secondarySize: 13
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 18)
-            .padding(.top, 10)
-            .padding(.bottom, 14)
+            Spacer(minLength: 8)
 
-            // Hairline divider — separates content from the action row
-            // and gives the card a structured "two-section" rhythm.
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(height: 0.5)
-
-            // Action row: live-status indicator on the left, navigation
-            // affordance on the right. Tapping the card opens the host
-            // app — system behavior; the chevron is just a visual cue.
-            HStack {
-                StatusRow(status: state.status, compact: false)
-                Spacer()
-                HStack(spacing: 3) {
-                    Text("View job")
-                        .font(.system(size: 14, weight: .medium))
-                    Text("›")
-                        .font(.system(size: 17, weight: .semibold))
-                }
-                .foregroundStyle(Color.secondaryText)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 12)
+            TimerColumn(startedAt: attributes.startedAt, size: 26)
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 }
 
-// MARK: - Reusable bits
+// MARK: - Address parsing
 
 // Splits "26 Ocean Drive, Gordonvale QLD 4865" into a bold street headline
-// and a muted "suburb · customer" line below. Falls back gracefully when
-// either piece is missing.
-private struct AddressBlock: View {
+// and a muted suburb/postcode line. Robust to addresses without commas
+// (rare for AU but worth handling): when there's no comma, the second
+// line falls back to "Active job" so the card never collapses to one
+// short line — the suburb slot always has *something* legible there.
+private struct AddressParts {
     let address: String
-    let customerName: String
-    let primarySize: CGFloat
-    let secondarySize: CGFloat
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(streetLine)
-                .font(.system(size: primarySize, weight: .bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-
-            if !secondaryLine.isEmpty {
-                Text(secondaryLine)
-                    .font(.system(size: secondarySize))
-                    .foregroundStyle(Color.secondaryText)
-                    .lineLimit(1)
-            }
-        }
-    }
-
-    private var streetLine: String {
+    var street: String {
         guard let comma = address.firstIndex(of: ",") else { return address }
         return String(address[..<comma]).trimmingCharacters(in: .whitespaces)
     }
 
-    private var secondaryLine: String {
-        let suburb: String = {
-            guard let comma = address.firstIndex(of: ",") else { return "" }
-            return String(address[address.index(after: comma)...]).trimmingCharacters(in: .whitespaces)
-        }()
-        switch (suburb.isEmpty, customerName.isEmpty) {
-        case (true,  true):  return ""
-        case (false, true):  return suburb
-        case (true,  false): return customerName
-        case (false, false): return "\(suburb) · \(customerName)"
+    var suburbOrFallback: String {
+        guard let comma = address.firstIndex(of: ",") else { return "Active job" }
+        let after = address.index(after: comma)
+        let s = String(address[after...]).trimmingCharacters(in: .whitespaces)
+        return s.isEmpty ? "Active job" : s
+    }
+}
+
+// MARK: - Status + customer line
+
+// One row, both pieces of context combined: live-status dot + colored
+// label, then a hairline interpunct, then the customer name in muted
+// gray. Folds the previous "action row" content back into the main
+// content column so it doesn't need its own divider'd section.
+private struct StatusLine: View {
+    let status: JobStatus
+    let customerName: String
+    let size: CGFloat
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Circle()
+                .fill(accentColor)
+                .frame(width: size * 0.46, height: size * 0.46)
+            Text(label)
+                .font(.system(size: size, weight: .semibold))
+                .foregroundStyle(accentColor)
+                .lineLimit(1)
+            if !customerName.isEmpty {
+                Text("·")
+                    .font(.system(size: size, weight: .medium))
+                    .foregroundStyle(Color.tertiaryText)
+                Text(customerName)
+                    .font(.system(size: size))
+                    .foregroundStyle(Color.secondaryText)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+    }
+
+    private var label: String {
+        switch status {
+        case .inProgress: return "In progress"
+        case .onBreak:    return "On break"
+        case .completed:  return "Completed"
+        }
+    }
+
+    private var accentColor: Color {
+        switch status {
+        case .inProgress: return .jobRunnerBlue
+        case .onBreak:    return .jobRunnerOrange
+        case .completed:  return .jobRunnerGreen
         }
     }
 }
 
-// Big elapsed time + small-caps "ELAPSED" label, vertically stacked. The
-// label has `.fixedSize()` so it never wraps regardless of the timer
-// width above it — that's the fix for the previous "ELAPS / ED" bug.
-// `minimumScaleFactor` keeps the timer on one line at any reasonable
-// elapsed duration.
+// MARK: - Timer column
+
+// Big elapsed time + small caption stacked. The label is `.fixedSize()`
+// so it can never wrap to "ELAPS / ED" regardless of timer width — the
+// previous bug. `.minimumScaleFactor` keeps the timer on one line for any
+// reasonable elapsed duration (hours+ render fine). "elapsed" is lower-
+// case because uppercase tracking at this size reads shouty for a label
+// the eye treats as ancillary.
 private struct TimerColumn: View {
     let startedAt: Date
     let size: CGFloat
@@ -196,41 +209,44 @@ private struct TimerColumn: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .fixedSize(horizontal: true, vertical: false)
-            Text("ELAPSED")
-                .font(.system(size: max(size * 0.36, 10), weight: .medium))
-                .tracking(0.8)
+            Text("elapsed")
+                .font(.system(size: max(size * 0.38, 10), weight: .medium))
                 .foregroundStyle(Color.tertiaryText)
                 .fixedSize()
         }
     }
 }
 
-// Squircle logo badge with a guaranteed-readable fallback. We use the
-// UIImage presence check + `.renderingMode(.original)` together because:
-//   1. UIImage(named:) gives us a hard "does it exist?" boolean — Image()
-//      silently renders a placeholder, which is what we used to see.
-//   2. .renderingMode(.original) prevents iOS's lock-screen "vibrancy"
-//      pipeline from coercing the colored logo into a monochrome
-//      template (which is what made it look like a gray silhouette).
-// If the asset somehow still fails to load, the fallback is a JobRunner-
-// blue squircle with a heavy white "J" — reads as intentional brand mark,
-// not as a broken UI placeholder.
+// MARK: - Brand badge
+
+// Squircle logo badge that fills edge-to-edge — no internal padding ring.
+// The PNG's own whitespace already provides a small inset; double-padding
+// it made the runner figure feel orbital in earlier passes.
+//
+// Two real defenses against the "gray box" failure mode:
+//   1. UIImage(named:) presence check: gives a hard yes/no, where
+//      Image(_:) silently renders a placeholder if the asset's missing.
+//   2. .renderingMode(.original): opts the image out of iOS's Live
+//      Activity vibrancy pipeline, which would otherwise coerce coloured
+//      brand artwork into a monochrome silhouette on the lock screen.
+// Fallback: JobRunner-blue squircle with a heavy white "J" — reads as
+// brand mark, not as broken UI.
 private struct BrandBadge: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                let cornerRadius = geo.size.width * 0.22 // ~iOS squircle ratio
+                let cornerRadius = geo.size.width * 0.225 // iOS app-icon squircle ratio
+                let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+
                 if let uiImage = UIImage(named: "JobRunnerLogo") {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Color.white)
+                    shape.fill(Color.white)
                     Image(uiImage: uiImage)
                         .renderingMode(.original)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .padding(geo.size.width * 0.10)
+                        .clipShape(shape)
                 } else {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Color.jobRunnerBlue)
+                    shape.fill(Color.jobRunnerBlue)
                     Text("J")
                         .font(.system(size: geo.size.width * 0.55, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
@@ -240,32 +256,35 @@ private struct BrandBadge: View {
     }
 }
 
-// Live status indicator: colored dot + plain-language status label.
-// The full "Job in progress" / "On break" / "Job completed" reads more
-// like a card line item than a badge, matching the DoorDash action-row
-// feel rather than the previous IN-PROGRESS-style screaming pill.
-private struct StatusRow: View {
+// MARK: - Status dot (Dynamic Island compact/minimal)
+
+// A simple status-coloured circle with a soft glow ring. Used in the
+// Dynamic Island compact + minimal slots where a logo can't render
+// legibly. Fills the available square via GeometryReader when no fixed
+// size is provided (minimal mode), or honours an explicit size param.
+private struct StatusDot: View {
     let status: JobStatus
-    let compact: Bool
+    var size: CGFloat? = nil
 
     var body: some View {
-        HStack(spacing: 7) {
-            Circle()
-                .fill(accentColor)
-                .frame(width: compact ? 6 : 7, height: compact ? 6 : 7)
-            Text(label)
-                .font(.system(size: compact ? 12 : 14, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.92))
-                .lineLimit(1)
+        if let size = size {
+            dot.frame(width: size, height: size)
+        } else {
+            GeometryReader { geo in
+                dot.frame(width: geo.size.width, height: geo.size.height)
+            }
         }
     }
 
-    private var label: String {
-        switch status {
-        case .inProgress: return "Job in progress"
-        case .onBreak:    return "On break"
-        case .completed:  return "Job completed"
-        }
+    private var dot: some View {
+        Circle()
+            .fill(accentColor)
+            .overlay(
+                Circle()
+                    .stroke(accentColor.opacity(0.35), lineWidth: 2)
+                    .blur(radius: 1.5)
+                    .scaleEffect(1.3)
+            )
     }
 
     private var accentColor: Color {
